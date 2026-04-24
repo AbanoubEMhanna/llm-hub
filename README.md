@@ -1,91 +1,108 @@
-# 🤖 Local LLM Hub v3
+# 🤖 Local LLM Hub
 
-Unified local AI playground for **Ollama + LM Studio** — streaming, tool calling, MCP, vision, RAG, agent loops, and more. Zero npm install.
+> A **local-first**, **zero-dependency** web UI for [Ollama](https://ollama.com) and [LM Studio](https://lmstudio.ai) — with streaming, tool calling, MCP, RAG, vision, and more.
+
+<p align="center">
+  <img alt="Node.js" src="https://img.shields.io/badge/node.js-%3E%3D18-43853d?logo=node.js&logoColor=white">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-blue.svg">
+  <img alt="Dependencies" src="https://img.shields.io/badge/dependencies-0-success">
+  <img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg">
+</p>
+
+<p align="center"><em>One UI, one port (8765), two providers, zero npm install.</em></p>
+
+<!-- TODO: Add a screenshot / GIF here. Save to docs/screenshot.png and uncomment:
+<p align="center"><img src="docs/screenshot.png" alt="Local LLM Hub screenshot" width="800"></p>
+-->
+
+---
+
+## What it does
+
+Local LLM Hub gives you a clean chat UI that unifies **Ollama** and **LM Studio** behind a single OpenAI-compatible proxy. Pick any model from either provider, stream tokens live, attach images, let the model call tools or search your knowledge base, and do it all without sending a single byte off your machine.
+
+The entire backend is one Node.js file that uses only the standard library. No npm install, no build step, no framework — just `node proxy.js`.
+
+---
 
 ## Quick Start
 
 ```bash
+git clone https://github.com/abanoubEMhanna/local-llm-hub.git
+cd local-llm-hub
 node proxy.js
-# Then open index.html in browser
+```
+
+Then open `index.html` in your browser.
+
+**Requires Node.js 18+**. Ollama and/or LM Studio should be running locally.
+
+Optional, but recommended:
+```bash
+ollama pull nomic-embed-text   # enables the RAG knowledge base
+ollama pull llava              # enables vision (image attachments)
 ```
 
 ---
 
-## ✨ All Features
+## Features
 
 ### 🔌 Core
-- Unified endpoint for Ollama + LM Studio (one model picker, one API)
-- **True token streaming** — tokens appear as the model generates
-- **Stop button** — cancel mid-generation; the abort reaches the provider
+- Unified dropdown for Ollama + LM Studio models (one picker, one API)
+- **True token streaming** — tokens appear as the model generates them
+- **Stop button** — aborts mid-generation and reaches the provider
 - OpenAI-compatible passthrough at `/v1/chat/completions`
 
 ### 🧰 Tools & Agents
-- Autonomous **agent loop** — model can call multiple tools in sequence, up to 8 rounds
-- Live tool-call visualization (input, result, elapsed)
-- **Built-in tools** (no setup): `datetime`, `calculator`, `web_search` (DuckDuckGo), `fetch_url`, `run_javascript` (vm sandbox, 3s timeout), `rag_search`
-- **MCP stdio client** — plug any Model Context Protocol server via `config.json`
+- Autonomous **agent loop** — model can chain tool calls, up to 8 rounds
+- Live tool-call visualization (input, result, elapsed time)
+- **Built-in tools**: `datetime`, `calculator`, `web_search` (DuckDuckGo), `fetch_url`, `run_javascript`, `rag_search`
+- **MCP stdio client** — plug any [Model Context Protocol](https://modelcontextprotocol.io) server via `config.json`
 
-### 📚 RAG (Retrieval-Augmented Generation)
-- Upload `.txt`, `.md`, `.json`, `.js`, `.ts`, `.py`, etc. into a collection
+### 📚 RAG
+- Upload `.txt`, `.md`, `.json`, code files into a knowledge collection
 - Automatic chunking + embedding via Ollama (`nomic-embed-text` by default)
 - Model queries its own knowledge via the `rag_search` tool
-- Manage collections from the sidebar (create, delete, view chunk count)
+- Manage collections from the sidebar
 
 ### 🖼 Vision / Multimodal
-- Image attachments — paste (Cmd+V), click 📎, or **drag & drop** anywhere
+- Image attachments — paste (⌘V), click 📎, or drag & drop anywhere
 - Multiple images per message
 - Works with `llava`, `qwen2-vl`, `llama3.2-vision`, etc.
 
 ### 💬 Message Actions
-Every assistant message has:
-- **🔄 Regenerate** — try again (⌘R for last)
-- **▶ Continue** — extend the previous response
-- **📋 Copy** — to clipboard
-- **🗑 Delete**
-
-Every user message has:
-- **✏️ Edit** — edit and regenerate from this point (⌘E for last)
-- **📋 Copy**
-- **🗑 Delete**
+Hover any message to access:
+- **🔄 Regenerate** (⌘R for last)
+- **▶ Continue**
+- **✏️ Edit & regenerate** (⌘E for last user message)
+- **📋 Copy** / **🗑 Delete**
 
 ### 🎨 Artifacts & Syntax Highlighting
-- Code blocks get **Prism.js** syntax highlighting (JS, TS, Python, bash, JSON, MD, SQL, YAML, JSX, TSX, CSS, Go, Rust)
-- **HTML / SVG / JSX / TSX** blocks automatically render a **live preview** tab (sandboxed iframe with Babel-in-browser for React)
-- One-click **Copy** button on every code block
+- Prism.js syntax highlighting for 14+ languages
+- **HTML / SVG / JSX / TSX** blocks auto-render a live Preview tab (sandboxed iframe with Babel for React)
+- One-click Copy on every code block
 
-### 📝 Templates Library (⌘-less)
-- 6 built-in templates: Refactor Code, Explain Code, Debug Issue, PR Review, Translate AR↔EN, Summarize
-- Templates use `{{variable}}` syntax → fills prompt-by-prompt UI on run
-- Create, edit, tag, delete your own templates (saved in localStorage)
+### 📝 Prompt Templates
+- 6 built-in templates (Refactor, Explain, Debug, PR Review, Translate, Summarize)
+- Create your own with `{{variable}}` placeholders → fill-in-the-blank UI on run
 
 ### 🎭 System Prompt Presets
-6 built-in + save your own: Code Assistant, Code Reviewer, Translator, Concise, Brainstorm, Rubber Duck
+6 built-in (Code Assistant, Code Reviewer, Translator, Concise, Brainstorm, Rubber Duck) plus save your own.
 
-### ⚖️ Model Comparison Mode
-- Click ⚡ in the top bar → split screen
-- Pick two different models → same prompt runs on both in parallel
-- See latency + token counts side-by-side
+### ⚖️ Model Comparison
+Click ⚡ in the top bar → split screen → pick two models → send the same prompt in parallel. See latency + tokens side-by-side.
 
 ### 🔍 Cmd+K Search
-- Fuzzy search across **all** chats + titles + message contents
-- Arrow-key navigation, Enter to jump
-- Highlighted matches
+Fuzzy search across every message in every chat. Arrow keys + Enter to jump.
 
 ### 📌 Chat Management
-- **Pin** important conversations to top
-- Delete with confirm
-- Auto-titling from first message
-- Export current chat as **Markdown** or **JSON**
+Pin important chats, delete with confirm, auto-title from first message, export as **Markdown** or **JSON**.
 
-### ⚙️ Config Editor
-- Edit `config.json` live from UI (⚙️ icon)
-- Save → MCP servers and tools reload without restarting the proxy
+### ⚙️ Live Config Editor
+Edit `config.json` from the UI. Save → MCP servers and tools reload without restarting.
 
 ### 🎛 Parameters & Stats
-- Temperature slider + max_tokens input
-- Live stats bar: model · context usage · tokens · elapsed time
-- **Context window indicator** — turns orange past 75%
-- **Live token counter** in the input hint (approximation)
+Temperature, max tokens, live token counter, context-usage indicator (warns >75 %), timing stats.
 
 ### ⌨️ Hotkeys
 | Shortcut | Action |
@@ -99,34 +116,35 @@ Every user message has:
 | `⌘E` / `Ctrl+E` | Edit last user message |
 | `Esc` | Close modal |
 
-### 🎨 Theming
-- Dark / Light theme toggle (🌙 in top bar)
-- Persists across sessions
+### 🎨 Dark / Light theme
+Toggle with 🌙 in the top bar. Persists across sessions.
 
 ---
 
 ## 🔌 API Reference
 
+All endpoints live at `http://127.0.0.1:8765`.
+
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET`  | `/health` | Providers + tools status |
-| `GET`  | `/v1/models` | All models, prefixed by provider |
+| `GET`  | `/v1/models` | All models, prefixed by provider (`ollama/llama3`, `lmstudio/…`) |
 | `GET`  | `/v1/tools` | All available tools |
-| `GET`  | `/v1/config` | Read current config |
+| `GET`  | `/v1/config` | Current config |
 | `POST` | `/v1/config` | Update config + reload MCP |
 | `POST` | `/v1/chat` | SSE streaming agent loop (abortable) |
-| `POST` | `/v1/chat/completions` | OpenAI-compatible passthrough |
+| `POST` | `/v1/chat/completions` | OpenAI-compatible passthrough (non-streaming) |
 | `GET`  | `/v1/rag/collections` | List RAG collections |
 | `POST` | `/v1/rag/upload` | Upload doc (SSE progress) |
 | `POST` | `/v1/rag/query` | Query a collection |
-| `DELETE` | `/v1/rag/collections/:id` | Delete collection |
+| `DELETE` | `/v1/rag/collections/:id` | Delete a collection |
 
 ### SSE Event Types on `/v1/chat`
 
 ```
-text_delta   → { delta: "token" }     ← streaming content
-tool_call    → { id, name, args }     ← model invoked a tool
-tool_result  → { id, name, result }   ← tool returned
+text_delta   → { delta: "token" }             streaming content
+tool_call    → { id, name, args }             model invoked a tool
+tool_result  → { id, name, result }           tool returned
 done         → { model, elapsed, prompt_tokens, completion_tokens }
 error        → { message }
 ```
@@ -135,7 +153,7 @@ error        → { message }
 
 ## 🛠 Adding MCP Servers
 
-Edit `config.json` → set `"enabled": true`:
+Edit `config.json` and set `"enabled": true`:
 
 ```json
 {
@@ -151,86 +169,114 @@ Edit `config.json` → set `"enabled": true`:
 }
 ```
 
-Popular MCP servers:
+Popular ready-to-use MCP servers:
+
 ```bash
 npx -y @modelcontextprotocol/server-filesystem /path
-npx -y @modelcontextprotocol/server-github            # needs GITHUB_PERSONAL_ACCESS_TOKEN
-npx -y @modelcontextprotocol/server-brave-search      # needs BRAVE_API_KEY
+npx -y @modelcontextprotocol/server-github             # env: GITHUB_PERSONAL_ACCESS_TOKEN
+npx -y @modelcontextprotocol/server-brave-search       # env: BRAVE_API_KEY
 npx -y @modelcontextprotocol/server-postgres postgresql://…
 ```
 
+Reload the config from the UI (⚙️ icon) and the server will connect without restarting the proxy.
+
 ---
 
-## 💡 Tips
+## 🐛 Troubleshooting
 
-### Using RAG
-1. Pull an embedding model: `ollama pull nomic-embed-text`
-2. Click **＋** next to "RAG Knowledge" in sidebar
-3. Upload docs → new or existing collection
-4. Enable tools → model will use `rag_search` when relevant
+### "Cannot reach proxy"
+The proxy isn't running. Start it with `node proxy.js` in the project folder.
 
-### Using Vision
+### Ollama shows "offline" in the badge
+Check that Ollama is running: `ollama list`. Default port is 11434.
+
+### LM Studio shows "offline"
+LM Studio needs to be in **Server mode**. Open LM Studio → Developer tab → start the server on port 1234.
+
+### RAG uploads fail with "Embedding failed"
+You need an embedding model. Run:
 ```bash
-ollama pull llava:latest         # general-purpose
-ollama pull qwen2-vl:7b          # strong on OCR
-ollama pull llama3.2-vision:11b  # Meta's model
+ollama pull nomic-embed-text
 ```
-Pick the model → paste / drop an image → ask a question.
 
-### Using Templates
-Click 📝 in top bar → pick a template → fill in `{{vars}}` → inserted into input, ready to send.
+### Vision doesn't work
+Make sure your model actually supports vision. Try `llava`, `qwen2-vl`, or `llama3.2-vision`.
 
-### Model Comparison
-Click ⚡ in top bar → pick two models from the pane headers → send. Great for speed/quality comparisons.
+### The UI can see models but sending returns "Model not found"
+Refresh the models list by reloading `index.html`. If that doesn't work, check `/v1/models` in your browser to confirm the proxy sees them.
 
----
-
-## 📋 Requirements
-
-- **Node.js** (any version — pure stdlib, no deps)
-- **Ollama** on port 11434 (optional, but recommended for RAG embeddings)
-- **LM Studio** Server mode on port 1234 (optional)
+### Artifact preview is blank
+Check DevTools → Console for Babel errors. Make sure your React code has a component named `App` or `Component`.
 
 ---
 
 ## 📁 Project Structure
 
 ```
-llm-hub-v2/
-├── proxy.js       Node.js proxy server (no deps)
-├── config.json    Providers, tools, RAG, MCP config
-├── index.html     Entry HTML
-├── styles.css     All styling
-├── app.js         Frontend logic
-├── README.md      This file
-└── .llm-hub/      Auto-created: RAG embeddings cache
+local-llm-hub/
+├── proxy.js         Node.js proxy server (no deps)
+├── app.js           Frontend logic
+├── index.html       Entry HTML
+├── styles.css       All styling
+├── config.json      Providers, tools, RAG, MCP config
+├── README.md        This file
+├── LICENSE          MIT
+├── CHANGELOG.md     Version history
+├── CONTRIBUTING.md  How to contribute
+├── SECURITY.md      Security considerations (important!)
+└── .llm-hub/        Auto-created: RAG embeddings cache
 ```
 
 ---
 
-## Changelog
+## ⚠️ Security Notes
 
-### v3.0 (current)
-- RAG with Ollama embeddings + upload UI + `rag_search` tool
-- `run_javascript` tool (vm sandbox)
-- Config editor in UI
-- Message actions: regenerate / edit / continue / copy / delete
-- Model comparison mode
-- Artifacts preview (HTML / SVG / React)
-- Prism.js syntax highlighting
-- Cmd+K search across chats
-- Chat pinning
-- Prompt templates library
-- Token counter + context indicator
-- Export as Markdown
-- Theme toggle
-- Hotkeys
+This tool is intended for **local, single-user development**. A few things worth knowing:
 
-### v2.1
-- True token streaming
-- Stop button
-- Vision support (paste + drag-drop)
-- System prompt presets
+- `run_javascript` uses Node's `vm` module, which **is not a true security sandbox**. Don't expose the proxy to the internet or share it with untrusted users.
+- The proxy binds to `127.0.0.1` by default. Set `HOST=0.0.0.0` env var to expose to LAN (at your own risk).
+- CORS is permissive. Any web page you visit while the proxy is running can query your local models.
 
-### v2.0
-- SSE, tool calling, agent loop, MCP stdio, conversation history
+See [SECURITY.md](./SECURITY.md) for the full threat model.
+
+---
+
+## 🗺 Roadmap
+
+Planned for future releases:
+- Conversation branching
+- Multi-agent workflows (planner → executor → critic)
+- Voice I/O (speech-to-text, text-to-speech)
+- Structured output schemas (JSON mode with validation)
+- Desktop app (Electron / Tauri)
+- MCP server marketplace
+- Smart autocomplete (ghost text)
+- Diff view for regenerations
+
+Got an idea? [Open an issue!](https://github.com/abanoubEMhanna/local-llm-hub/issues)
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+
+---
+
+## 📜 License
+
+MIT © [Abanoub Essam Mhanna](https://github.com/abanoubEMhanna)
+
+---
+
+## 🙏 Acknowledgements
+
+Built with:
+- [Ollama](https://ollama.com) — local LLM runner
+- [LM Studio](https://lmstudio.ai) — LLM desktop app
+- [Model Context Protocol](https://modelcontextprotocol.io) — tool protocol spec
+- [marked](https://marked.js.org) — markdown parsing
+- [Prism.js](https://prismjs.com) — syntax highlighting
+- [Babel](https://babeljs.io) — JSX/TSX rendering in artifacts
+
+If you find this useful, a ⭐ on [GitHub](https://github.com/abanoubEMhanna/local-llm-hub) is much appreciated.

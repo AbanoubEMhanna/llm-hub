@@ -1,0 +1,43 @@
+{
+  "name": "local-llm-hub",
+  "version": "3.1.0",
+  "description": "A local-first, zero-dependency web UI for Ollama + LM Studio. Streaming, tool calling, MCP, RAG, vision, and more.",
+  "main": "proxy.js",
+  "type": "commonjs",
+  "bin": {
+    "local-llm-hub": "proxy.js"
+  },
+  "scripts": {
+    "start": "node proxy.js",
+    "check": "node --check proxy.js && echo 'proxy.js: syntax OK'"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "llm",
+    "ollama",
+    "lm-studio",
+    "mcp",
+    "model-context-protocol",
+    "rag",
+    "local-llm",
+    "openai-compatible",
+    "streaming",
+    "agent",
+    "tool-calling",
+    "chat-ui"
+  ],
+  "author": "Abanoub Essam Mhanna <abanoubemhanna@gmail.com> (https://github.com/abanoubEMhanna)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abanoubEMhanna/local-llm-hub.git"
+  },
+  "bugs": {
+    "url": "https://github.com/abanoubEMhanna/local-llm-hub/issues"
+  },
+  "homepage": "https://github.com/abanoubEMhanna/local-llm-hub#readme",
+  "dependencies": {},
+  "devDependencies": {}
+}

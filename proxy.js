@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
- * 🤖 Local LLM Hub — Proxy v3
+ * 🤖 Local LLM Hub — Proxy v3.1
  * ─────────────────────────────────────────────────────
- * v3 additions:
- *   • RAG (upload/query/list/delete) with ollama embeddings
- *   • run_javascript tool (sandboxed via vm.Script, 3s timeout)
- *   • rag_search tool (model can query its own knowledge base)
- *   • Persistent storage in .llm-hub/
- *   • Config read/write endpoints
+ * v3.1 changes (security & reliability hardening):
+ *   • fetch_url: timeout, size cap, SSRF deny-list, protocol allowlist, redirect guard
+ *   • web_search: timeout
+ *   • httpGet: timeout
+ *   • calculator: replaced regex-based eval with safer vm sandbox
+ *   • Binds to 127.0.0.1 by default (opt-in to LAN via HOST env var)
+ *   • run_javascript: clearer "development only" disclaimer
  * ─────────────────────────────────────────────────────
  */
 
@@ -16,7 +17,6 @@ const https      = require('https');
 const { spawn }  = require('child_process');
 const readline   = require('readline');
 const fs         = require('fs');
-const fsp        = require('fs').promises;
 const path       = require('path');
 const vm         = require('vm');
 const crypto     = require('crypto');
@@ -47,6 +47,8 @@ function loadConfig() {
 
 let CONFIG = loadConfig();
 const PORT = CONFIG.proxy_port || 8765;
+// Default bind: 127.0.0.1 (localhost only). Set HOST=0.0.0.0 env to expose to LAN.
+const HOST = process.env.HOST || '127.0.0.1';
 
 const STORAGE_DIR = path.isAbsolute(CONFIG.storage_dir || '.llm-hub')
   ? CONFIG.storage_dir
@@ -83,17 +85,21 @@ function httpPost(host, port, pathStr, body, timeout = 60000) {
   });
 }
 
-function httpGet(host, port, pathStr) {
+function httpGet(host, port, pathStr, timeout = 5000) {
   return new Promise((resolve) => {
-    const req = http.request({ hostname: host, port, path: pathStr, method: 'GET' }, (res) => {
-      let buf = '';
-      res.on('data', (c) => (buf += c));
-      res.on('end', () => {
-        try { resolve({ ok: res.statusCode < 400, data: JSON.parse(buf) }); }
-        catch { resolve({ ok: false, data: null }); }
-      });
-    });
+    const req = http.request(
+      { hostname: host, port, path: pathStr, method: 'GET', timeout },
+      (res) => {
+        let buf = '';
+        res.on('data', (c) => (buf += c));
+        res.on('end', () => {
+          try { resolve({ ok: res.statusCode < 400, data: JSON.parse(buf) }); }
+          catch { resolve({ ok: false, data: null }); }
+        });
+      }
+    );
     req.on('error', () => resolve({ ok: false, data: null }));
+    req.on('timeout', () => { req.destroy(); resolve({ ok: false, data: null }); });
     req.end();
   });
 }
@@ -102,15 +108,9 @@ function httpGet(host, port, pathStr) {
 // § RAG ENGINE
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Simple file-based RAG:
- *   • Each collection = one JSON file: { id, name, chunks: [{id, text, embedding, source}], createdAt }
- *   • Embeddings via Ollama /api/embeddings
- *   • Search = cosine similarity over loaded chunks
- */
 class RagEngine {
   constructor() {
-    this.collections = new Map(); // id → collection object
+    this.collections = new Map();
     this._loadAll();
   }
 
@@ -138,7 +138,6 @@ class RagEngine {
       chunks:    c.chunks?.length || 0,
       sources:   [...new Set((c.chunks||[]).map(ch => ch.source))].length,
       createdAt: c.createdAt,
-      size:      JSON.stringify(c).length,
     }));
   }
 
@@ -156,7 +155,6 @@ class RagEngine {
     if (!clean) return [];
     if (clean.length <= chunkSize) return [clean];
 
-    // Split on double newlines, then greedily pack
     const paragraphs = clean.split(/\n\n+/);
     const chunks = [];
     let current = '';
@@ -164,7 +162,6 @@ class RagEngine {
     for (const p of paragraphs) {
       if ((current + '\n\n' + p).length > chunkSize && current) {
         chunks.push(current.trim());
-        // overlap: keep tail of previous chunk
         current = current.slice(Math.max(0, current.length - overlap)) + '\n\n' + p;
       } else {
         current = current ? current + '\n\n' + p : p;
@@ -172,7 +169,7 @@ class RagEngine {
     }
     if (current.trim()) chunks.push(current.trim());
 
-    // If a single paragraph is still too big, hard-split it
+    // Hard-split any chunk that's still too big
     const finalChunks = [];
     for (const c of chunks) {
       if (c.length <= chunkSize * 1.5) finalChunks.push(c);
@@ -261,6 +258,31 @@ class RagEngine {
 const rag = new RagEngine();
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § SSRF PROTECTION HELPER
+// ─────────────────────────────────────────────────────────────────────────────
+
+function isPrivateHost(host) {
+  if (!host) return true;
+  const h = host.toLowerCase();
+  if (h === 'localhost' || h === '0.0.0.0') return true;
+  // IPv6 loopback / link-local / unique-local
+  if (h === '::1' || h.startsWith('fe80:') || h.startsWith('fc') || h.startsWith('fd')) return true;
+  // Known cloud metadata endpoints
+  if (h === '169.254.169.254' || h === 'metadata.google.internal') return true;
+  // IPv4 private/reserved ranges
+  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const a = +m[1], b = +m[2];
+    if (a === 10 || a === 127) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 0) return true;
+  }
+  return false;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § BUILT-IN TOOLS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -276,16 +298,16 @@ const BUILT_IN_DEFS = {
   },
   calculator: {
     name: 'calculator',
-    description: 'Evaluate a math expression. Supports +,-,*,/,**,%, Math.*',
+    description: 'Evaluate a math expression safely. Supports +,-,*,/,**,%, Math.* functions and constants.',
     input_schema: {
       type: 'object',
-      properties: { expression: { type: 'string', description: 'Math expression' } },
+      properties: { expression: { type: 'string', description: 'Math expression, e.g. "Math.sqrt(144) + 2**10"' } },
       required: ['expression'],
     },
   },
   web_search: {
     name: 'web_search',
-    description: 'Search the web via DuckDuckGo.',
+    description: 'Search the web via DuckDuckGo Instant Answer API.',
     input_schema: {
       type: 'object',
       properties: { query: { type: 'string' } },
@@ -294,30 +316,30 @@ const BUILT_IN_DEFS = {
   },
   fetch_url: {
     name: 'fetch_url',
-    description: 'Fetch plain text content of a URL.',
+    description: 'Fetch text content of a public URL. Private/local addresses are blocked.',
     input_schema: {
       type: 'object',
       properties: {
-        url: { type: 'string' },
-        max_chars: { type: 'number', description: 'default 3000' },
+        url: { type: 'string', description: 'Public http(s) URL.' },
+        max_chars: { type: 'number', description: 'Max chars of extracted text (default 3000).' },
       },
       required: ['url'],
     },
   },
   run_javascript: {
     name: 'run_javascript',
-    description: 'Execute JavaScript in a sandboxed VM (3s timeout, no network, no fs). Returns the final expression value.',
+    description: 'DEVELOPMENT USE ONLY: execute JavaScript in an isolated Node vm context (3s timeout, no fs, no network). NOTE: Node vm is not a true security sandbox — do not expose this to untrusted users. Last expression is returned.',
     input_schema: {
       type: 'object',
       properties: {
-        code: { type: 'string', description: 'JS code to execute. Last expression is returned.' },
+        code: { type: 'string', description: 'JS code. Last expression is returned.' },
       },
       required: ['code'],
     },
   },
   rag_search: {
     name: 'rag_search',
-    description: 'Search the user\'s uploaded knowledge base (RAG). Returns top matching chunks.',
+    description: "Search the user's uploaded knowledge base (RAG). Returns top matching chunks with scores.",
     input_schema: {
       type: 'object',
       properties: {
@@ -342,11 +364,22 @@ const builtInExecutors = {
     });
   },
 
+  // Safer calculator: isolated vm context with ONLY Math exposed.
+  // Still not a hard security boundary (vm can be escaped) but far better than new Function.
   calculator({ expression }) {
     try {
-      const safe = expression.replace(/[^0-9+\-*/%.()Math.,a-zA-Z\s]/g, '');
-      const result = new Function(`"use strict"; return (${safe})`)();
-      return JSON.stringify({ expression, result });
+      if (typeof expression !== 'string' || expression.length > 500) {
+        return JSON.stringify({ error: 'expression missing or too long' });
+      }
+      // Quick denylist of obvious escape attempts (defense in depth)
+      if (/\b(require|process|global|this|constructor|import|eval|Function|setTimeout|setInterval)\b/.test(expression)) {
+        return JSON.stringify({ error: 'expression contains disallowed identifier' });
+      }
+      const sandbox = { Math, result: null };
+      vm.createContext(sandbox);
+      const script = new vm.Script(`result = (${expression});`);
+      script.runInContext(sandbox, { timeout: 1000 });
+      return JSON.stringify({ expression, result: sandbox.result });
     } catch (e) {
       return JSON.stringify({ error: `Cannot evaluate: ${e.message}` });
     }
@@ -354,8 +387,9 @@ const builtInExecutors = {
 
   web_search({ query }) {
     return new Promise((resolve) => {
+      const TIMEOUT_MS = 8000;
       const reqUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
-      https.get(reqUrl, { headers: { 'User-Agent': 'LocalLLMHub/3.0' } }, (res) => {
+      const req = https.get(reqUrl, { headers: { 'User-Agent': 'LocalLLMHub/3.1' }, timeout: TIMEOUT_MS }, (res) => {
         let data = '';
         res.on('data', (c) => (data += c));
         res.on('end', () => {
@@ -373,26 +407,67 @@ const builtInExecutors = {
             resolve(JSON.stringify({ query, error: 'Failed to parse results' }));
           }
         });
-      }).on('error', (e) => resolve(JSON.stringify({ error: e.message })));
+      });
+      req.on('timeout', () => { req.destroy(new Error('timeout')); resolve(JSON.stringify({ error: `web_search timed out after ${TIMEOUT_MS}ms` })); });
+      req.on('error', (e) => resolve(JSON.stringify({ error: e.message })));
     });
   },
 
   fetch_url({ url, max_chars = 3000 }) {
     return new Promise((resolve) => {
+      const TIMEOUT_MS = 10000;
+      const MAX_BYTES  = 2 * 1024 * 1024; // 2MB
+
       try {
         const parsed = new URL(url);
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          resolve(JSON.stringify({ error: `Unsupported protocol: ${parsed.protocol}` }));
+          return;
+        }
+        if (isPrivateHost(parsed.hostname)) {
+          resolve(JSON.stringify({ error: `Blocked: cannot fetch private/local addresses (${parsed.hostname})` }));
+          return;
+        }
         const mod = parsed.protocol === 'https:' ? https : http;
-        mod.get(url, { headers: { 'User-Agent': 'LocalLLMHub/3.0' } }, (res) => {
+        const req = mod.get(url, { headers: { 'User-Agent': 'LocalLLMHub/3.1' }, timeout: TIMEOUT_MS }, (res) => {
+          // Reject redirect to private address. Don't follow automatically — too risky.
+          if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
+            try {
+              const next = new URL(res.headers.location, url);
+              if (isPrivateHost(next.hostname)) {
+                resolve(JSON.stringify({ error: 'Blocked: redirect pointed to a private address' }));
+                return;
+              }
+            } catch { /* fall through */ }
+            resolve(JSON.stringify({ url, redirect_to: res.headers.location, note: 'Redirect not followed. Call fetch_url again with the new URL if you trust it.' }));
+            return;
+          }
+
           let body = '';
-          res.on('data', (c) => (body += c));
+          let bytes = 0;
+          let aborted = false;
+          res.on('data', (c) => {
+            if (aborted) return;
+            bytes += c.length;
+            if (bytes > MAX_BYTES) {
+              aborted = true;
+              req.destroy();
+              resolve(JSON.stringify({ error: `Response exceeded ${MAX_BYTES} bytes — aborted` }));
+              return;
+            }
+            body += c;
+          });
           res.on('end', () => {
+            if (aborted) return;
             const text = body.replace(/<script[\s\S]*?<\/script>/gi, '')
                              .replace(/<style[\s\S]*?<\/style>/gi, '')
                              .replace(/<[^>]+>/g, ' ')
                              .replace(/\s+/g, ' ').trim().slice(0, max_chars);
             resolve(JSON.stringify({ url, content: text, truncated: body.length > max_chars }));
           });
-        }).on('error', (e) => resolve(JSON.stringify({ error: e.message })));
+        });
+        req.on('timeout', () => { req.destroy(); resolve(JSON.stringify({ error: `fetch_url timed out after ${TIMEOUT_MS}ms` })); });
+        req.on('error', (e) => resolve(JSON.stringify({ error: e.message })));
       } catch (e) {
         resolve(JSON.stringify({ error: `Invalid URL: ${e.message}` }));
       }
@@ -470,7 +545,7 @@ class MCPStdioClient {
     await this._rpc('initialize', {
       protocolVersion: '2024-11-05',
       capabilities:    {},
-      clientInfo:      { name: 'local-llm-hub', version: '3.0' },
+      clientInfo:      { name: 'local-llm-hub', version: '3.1' },
     });
     this._notify('notifications/initialized');
     const result = await this._rpc('tools/list', {});
@@ -746,6 +821,8 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, useTools
 // ─────────────────────────────────────────────────────────────────────────────
 
 function setCORS(res) {
+  // Note: permissive CORS because the UI is served from file:// or a different origin.
+  // The server binds to localhost by default (see HOST env var).
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -785,7 +862,7 @@ const server = http.createServer(async (req, res) => {
         httpGet(CONFIG.providers.lmstudio.host, CONFIG.providers.lmstudio.port, '/v1/models'),
       ]);
       sendJSON(res, 200, {
-        proxy: 'running', version: '3.0', port: PORT,
+        proxy: 'running', version: '3.1', port: PORT,
         providers: {
           ollama:   ol.status === 'fulfilled' && ol.value.ok ? 'online' : 'offline',
           lmstudio: lm.status === 'fulfilled' && lm.value.ok ? 'online' : 'offline',
@@ -850,7 +927,7 @@ const server = http.createServer(async (req, res) => {
       sendJSON(res, 200, { collections: rag.listCollections() }); return;
     }
 
-    // ── RAG: upload (supports streaming progress via SSE)
+    // ── RAG: upload (SSE progress)
     if (req.method === 'POST' && url.pathname === '/v1/rag/upload') {
       const body = await readBody(req);
       const { collection_id, collection_name, source, text } = body;
@@ -916,12 +993,11 @@ const server = http.createServer(async (req, res) => {
       sendJSON(res, 200, CONFIG); return;
     }
 
-    // ── CONFIG: write (and reload MCP/tools)
+    // ── CONFIG: write
     if (req.method === 'POST' && url.pathname === '/v1/config') {
       const body = await readBody(req);
       try {
-        // Basic validation
-        if (!body.providers || !body.tools) { sendJSON(res, 400, { error: 'invalid config' }); return; }
+        if (!body.providers || !body.tools) { sendJSON(res, 400, { error: 'invalid config: providers + tools required' }); return; }
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(body, null, 2));
         CONFIG = body;
         await registry.reload();
@@ -946,25 +1022,20 @@ const server = http.createServer(async (req, res) => {
 (async () => {
   await registry.init();
 
-  server.listen(PORT, () => {
-    console.log('\n🤖 Local LLM Hub v3');
+  server.listen(PORT, HOST, () => {
+    console.log('\n🤖 Local LLM Hub v3.1');
     console.log('═══════════════════════════════════════════════');
-    console.log(`✅ Proxy     → http://localhost:${PORT}`);
-    console.log(`📡 Ollama    → http://localhost:${CONFIG.providers.ollama.port}`);
-    console.log(`📡 LM Studio → http://localhost:${CONFIG.providers.lmstudio.port}`);
+    console.log(`✅ Proxy     → http://${HOST}:${PORT}`);
+    console.log(`📡 Ollama    → http://${CONFIG.providers.ollama.host}:${CONFIG.providers.ollama.port}`);
+    console.log(`📡 LM Studio → http://${CONFIG.providers.lmstudio.host}:${CONFIG.providers.lmstudio.port}`);
     console.log(`📚 Storage   → ${STORAGE_DIR}`);
     console.log(`🔧 Tools     → ${registry.getStatus().total}`);
     console.log(`🧠 RAG       → ${rag.listCollections().length} collection(s)`);
-    console.log('═══════════════════════════════════════════════');
-    console.log('Routes:');
-    console.log('  GET/POST  /v1/chat            (SSE, agent loop)');
-    console.log('  GET       /v1/models');
-    console.log('  GET       /v1/tools');
-    console.log('  GET/POST  /v1/config          (reload MCP)');
-    console.log('  GET       /v1/rag/collections');
-    console.log('  POST      /v1/rag/upload      (SSE progress)');
-    console.log('  POST      /v1/rag/query');
-    console.log('  DELETE    /v1/rag/collections/:id');
+    if (HOST === '127.0.0.1') {
+      console.log(`ℹ️  Bound to localhost only. Set HOST=0.0.0.0 to expose to LAN.`);
+    } else {
+      console.log(`⚠️  Bound to ${HOST} — accessible from other hosts.`);
+    }
     console.log('═══════════════════════════════════════════════\n');
   });
 

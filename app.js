@@ -389,13 +389,13 @@ function renderConvList() {
     return b.ts - a.ts;
   });
   list.innerHTML = sorted.map(c => `
-    <div class="conv-item ${c.id === currentConvId ? 'active' : ''}" data-id="${c.id}"
+    <div class="conv-item ${c.id === currentConvId ? 'active' : ''} ${c.pinned ? 'pinned' : ''}" data-id="${c.id}"
          onclick="loadConversation('${c.id}')">
-      <div class="conv-title">${c.pinned ? '📌 ' : ''}${escHtml(c.title)}</div>
+      <div class="conv-title">${escHtml(c.title)}</div>
       <div class="conv-meta">${c.messages.length} msgs · ${timeAgo(c.ts)}</div>
-      <div style="position:absolute;right:4px;top:6px;display:flex;gap:2px">
-        <button class="conv-del" onclick="togglePin('${c.id}',event)" title="${c.pinned ? 'Unpin' : 'Pin'}" style="opacity:${c.pinned ? '.9' : ''}">📌</button>
-        <button class="conv-del" onclick="deleteConversation('${c.id}',event)" title="Delete">×</button>
+      <div class="conv-actions">
+        <button onclick="togglePin('${c.id}',event)" title="${c.pinned ? 'Unpin' : 'Pin'}">${c.pinned ? '📌' : '📍'}</button>
+        <button class="danger" onclick="deleteConversation('${c.id}',event)" title="Delete">×</button>
       </div>
     </div>`).join('');
 }
@@ -837,21 +837,45 @@ function clearMessages() {
 
 function renderMarkdown(text) {
   if (!text) return '';
-  let t = escHtml(text);
-  t = t.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
-    const L = (lang || '').toLowerCase();
-    return `<pre data-lang="${L}"><button class="copy-code-btn" onclick="copyCodeBtn(this)">Copy</button><code class="language-${L || 'plaintext'}">${code.trim()}</code></pre>`;
+  if (typeof marked === 'undefined') {
+    // Fallback if CDN fails
+    return escHtml(text).replace(/\n/g, '<br/>');
+  }
+
+  let html;
+  try {
+    html = marked.parse(text, { breaks: true, gfm: true, headerIds: false, mangle: false });
+  } catch {
+    return escHtml(text).replace(/\n/g, '<br/>');
+  }
+
+  // Post-process via DOMParser (safe — marked already escapes dangerous content)
+  const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
+  const wrap = doc.body.firstChild;
+
+  // Add data-lang + copy button to <pre><code> blocks
+  wrap.querySelectorAll('pre').forEach(pre => {
+    const code = pre.querySelector('code');
+    if (!code) return;
+    let lang = '';
+    const m = (code.className || '').match(/language-(\S+)/);
+    if (m) lang = m[1].toLowerCase();
+    pre.setAttribute('data-lang', lang);
+    const btn = doc.createElement('button');
+    btn.className = 'copy-code-btn';
+    btn.setAttribute('onclick', 'copyCodeBtn(this)');
+    btn.textContent = 'Copy';
+    pre.insertBefore(btn, pre.firstChild);
   });
-  t = t.replace(/`([^`\n]+)`/g, '<code>$1</code>');
-  t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  t = t.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  t = t.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-  t = t.replace(/^## (.+)$/gm,  '<h2>$1</h2>');
-  t = t.replace(/^# (.+)$/gm,   '<h1>$1</h1>');
-  t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-    '<a href="$2" target="_blank" style="color:var(--accent)">$1</a>');
-  t = t.replace(/(<pre[\s\S]*?<\/pre>)|\n/g, (m, pre) => pre || '<br/>');
-  return t;
+
+  // Make links open in new tab safely
+  wrap.querySelectorAll('a').forEach(a => {
+    a.setAttribute('target', '_blank');
+    a.setAttribute('rel', 'noopener noreferrer');
+    a.style.color = 'var(--accent)';
+  });
+
+  return wrap.innerHTML;
 }
 
 function copyCodeBtn(btn) {
@@ -1211,7 +1235,7 @@ function renderRagList() {
     el.innerHTML = availableRagCollections.map(c => `
       <div class="rag-item" title="${escHtml(c.name)}">
         📚 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(c.name)}</span>
-        <span class="rag-meta">${c.chunkCount || 0} ch</span>
+        <span class="rag-meta">${c.chunks ?? c.chunkCount ?? 0} ch</span>
         <button class="icon-btn" onclick="deleteRag('${c.id}')" title="Delete" style="margin-left:4px">×</button>
       </div>`).join('');
   }
@@ -1386,6 +1410,12 @@ async function sendCompare() {
   input.value = '';
   autoResize(input);
 
+  // Include system prompt if set
+  const sysPrompt = document.getElementById('sys-input').value.trim();
+  const apiMsgs = sysPrompt
+    ? [{ role: 'system', content: sysPrompt }, { role: 'user', content: text }]
+    : [{ role: 'user', content: text }];
+
   const paneA = document.getElementById('compare-msgs-a');
   const paneB = document.getElementById('compare-msgs-b');
 
@@ -1424,7 +1454,7 @@ async function sendCompare() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model, messages: [{ role: 'user', content: text }],
+          model, messages: apiMsgs,
           temperature: parseFloat(document.getElementById('temp-slider').value),
           max_tokens: parseInt(document.getElementById('max-tokens').value) || 2048,
           use_tools: false,
@@ -1453,6 +1483,8 @@ async function sendCompare() {
               const meta = wrap.querySelector('.msg-meta');
               meta.innerHTML += ` · <span style="color:var(--accent)">${Date.now() - t0}ms</span>` +
                 (evt.completion_tokens != null ? ` · ${evt.completion_tokens} tok` : '');
+            } else if (evt.type === 'error') {
+              bubble.innerHTML = `<span style="color:var(--orange)">❌ ${escHtml(evt.message)}</span>`;
             }
           }
         }
@@ -1598,6 +1630,8 @@ function scrollBottom() {
 }
 
 function handleKey(e) {
+  // Don't send while composing (IME: Arabic/Chinese/Japanese/Korean input)
+  if (e.isComposing || e.keyCode === 229) return;
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSendClick(); }
 }
 
