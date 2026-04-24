@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Local LLM Hub v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+<!-- Prism.js for syntax highlighting -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-tsx.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════ TOP BAR ═══════════════ -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">🤖</div>
+    Local LLM Hub <span style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-left:4px">v3</span>
+  </div>
+
+  <div class="topbar-search" onclick="openSearch()">
+    <span style="color:var(--muted)">🔍</span>
+    <input type="text" placeholder="Search all chats…" readonly/>
+    <kbd>⌘K</kbd>
+  </div>
+
+  <div class="topbar-right">
+    <button class="icon-btn" onclick="toggleCompareMode()" title="Compare mode" id="compare-btn">⚡</button>
+    <button class="icon-btn" onclick="openTemplates()" title="Prompt templates">📝</button>
+    <button class="icon-btn" onclick="openConfigEditor()" title="Edit config">⚙️</button>
+    <button class="icon-btn" onclick="toggleTheme()" title="Toggle theme" id="theme-btn">🌙</button>
+    <div class="badge" data-p="ollama" id="b-ollama"><div class="dot"></div>Ollama</div>
+    <div class="badge" data-p="lmstudio" id="b-lmstudio"><div class="dot"></div>LM Studio</div>
+  </div>
+</div>
+
+<!-- ═══════════════ MAIN LAYOUT ═══════════════ -->
+<div class="layout">
+
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar-left">
+    <div class="sidebar-section">
+      Chats
+      <button class="icon-btn" onclick="newConversation()" title="New chat (⌘N)">＋</button>
+    </div>
+    <div class="conv-list" id="conv-list"></div>
+    <button class="new-conv-btn" onclick="newConversation()">＋ New conversation</button>
+  </aside>
+
+  <!-- CHAT AREA (single) -->
+  <main class="chat-area" id="chat-area-single">
+    <div class="chat-header">
+      <div class="chat-model-tag" id="chat-model-tag">
+        <span style="color:var(--muted);font-family:var(--mono);font-size:12px">No model selected</span>
+      </div>
+      <div class="header-actions">
+        <button class="action-btn" onclick="exportConv('md')">Export MD</button>
+        <button class="action-btn" onclick="exportConv('json')">Export JSON</button>
+        <button class="action-btn" onclick="clearMessages()">Clear</button>
+      </div>
+    </div>
+
+    <div id="proxy-alert" class="alert" style="display:none">
+      ⚠️ Proxy offline — run <strong>node proxy.js</strong> then refresh.
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="empty" id="empty-state">
+        <div class="empty-icon">⚡</div>
+        <div class="empty-title">Local LLM Hub v3</div>
+        <div class="empty-sub">Select a model → start chatting<br/>Streaming · Tools · MCP · Vision · RAG · Artifacts</div>
+      </div>
+    </div>
+
+    <div class="stats-bar" id="stats-bar" style="display:none">
+      <div class="stat">Model: <span class="v" id="stat-model">—</span></div>
+      <div class="stat" id="stat-ctx-wrap">Context: <span class="v" id="stat-ctx">—</span></div>
+      <div class="stat">Tokens: <span class="v" id="stat-tokens">—</span></div>
+      <div class="stat">Time: <span class="v" id="stat-time">—</span></div>
+    </div>
+
+    <div class="input-area">
+      <div id="attachments-preview" class="attachments" style="display:none"></div>
+      <div class="input-row">
+        <button class="attach-btn" onclick="document.getElementById('file-input').click()" title="Attach image">📎</button>
+        <input type="file" id="file-input" accept="image/*" multiple style="display:none"
+               onchange="handleFiles(this.files);this.value=''"/>
+        <div class="textarea-wrap">
+          <textarea class="msg-input" id="msg-input"
+            placeholder="Type a message…  (⌘/ toggle tools · ⌘R regen · ⌘E edit)" rows="1"
+            onkeydown="handleKey(event)" oninput="onInputChange()" onpaste="handlePaste(event)"></textarea>
+        </div>
+        <button class="send-btn" id="send-btn" onclick="onSendClick()" disabled>▶</button>
+      </div>
+      <div class="hint">
+        <span><kbd>Enter</kbd> Send</span>
+        <span><kbd>⇧Enter</kbd> Newline</span>
+        <span><kbd>⌘K</kbd> Search</span>
+        <span><kbd>⌘N</kbd> New</span>
+        <span><kbd>⌘/</kbd> Tools</span>
+        <span><kbd>⌘R</kbd> Regenerate</span>
+        <span id="input-token-count" style="margin-left:auto"></span>
+      </div>
+    </div>
+  </main>
+
+  <!-- COMPARE AREA (hidden by default) -->
+  <div class="compare-area" id="compare-area" style="display:none">
+    <div class="compare-pane">
+      <div class="compare-pane-header">
+        <span style="color:var(--muted)">Left</span>
+        <select id="compare-model-a" onchange="onCompareModelChange()"></select>
+      </div>
+      <div class="compare-messages" id="compare-msgs-a"></div>
+    </div>
+    <div class="compare-pane">
+      <div class="compare-pane-header">
+        <span style="color:var(--muted)">Right</span>
+        <select id="compare-model-b" onchange="onCompareModelChange()"></select>
+      </div>
+      <div class="compare-messages" id="compare-msgs-b"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT SIDEBAR -->
+  <aside class="sidebar-right">
+
+    <div class="panel">
+      <div class="panel-title">Model</div>
+      <div id="model-loading" class="loading-row"><div class="spinner"></div> Loading…</div>
+      <select class="model-select" id="model-select" style="display:none" onchange="onModelChange()">
+        <option value="">— select —</option>
+      </select>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Parameters</div>
+      <div class="param-row">
+        <span class="param-label">Temperature</span>
+        <span class="param-value" id="temp-val">0.7</span>
+      </div>
+      <input type="range" min="0" max="2" step="0.05" value="0.7" id="temp-slider"
+        oninput="document.getElementById('temp-val').textContent=this.value"/>
+      <div class="param-row">
+        <span class="param-label">Max tokens</span>
+      </div>
+      <input class="param-num" type="number" id="max-tokens" value="2048" min="128" max="16384" step="128"/>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Tools</div>
+      <label class="tool-toggle">
+        <div class="toggle on" id="tools-toggle" onclick="this.classList.toggle('on')"></div>
+        Enable tool calling
+      </label>
+      <div id="tools-list"><div class="loading-row"><div class="spinner"></div> Loading…</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">
+        RAG Knowledge
+        <button class="icon-btn" onclick="openRagUpload()" title="Upload document" style="font-size:13px">＋</button>
+      </div>
+      <div id="rag-list"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">System Prompt</div>
+      <div class="preset-row">
+        <select class="preset-select" id="preset-select" onchange="applyPreset()">
+          <option value="">— presets —</option>
+        </select>
+        <button class="preset-btn" onclick="savePreset()" title="Save as preset">＋</button>
+      </div>
+      <textarea class="sys-textarea" id="sys-input" placeholder="You are a helpful assistant…"></textarea>
+    </div>
+
+  </aside>
+</div>
+
+<!-- ═══════════════ OVERLAYS & MODALS ═══════════════ -->
+
+<div class="drag-overlay" id="drag-overlay">🖼️ Drop images to attach</div>
+
+<!-- Search modal -->
+<div class="modal-overlay" id="search-modal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <div class="modal-title">🔍 Search all chats</div>
+      <button class="icon-btn" onclick="closeModal('search-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="text" class="search-input" id="search-input"
+        placeholder="Type to search…" oninput="onSearchInput()" onkeydown="onSearchKeydown(event)"/>
+      <div class="search-results" id="search-results"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Templates modal -->
+<div class="modal-overlay" id="templates-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📝 Prompt Templates</div>
+      <div>
+        <button class="btn" onclick="openNewTemplate()">＋ New</button>
+        <button class="icon-btn" onclick="closeModal('templates-modal')">×</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="template-list" id="template-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Template editor modal -->
+<div class="modal-overlay" id="template-edit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="template-edit-title">New Template</div>
+      <button class="icon-btn" onclick="closeModal('template-edit-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <label>Name</label>
+      <input type="text" id="tpl-name" placeholder="e.g. Refactor Function"/>
+      <label>Description</label>
+      <input type="text" id="tpl-desc" placeholder="Short summary"/>
+      <label>Tags (comma-separated)</label>
+      <input type="text" id="tpl-tags" placeholder="code, refactor"/>
+      <label>Template (use {{variable}} for inputs)</label>
+      <textarea id="tpl-body" placeholder="Refactor this {{language}} code for clarity:&#10;&#10;{{code}}"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn danger" id="tpl-delete-btn" onclick="deleteCurrentTemplate()" style="display:none">Delete</button>
+      <button class="btn" onclick="closeModal('template-edit-modal')">Cancel</button>
+      <button class="btn primary" onclick="saveTemplate()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Template run modal (fill variables) -->
+<div class="modal-overlay" id="template-run-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="template-run-title">Template</div>
+      <button class="icon-btn" onclick="closeModal('template-run-modal')">×</button>
+    </div>
+    <div class="modal-body" id="template-run-body">
+      <!-- dynamic inputs -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('template-run-modal')">Cancel</button>
+      <button class="btn primary" onclick="runTemplate()">Insert</button>
+    </div>
+  </div>
+</div>
+
+<!-- Config editor modal -->
+<div class="modal-overlay" id="config-modal">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ Config Editor</div>
+      <button class="icon-btn" onclick="closeModal('config-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <label>config.json (MCP servers will reload on save)</label>
+      <textarea class="config-json" id="config-editor"></textarea>
+      <div id="config-error" style="color:var(--orange);font-family:var(--mono);font-size:11px;margin-top:8px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('config-modal')">Cancel</button>
+      <button class="btn primary" onclick="saveConfig()">Save & Reload</button>
+    </div>
+  </div>
+</div>
+
+<!-- RAG upload modal -->
+<div class="modal-overlay" id="rag-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📚 Add to Knowledge Base</div>
+      <button class="icon-btn" onclick="closeModal('rag-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <label>Collection</label>
+      <select class="preset-select" id="rag-collection-select" style="font-size:12px;padding:8px 10px;width:100%" onchange="onRagCollectionChange()">
+        <option value="__new__">+ New collection</option>
+      </select>
+      <div id="rag-new-name-wrap">
+        <label>New collection name</label>
+        <input type="text" id="rag-new-name" placeholder="e.g. My Project Docs"/>
+      </div>
+      <label>Files (.txt, .md, .json, .js, .ts, .py, etc.)</label>
+      <div class="rag-dropzone" id="rag-dropzone" onclick="document.getElementById('rag-files').click()">
+        Drop files here or click to browse
+      </div>
+      <input type="file" id="rag-files" multiple style="display:none" onchange="onRagFiles(this.files)"/>
+      <div id="rag-file-list" style="margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--muted)"></div>
+      <div class="rag-progress" id="rag-progress" style="display:none">
+        <div class="rag-progress-fill" id="rag-progress-fill" style="width:0%"></div>
+      </div>
+      <div id="rag-status" style="margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--muted)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('rag-modal')">Cancel</button>
+      <button class="btn primary" id="rag-upload-btn" onclick="uploadRagFiles()">Upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit message modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit message</div>
+      <button class="icon-btn" onclick="closeModal('edit-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <textarea id="edit-textarea" style="min-height:200px"></textarea>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;font-family:var(--mono)">
+        Editing will remove all messages after this one and regenerate.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="btn primary" onclick="saveEditAndRegenerate()">Save & regenerate</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast-container"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+{
+  "proxy_port": 8765,
+  "storage_dir": ".llm-hub",
+
+  "providers": {
+    "ollama":   { "host": "localhost", "port": 11434 },
+    "lmstudio": { "host": "localhost", "port": 1234  }
+  },
+
+  "tools": {
+    "enabled": true,
+    "built_in": ["datetime", "calculator", "web_search", "fetch_url", "run_javascript", "rag_search"]
+  },
+
+  "rag": {
+    "enabled": true,
+    "embedding_provider": "ollama",
+    "embedding_model": "nomic-embed-text",
+    "chunk_size": 800,
+    "chunk_overlap": 100,
+    "top_k": 5
+  },
+
+  "mcp_servers": [
+    {
+      "name": "filesystem",
+      "enabled": false,
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/yourname/Desktop"]
+    },
+    {
+      "name": "github",
+      "enabled": false,
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "your-token-here" }
+    },
+    {
+      "name": "brave-search",
+      "enabled": false,
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": { "BRAVE_API_KEY": "your-key-here" }
+    }
+  ]
+}
