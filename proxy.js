@@ -20,6 +20,7 @@ const fs         = require('fs');
 const path       = require('path');
 const vm         = require('vm');
 const crypto     = require('crypto');
+const os         = require('os');
 const { URL }    = require('url');
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -676,19 +677,156 @@ function stripPrefix(m) { return m?.replace(/^(ollama|lmstudio)\//, '') || m; }
 async function fetchAllModels() {
   modelRegistry.clear();
   const all = [];
-  const ol = await httpGet(CONFIG.providers.ollama.host, CONFIG.providers.ollama.port, '/api/tags');
-  if (ol.ok && ol.data?.models) for (const m of ol.data.models) {
-    const id = `ollama/${m.name}`;
-    modelRegistry.set(id, 'ollama'); modelRegistry.set(m.name, 'ollama');
-    all.push({ id, object: 'model', owned_by: 'ollama', created: Date.now() });
+
+  // === STEP 1: Fetch model lists from BOTH providers IN PARALLEL ===
+  const [olResult, lmResult] = await Promise.allSettled([
+    httpGet(CONFIG.providers.ollama.host, CONFIG.providers.ollama.port, '/api/tags', 8000),
+    httpGet(CONFIG.providers.lmstudio.host, CONFIG.providers.lmstudio.port, '/v1/models', 8000),
+  ]);
+
+  // --- Ollama models ---
+  const ol = olResult.status === 'fulfilled' ? olResult.value : { ok: false };
+  if (ol.ok && ol.data?.models) {
+    for (const m of ol.data.models) {
+      const id = `ollama/${m.name}`;
+      modelRegistry.set(id, 'ollama'); modelRegistry.set(m.name, 'ollama');
+      all.push({
+        id, object: 'model', owned_by: 'ollama', created: Date.now(),
+        size_bytes: m.size || 0,
+        size_label: m.size ? formatBytes(m.size) : '?',
+        details: m.details || {},
+      });
+    }
+    console.log(`[Models] Ollama: ${ol.data.models.length} model(s)`);
+  } else {
+    console.warn('[Models] Ollama: offline or no models');
   }
-  const lm = await httpGet(CONFIG.providers.lmstudio.host, CONFIG.providers.lmstudio.port, '/v1/models');
-  if (lm.ok && lm.data?.data) for (const m of lm.data.data) {
-    const id = `lmstudio/${m.id}`;
-    modelRegistry.set(id, 'lmstudio'); modelRegistry.set(m.id, 'lmstudio');
-    all.push({ id, object: 'model', owned_by: 'lmstudio', created: m.created || Date.now() });
+
+  // --- LM Studio models ---
+  const lm = lmResult.status === 'fulfilled' ? lmResult.value : { ok: false };
+  if (lm.ok && lm.data?.data) {
+    for (const m of lm.data.data) {
+      const id = `lmstudio/${m.id}`;
+      modelRegistry.set(id, 'lmstudio'); modelRegistry.set(m.id, 'lmstudio');
+      all.push({
+        id, object: 'model', owned_by: 'lmstudio', created: m.created || Date.now(),
+        size_label:     m.max_tokens ? null : null,
+        context_length: m.context_length || m.max_context_length || null,
+      });
+    }
+    console.log(`[Models] LM Studio: ${lm.data.data.length} model(s)`);
+  } else {
+    const port = CONFIG.providers.lmstudio.port;
+    console.warn(`[Models] LM Studio: cannot reach port ${port}. Make sure Developer → Server is started in LM Studio.`);
   }
+
+  // === STEP 2: Enrich Ollama models with metadata (in background, non-blocking) ===
+  // This runs AFTER both model lists are already returned to the UI
+  if (ol.ok && ol.data?.models) {
+    const enrichPromises = all.filter(m => m.owned_by === 'ollama').map(async (m) => {
+      try {
+        const show = await httpPost(
+          CONFIG.providers.ollama.host, CONFIG.providers.ollama.port,
+          '/api/show', { model: stripPrefix(m.id) }, 5000
+        );
+        if (show.status < 400 && show.data) {
+          const info = show.data.model_info || {};
+          const params = show.data.details?.parameter_size || info['general.parameter_count'] || null;
+          let contextLength = null;
+          for (const [key, val] of Object.entries(info)) {
+            if (key.includes('context_length') && typeof val === 'number') {
+              contextLength = val; break;
+            }
+          }
+          m.context_length = contextLength;
+          m.parameter_size = params;
+          m.quantization = show.data.details?.quantization_level || null;
+          m.family = show.data.details?.family || null;
+        }
+      } catch { /* skip enrichment for this model */ }
+    });
+    await Promise.allSettled(enrichPromises);
+  }
+
+  console.log(`[Models] Total: ${all.length}`);
   return all;
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+  return (bytes / 1073741824).toFixed(1) + ' GB';
+}
+
+/** Get currently loaded/running models from Ollama + LM Studio */
+async function getRunningModels() {
+  const results = [];
+
+  // Ollama running models
+  try {
+    const res = await httpGet(CONFIG.providers.ollama.host, CONFIG.providers.ollama.port, '/api/ps');
+    if (res.ok && res.data?.models) {
+      for (const m of res.data.models) {
+        results.push({
+          name:         m.name,
+          id:           `ollama/${m.name}`,
+          provider:     'ollama',
+          size:         m.size || 0,
+          size_label:   formatBytes(m.size || 0),
+          vram:         m.size_vram || 0,
+          vram_label:   formatBytes(m.size_vram || 0),
+          expires_at:   m.expires_at,
+          details:      m.details || {},
+        });
+      }
+    }
+  } catch {}
+
+  // LM Studio running models — try /lms/server/status
+  try {
+    const lmCfg = CONFIG.providers.lmstudio;
+    const lmsStatus = await httpGet(lmCfg.host, lmCfg.port, '/lms/server/status', 3000);
+    if (lmsStatus.ok && lmsStatus.data) {
+      const loaded = lmsStatus.data.loadedModels || lmsStatus.data.models || [];
+      for (const m of loaded) {
+        const name = typeof m === 'string' ? m : (m.id || m.name || m.model || 'unknown');
+        results.push({
+          name,
+          id:           `lmstudio/${name}`,
+          provider:     'lmstudio',
+          size:         m.sizeBytes || m.size || 0,
+          size_label:   formatBytes(m.sizeBytes || m.size || 0),
+          vram:         m.gpuBytes || m.gpu_memory || 0,
+          vram_label:   formatBytes(m.gpuBytes || m.gpu_memory || 0),
+        });
+      }
+    }
+  } catch {}
+
+  return results;
+}
+
+/** Get system resource info */
+function getSystemInfo() {
+  const totalMem = os.totalmem();
+  const freeMem  = os.freemem();
+  const usedMem  = totalMem - freeMem;
+  return {
+    memory: {
+      total:       totalMem,
+      free:        freeMem,
+      used:        usedMem,
+      total_label: formatBytes(totalMem),
+      free_label:  formatBytes(freeMem),
+      used_label:  formatBytes(usedMem),
+      usage_pct:   Math.round((usedMem / totalMem) * 100),
+    },
+    cpus:     os.cpus().length,
+    platform: os.platform(),
+    arch:     os.arch(),
+    uptime:   Math.floor(os.uptime()),
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -883,6 +1021,20 @@ const server = http.createServer(async (req, res) => {
       sendJSON(res, 200, registry.getStatus()); return;
     }
 
+    // ── SYSTEM INFO (memory, CPU)
+    if (req.method === 'GET' && url.pathname === '/v1/system') {
+      const sysInfo = getSystemInfo();
+      const running = await getRunningModels();
+      sendJSON(res, 200, { system: sysInfo, running_models: running });
+      return;
+    }
+
+    // ── RUNNING MODELS (what's loaded in RAM/VRAM)
+    if (req.method === 'GET' && url.pathname === '/v1/models/running') {
+      sendJSON(res, 200, { models: await getRunningModels() });
+      return;
+    }
+
     // ── CHAT (SSE)
     if (req.method === 'POST' && url.pathname === '/v1/chat') {
       const body = await readBody(req);
@@ -985,6 +1137,90 @@ const server = http.createServer(async (req, res) => {
         const results = await rag.query({ collectionId: collection_id, query, topK: top_k });
         sendJSON(res, 200, { results });
       } catch (e) { sendJSON(res, 500, { error: e.message }); }
+      return;
+    }
+
+    // ── WHISPER: audio transcription
+    if (req.method === 'POST' && url.pathname === '/v1/audio/transcribe') {
+      const whisperCfg = CONFIG.whisper;
+      if (!whisperCfg?.enabled) {
+        sendJSON(res, 400, { error: 'Whisper not enabled. Set whisper.enabled=true in config.json and run a local Whisper server.' });
+        return;
+      }
+
+      // Read raw body (multipart audio data) and forward to Whisper server
+      const chunks = [];
+      let totalSize = 0;
+      const MAX_AUDIO = 25 * 1024 * 1024; // 25MB max
+      await new Promise((resolve, reject) => {
+        req.on('data', (c) => {
+          totalSize += c.length;
+          if (totalSize > MAX_AUDIO) { reject(new Error('Audio too large (max 25MB)')); return; }
+          chunks.push(c);
+        });
+        req.on('end', resolve);
+        req.on('error', reject);
+      });
+      const rawBody = Buffer.concat(chunks);
+
+      // Forward to Whisper server (OpenAI-compatible /v1/audio/transcriptions endpoint)
+      const whisperHost = whisperCfg.host || 'localhost';
+      const whisperPort = whisperCfg.port || 8000;
+      const whisperPath = '/v1/audio/transcriptions';
+
+      // We need to forward the Content-Type header (multipart/form-data with boundary)
+      const contentType = req.headers['content-type'] || '';
+
+      try {
+        const result = await new Promise((resolve, reject) => {
+          const whisperReq = http.request({
+            hostname: whisperHost, port: whisperPort, path: whisperPath,
+            method: 'POST',
+            headers: {
+              'Content-Type': contentType,
+              'Content-Length': rawBody.length,
+            },
+            timeout: 60000, // 60s timeout for transcription
+          }, (whisperRes) => {
+            let buf = '';
+            whisperRes.on('data', (c) => (buf += c));
+            whisperRes.on('end', () => {
+              try { resolve({ status: whisperRes.statusCode, data: JSON.parse(buf) }); }
+              catch { resolve({ status: whisperRes.statusCode, data: { text: buf } }); }
+            });
+          });
+          whisperReq.on('error', (e) => reject(new Error(`Whisper connection failed: ${e.message}. Is the server running on ${whisperHost}:${whisperPort}?`)));
+          whisperReq.on('timeout', () => { whisperReq.destroy(); reject(new Error('Whisper transcription timed out (60s)')); });
+          whisperReq.write(rawBody);
+          whisperReq.end();
+        });
+
+        sendJSON(res, result.status, result.data);
+      } catch (e) {
+        sendJSON(res, 502, { error: e.message });
+      }
+      return;
+    }
+
+    // ── WHISPER: check status
+    if (req.method === 'GET' && url.pathname === '/v1/audio/status') {
+      const whisperCfg = CONFIG.whisper;
+      if (!whisperCfg?.enabled) {
+        sendJSON(res, 200, { enabled: false, mode: 'browser' });
+        return;
+      }
+      // Ping the Whisper server
+      try {
+        const ping = await httpGet(whisperCfg.host || 'localhost', whisperCfg.port || 8000, '/health', 3000);
+        sendJSON(res, 200, {
+          enabled: true, mode: 'whisper',
+          server: `${whisperCfg.host}:${whisperCfg.port}`,
+          model: whisperCfg.model || 'large-v3',
+          online: ping.ok,
+        });
+      } catch {
+        sendJSON(res, 200, { enabled: true, mode: 'whisper', online: false });
+      }
       return;
     }
 

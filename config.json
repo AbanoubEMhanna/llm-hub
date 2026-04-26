@@ -21,6 +21,15 @@
     "top_k": 5
   },
 
+  "whisper": {
+    "enabled": false,
+    "provider": "local",
+    "host": "localhost",
+    "port": 8000,
+    "model": "large-v3",
+    "language": null
+  },
+
   "mcp_servers": [
     {
       "name": "filesystem",

@@ -19,6 +19,8 @@ let userSettings   = JSON.parse(localStorage.getItem('llm-settings')  || '{"them
 let currentConvId        = null;
 let selectedModel        = null;
 let availableModels      = [];
+let modelMetadata        = {};  // { modelId: { context_length, parameter_size, size_label, ... } }
+let runningModels        = [];  // models currently loaded in RAM/VRAM
 let availableRagCollections = [];
 let isLoading            = false;
 let activeAbortController = null;
@@ -113,14 +115,17 @@ async function init() {
   await loadModels();
   await loadTools();
   await loadRagCollections();
+  await loadSystemInfo();
   initPresets();
   initDragDrop();
   initHotkeys();
+  initVoice();
   renderConvList();
   if (!conversations.length) newConversation();
   else loadConversation(conversations[0].id);
   updateInputTokenCount();
   setInterval(checkHealth, 30000);
+  setInterval(loadSystemInfo, 15000);  // Refresh system RAM + running models
 }
 
 async function checkHealth() {
@@ -136,7 +141,7 @@ async function checkHealth() {
 }
 function setStatus(id, online) {
   const el = document.getElementById(id);
-  if (el) el.className = `badge ${online ? 'online' : 'offline'}`;
+  if (el) el.className = `status-dot ${online ? 'online' : 'offline'}`;
 }
 
 async function loadModels() {
@@ -144,14 +149,40 @@ async function loadModels() {
     const res  = await fetch(`${PROXY}/v1/models`);
     const data = await res.json();
     availableModels = data.data || [];
+
+    // Store metadata for each model
+    modelMetadata = {};
+    for (const m of availableModels) {
+      modelMetadata[m.id] = {
+        context_length: m.context_length || null,
+        parameter_size: m.parameter_size || null,
+        quantization:   m.quantization || null,
+        size_label:     m.size_label || null,
+        family:         m.family || null,
+      };
+    }
+
     fillModelSelect(document.getElementById('model-select'));
     fillModelSelect(document.getElementById('compare-model-a'));
     fillModelSelect(document.getElementById('compare-model-b'));
     document.getElementById('model-loading').style.display = 'none';
     document.getElementById('model-select').style.display  = 'block';
+
+    // Also check running models
+    await checkRunningModels();
   } catch {
     document.getElementById('model-loading').innerHTML =
       '<span style="color:var(--orange)">Cannot reach proxy</span>';
+  }
+}
+
+async function checkRunningModels() {
+  try {
+    const res = await fetch(`${PROXY}/v1/models/running`);
+    const data = await res.json();
+    runningModels = (data.models || []).map(m => m.id || m.name);
+  } catch {
+    runningModels = [];
   }
 }
 
@@ -168,7 +199,13 @@ function fillModelSelect(sel) {
     for (const m of models) {
       const o = document.createElement('option');
       o.value = m.id;
-      o.text  = m.id.replace(/^(ollama|lmstudio)\//, '');
+      const name = m.id.replace(/^(ollama|lmstudio)\//, '');
+      const meta = modelMetadata[m.id] || {};
+      const parts = [name];
+      if (meta.parameter_size) parts.push(`(${meta.parameter_size})`);
+      if (meta.size_label)     parts.push(`[${meta.size_label}]`);
+      if (meta.context_length) parts.push(`ctx:${(meta.context_length/1024).toFixed(0)}K`);
+      o.text = parts.join(' ');
       og.appendChild(o);
     }
     sel.appendChild(og);
@@ -180,13 +217,16 @@ async function loadTools() {
     const res  = await fetch(`${PROXY}/v1/tools`);
     const data = await res.json();
     const list = document.getElementById('tools-list');
+    const countBadge = document.getElementById('tools-count');
     if (!data.tools?.length) {
       list.innerHTML = '<div style="color:var(--muted);font-size:11px;font-family:var(--mono)">No tools loaded</div>';
+      if (countBadge) countBadge.textContent = '0';
       return;
     }
+    if (countBadge) countBadge.textContent = data.tools.length;
     list.innerHTML = data.tools.map(t => `
       <div class="tool-entry" title="${escHtml(t.desc || '')}">
-        🔧 ${escHtml(t.name)}
+        ${escHtml(t.name)}
         <span class="tsrc ${t.source === 'built-in' ? 'built-in' : 'mcp'}">${escHtml(t.source)}</span>
       </div>`).join('');
   } catch { /* */ }
@@ -196,9 +236,11 @@ async function loadTools() {
 // § MODEL SELECTION
 // ─────────────────────────────────────────────────────────────────────────────
 
-function onModelChange() {
+async function onModelChange() {
   selectedModel = document.getElementById('model-select').value || null;
+  await checkRunningModels();
   updateModelHeader();
+  updateModelInfoCard();
   document.getElementById('send-btn').disabled = !selectedModel || isLoading;
   updateInputTokenCount();
 }
@@ -212,9 +254,25 @@ function updateModelHeader() {
   const name = selectedModel.replace(/^(ollama|lmstudio)\//, '');
   const prov = selectedModel.startsWith('ollama/') ? 'ollama'
              : selectedModel.startsWith('lmstudio/') ? 'lmstudio' : null;
-  tag.innerHTML =
-    `<span style="font-weight:500">${escHtml(name)}</span>` +
-    `<span class="provider-pill" data-p="${prov}">${prov}</span>`;
+  const meta = modelMetadata[selectedModel] || {};
+  const isLoaded = runningModels.some(r => r === selectedModel || r === `ollama/${name}` || r.includes(name));
+
+  let infoHtml = `<span style="font-weight:500">${escHtml(name)}</span>`;
+  infoHtml += `<span class="provider-pill" data-p="${prov}">${prov}</span>`;
+
+  // Show model info badges
+  if (meta.parameter_size) infoHtml += `<span style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-left:4px">${meta.parameter_size}</span>`;
+  if (meta.context_length) infoHtml += `<span style="font-family:var(--mono);font-size:10px;color:var(--muted)">ctx:${(meta.context_length/1024).toFixed(0)}K</span>`;
+
+  // Loading status indicator
+  if (prov === 'ollama') {
+    if (isLoaded) {
+      infoHtml += `<span style="font-family:var(--mono);font-size:9px;color:var(--green);background:color-mix(in srgb,var(--green) 12%,transparent);padding:1px 6px;border-radius:3px">● loaded</span>`;
+    } else {
+      infoHtml += `<span style="font-family:var(--mono);font-size:9px;color:var(--orange);background:color-mix(in srgb,var(--orange) 12%,transparent);padding:1px 6px;border-radius:3px">○ not loaded</span>`;
+    }
+  }
+  tag.innerHTML = infoHtml;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -430,8 +488,15 @@ function stopGeneration() {
 function setLoadingState(loading) {
   isLoading = loading;
   const btn = document.getElementById('send-btn');
-  if (loading) { btn.classList.add('stopping');    btn.innerHTML = '■'; btn.disabled = false; }
-  else         { btn.classList.remove('stopping'); btn.innerHTML = '▶'; btn.disabled = !selectedModel; }
+  if (loading) {
+    btn.classList.add('stopping');
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>';
+    btn.disabled = false;
+  } else {
+    btn.classList.remove('stopping');
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
+    btn.disabled = !selectedModel;
+  }
 }
 
 async function send() {
@@ -473,7 +538,13 @@ async function send() {
 }
 
 async function streamAssistantReply(conv) {
-  const sysPrompt = document.getElementById('sys-input').value.trim();
+  let sysPrompt = document.getElementById('sys-input').value.trim();
+  // Inject plan mode instructions if active
+  if (planMode) {
+    sysPrompt = sysPrompt
+      ? sysPrompt + '\n\n' + PLAN_SYSTEM_PROMPT
+      : PLAN_SYSTEM_PROMPT;
+  }
   const apiMsgs   = sysPrompt
     ? [{ role: 'system', content: sysPrompt }, ...conv.messages]
     : [...conv.messages];
@@ -493,6 +564,13 @@ async function streamAssistantReply(conv) {
   let cleared  = false;
   let textDiv  = null;
   const toolEls = {};
+
+  // Show model loading banner if model not loaded yet
+  const modelName = selectedModel?.replace(/^(ollama|lmstudio)\//, '') || '';
+  const modelIsLoaded = runningModels.some(r => r === selectedModel || r.includes(modelName));
+  if (!modelIsLoaded && selectedModel?.startsWith('ollama/')) {
+    showModelLoadingBanner(modelName);
+  }
 
   const ensureCleared = () => {
     if (cleared) return;
@@ -537,6 +615,7 @@ async function streamAssistantReply(conv) {
           try { evt = JSON.parse(line.slice(6)); } catch { continue; }
 
           if (evt.type === 'text_delta') {
+            hideModelLoadingBanner();  // First token arrived — model is loaded
             ensureCleared();
             fullText += evt.delta;
             textDiv.innerHTML = renderMarkdown(fullText);
@@ -557,6 +636,9 @@ async function streamAssistantReply(conv) {
             conv.messages.push({ role: 'assistant', content: fullText });
             saveConvs();
             reRenderLastAssistant(conv, fullText);
+            // Refresh running models + system info (model is now loaded)
+            checkRunningModels().then(() => { updateModelHeader(); updateModelInfoCard(); });
+            loadSystemInfo();
           } else if (evt.type === 'error') {
             bubble.innerHTML = `<span style="color:var(--orange)">❌ ${escHtml(evt.message)}</span>`;
           }
@@ -579,6 +661,7 @@ async function streamAssistantReply(conv) {
   } finally {
     setLoadingState(false);
     activeAbortController = null;
+    hideModelLoadingBanner();
     scrollBottom();
     highlightNewCode();
   }
@@ -687,10 +770,24 @@ function renderMessages(msgs) {
   container.innerHTML = '';
   if (!msgs.length) {
     container.innerHTML = `
-      <div class="empty" id="empty-state">
-        <div class="empty-icon">⚡</div>
-        <div class="empty-title">New conversation</div>
-        <div class="empty-sub">Select a model and start chatting</div>
+      <div class="welcome" id="empty-state">
+        <div class="welcome-icon">⚡</div>
+        <h2 class="welcome-title">Local LLM Hub</h2>
+        <p class="welcome-sub">Chat with your local models. Everything runs on your machine.</p>
+        <div class="welcome-grid">
+          <button class="welcome-card" onclick="useWelcomePrompt('Explain how async/await works in JavaScript with a practical example')">
+            <span class="wc-icon">💡</span><span class="wc-text">Explain a concept</span>
+          </button>
+          <button class="welcome-card" onclick="useWelcomePrompt('Write a Python script that reads a CSV file and generates a summary report with statistics')">
+            <span class="wc-icon">🔧</span><span class="wc-text">Write some code</span>
+          </button>
+          <button class="welcome-card" onclick="useWelcomePrompt('Review this code for bugs, security issues, and suggest improvements')">
+            <span class="wc-icon">🔍</span><span class="wc-text">Review my code</span>
+          </button>
+          <button class="welcome-card" onclick="useWelcomePrompt('Help me brainstorm ideas for a weekend side project using local AI models')">
+            <span class="wc-icon">🧠</span><span class="wc-text">Brainstorm ideas</span>
+          </button>
+        </div>
       </div>`;
     return;
   }
@@ -742,10 +839,15 @@ function buildAssistantWrap(idx, content, stopped = false) {
   const wrap = document.createElement('div');
   wrap.className = 'msg-wrap';
   const name = selectedModel?.replace(/^(ollama|lmstudio)\//, '') || '';
+
+  // Parse plan blocks from content
+  const parsed = parsePlanFromText(content || '');
+  const displayContent = parsed.response || '';
+
   wrap.innerHTML = `
     <div class="msg assistant">
       <div class="avatar">🤖</div>
-      <div class="bubble">${renderMarkdown(content)}${stopped ? '<div class="stopped-marker">⏹ Stopped</div>' : ''}</div>
+      <div class="bubble"></div>
     </div>
     <div class="msg-meta"><span>${escHtml(name)}</span></div>
     ${idx >= 0 ? `<div class="msg-actions">
@@ -754,6 +856,20 @@ function buildAssistantWrap(idx, content, stopped = false) {
       <button onclick="copyMessage(${idx})" title="Copy">📋 Copy</button>
       <button class="danger" onclick="deleteMessage(${idx})" title="Delete">🗑 Delete</button>
     </div>` : ''}`;
+
+  const bubble = wrap.querySelector('.bubble');
+
+  // Add plan block if present
+  if (parsed.plan) {
+    bubble.appendChild(createPlanBlock(parsed.plan));
+  }
+
+  // Add the actual response
+  const responseDiv = document.createElement('div');
+  responseDiv.innerHTML = renderMarkdown(displayContent);
+  if (stopped) responseDiv.innerHTML += '<div class="stopped-marker">⏹ Stopped</div>';
+  bubble.appendChild(responseDiv);
+
   enhanceCodeBlocks(wrap);
   return wrap;
 }
@@ -812,11 +928,17 @@ function updateStats({ model, elapsed, prompt_tokens, completion_tokens }) {
     prompt_tokens != null ? `${prompt_tokens} → ${completion_tokens ?? 0}` : '—';
   document.getElementById('stat-time').textContent   = elapsed ? `${elapsed}ms` : '—';
 
-  const ctxLimit = 8192;
+  // Use real context_length from model metadata, fallback to 8192
+  const modelId = selectedModel;
+  const meta = modelId ? (modelMetadata[modelId] || {}) : {};
+  const ctxLimit = meta.context_length || 8192;
   const used = (prompt_tokens || 0) + (completion_tokens || 0);
   const pct  = Math.round((used / ctxLimit) * 100);
-  document.getElementById('stat-ctx').textContent   = `${used} / ${ctxLimit} (${pct}%)`;
+  document.getElementById('stat-ctx').textContent   = `${used} / ${ctxLimit.toLocaleString()} (${pct}%)`;
   document.getElementById('stat-ctx-wrap').classList.toggle('warn', pct > 75);
+
+  // Update sidebar context bar too
+  updateContextBar(prompt_tokens, completion_tokens);
 }
 
 function clearMessages() {
@@ -1576,6 +1698,12 @@ function initHotkeys() {
       return;
     }
 
+    // ? shows keyboard shortcuts (only if not typing in an input)
+    if (e.key === '?' && !meta && document.activeElement?.tagName !== 'TEXTAREA' && document.activeElement?.tagName !== 'INPUT') {
+      openModal('shortcuts-modal');
+      return;
+    }
+
     if (!meta) return;
 
     if (e.key === 'k' || e.key === 'K') { e.preventDefault(); openSearch(); return; }
@@ -1645,6 +1773,540 @@ document.addEventListener('DOMContentLoaded', () => {
   const sys = document.getElementById('sys-input');
   if (sys) sys.addEventListener('input', updateInputTokenCount);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § PLAN MODE
+// ─────────────────────────────────────────────────────────────────────────────
+
+let planMode = false;
+
+const PLAN_SYSTEM_PROMPT = `Before responding to the user, you MUST first think through the problem step by step inside <plan> tags.
+In your plan, analyze the request, consider approaches, identify edge cases, and outline your solution.
+After closing </plan>, provide your actual response.
+
+Example format:
+<plan>
+1. The user wants X
+2. I should consider Y and Z
+3. Best approach: ...
+4. Edge cases: ...
+</plan>
+
+Here is my response: ...`;
+
+function togglePlanMode() {
+  planMode = !planMode;
+  document.getElementById('plan-btn').classList.toggle('active', planMode);
+  document.getElementById('plan-indicator').classList.toggle('active', planMode);
+  toast(planMode ? 'Plan mode ON — model will think first' : 'Plan mode OFF', 'success');
+}
+
+/**
+ * Parse <plan>...</plan> from the streamed text.
+ * Returns { plan: string|null, response: string }
+ */
+function parsePlanFromText(text) {
+  const planMatch = text.match(/<plan>([\s\S]*?)<\/plan>/);
+  if (planMatch) {
+    const plan = planMatch[1].trim();
+    const response = text.replace(/<plan>[\s\S]*?<\/plan>/, '').trim();
+    return { plan, response };
+  }
+  // Check for incomplete plan (still streaming)
+  const openTag = text.indexOf('<plan>');
+  if (openTag >= 0) {
+    const afterOpen = text.slice(openTag + 6);
+    // Plan is still streaming, no close tag yet
+    return { plan: afterOpen, response: null, incomplete: true };
+  }
+  return { plan: null, response: text };
+}
+
+/**
+ * Create a plan block element for the chat bubble
+ */
+function createPlanBlock(planText, elapsed = null) {
+  const div = document.createElement('div');
+  div.className = 'plan-block';
+  div.innerHTML = `
+    <div class="plan-header" onclick="this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('hidden')">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      <span class="plan-label">Thinking</span>
+      ${elapsed ? `<span class="plan-elapsed">${elapsed}</span>` : ''}
+    </div>
+    <div class="plan-body">${escHtml(planText)}</div>`;
+  return div;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § VOICE INPUT — Dual-mode: Whisper (multilingual) or Browser (Web Speech API)
+// ─────────────────────────────────────────────────────────────────────────────
+
+let voiceMode = 'browser'; // 'browser' = Web Speech API, 'whisper' = local Whisper server
+let voiceRecognition = null;
+let isRecording = false;
+let mediaRecorder = null;
+let audioChunks = [];
+
+async function initVoice() {
+  // Check if Whisper server is available
+  try {
+    const res = await fetch(`${PROXY}/v1/audio/status`);
+    const data = await res.json();
+    if (data.enabled && data.online) {
+      voiceMode = 'whisper';
+      console.log(`[Voice] Whisper mode — server: ${data.server}, model: ${data.model}`);
+      const btn = document.getElementById('mic-btn');
+      if (btn) btn.title = 'Voice input (Whisper — multilingual, supports Arabic + English)';
+      return;
+    } else if (data.enabled && !data.online) {
+      console.warn('[Voice] Whisper configured but server offline. Falling back to browser mode.');
+    }
+  } catch { /* proxy might be offline at init, fall through */ }
+
+  // Fallback: Web Speech API
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    const btn = document.getElementById('mic-btn');
+    if (btn) btn.style.display = 'none';
+    return;
+  }
+  voiceMode = 'browser';
+  voiceRecognition = new SpeechRecognition();
+  voiceRecognition.continuous = true;
+  voiceRecognition.interimResults = true;
+  voiceRecognition.lang = 'en-US';
+
+  let finalTranscript = '';
+
+  voiceRecognition.onresult = (event) => {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += transcript + ' ';
+      } else {
+        interim += transcript;
+      }
+    }
+    const input = document.getElementById('msg-input');
+    const baseText = input.dataset.preVoice || '';
+    input.value = baseText + finalTranscript + interim;
+    autoResize(input);
+    updateInputTokenCount();
+  };
+
+  voiceRecognition.onend = () => {
+    if (isRecording) {
+      try { voiceRecognition.start(); } catch {}
+    } else {
+      finalTranscript = '';
+      setVoiceUI(false);
+    }
+  };
+
+  voiceRecognition.onerror = (event) => {
+    if (event.error === 'no-speech') return;
+    if (event.error === 'not-allowed') {
+      toast('Microphone access denied. Check browser permissions.', 'error');
+    } else {
+      toast('Voice error: ' + event.error, 'error');
+    }
+    stopVoice();
+  };
+}
+
+function toggleVoice() {
+  if (isRecording) {
+    stopVoice();
+  } else {
+    startVoice();
+  }
+}
+
+function startVoice() {
+  const input = document.getElementById('msg-input');
+  input.dataset.preVoice = input.value;
+  isRecording = true;
+  setVoiceUI(true);
+
+  if (voiceMode === 'whisper') {
+    startWhisperRecording();
+  } else {
+    // Web Speech API
+    if (!voiceRecognition) { toast('Voice not supported in this browser.', 'error'); stopVoice(); return; }
+    const hasArabic = /[\u0600-\u06FF]/.test(input.value);
+    voiceRecognition.lang = hasArabic ? 'ar-EG' : 'en-US';
+    try { voiceRecognition.start(); }
+    catch (e) { toast('Voice error: ' + e.message, 'error'); stopVoice(); }
+  }
+}
+
+function stopVoice() {
+  isRecording = false;
+  if (voiceMode === 'whisper') {
+    stopWhisperRecording();
+  } else {
+    if (voiceRecognition) try { voiceRecognition.stop(); } catch {}
+  }
+  setVoiceUI(false);
+  const input = document.getElementById('msg-input');
+  delete input.dataset.preVoice;
+  input.focus();
+}
+
+function setVoiceUI(active) {
+  document.getElementById('mic-btn')?.classList.toggle('recording', active);
+  document.getElementById('voice-status')?.classList.toggle('active', active);
+  // Update status text based on mode
+  const statusEl = document.getElementById('voice-status');
+  if (statusEl && active) {
+    const span = statusEl.querySelector('span');
+    if (span) span.textContent = voiceMode === 'whisper'
+      ? 'Recording… (Whisper — speak Arabic + English freely)'
+      : 'Listening… (Browser — single language)';
+  }
+}
+
+// ---- Whisper recording via MediaRecorder ----
+
+async function startWhisperRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        channelCount: 1,
+        sampleRate: 16000,
+        echoCancellation: true,
+        noiseSuppression: true,
+      }
+    });
+    audioChunks = [];
+    // Prefer webm/opus, fallback to whatever is available
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : 'audio/mp4';
+
+    mediaRecorder = new MediaRecorder(stream, { mimeType });
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunks.push(e.data);
+    };
+    mediaRecorder.onstop = async () => {
+      // Stop all tracks to release the microphone
+      stream.getTracks().forEach(t => t.stop());
+
+      if (audioChunks.length === 0) return;
+
+      const audioBlob = new Blob(audioChunks, { type: mimeType });
+      audioChunks = [];
+
+      // Send to Whisper for transcription
+      await transcribeWithWhisper(audioBlob, mimeType);
+    };
+    mediaRecorder.start(1000); // Collect in 1s chunks
+  } catch (e) {
+    if (e.name === 'NotAllowedError') {
+      toast('Microphone access denied. Check browser permissions.', 'error');
+    } else {
+      toast('Mic error: ' + e.message, 'error');
+    }
+    stopVoice();
+  }
+}
+
+function stopWhisperRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+}
+
+async function transcribeWithWhisper(audioBlob, mimeType) {
+  const input = document.getElementById('msg-input');
+  const baseText = input.dataset.preVoice || '';
+
+  // Show processing state
+  const statusSpan = document.getElementById('voice-status')?.querySelector('span');
+  if (statusSpan) statusSpan.textContent = 'Transcribing…';
+
+  try {
+    // Build multipart/form-data (OpenAI-compatible)
+    const formData = new FormData();
+    const ext = mimeType.includes('webm') ? 'webm' : mimeType.includes('mp4') ? 'mp4' : 'wav';
+    formData.append('file', audioBlob, `recording.${ext}`);
+    formData.append('model', 'large-v3'); // Will be overridden by server config
+    formData.append('response_format', 'json');
+    // Don't set language — let Whisper auto-detect (this is what enables code-switching)
+
+    const res = await fetch(`${PROXY}/v1/audio/transcribe`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+      throw new Error(err.error || `Transcription failed: ${res.status}`);
+    }
+
+    const data = await res.json();
+    const text = data.text || '';
+
+    if (text.trim()) {
+      input.value = baseText + (baseText && !baseText.endsWith(' ') ? ' ' : '') + text.trim();
+      autoResize(input);
+      updateInputTokenCount();
+      toast('Transcribed ✓', 'success');
+    } else {
+      toast('No speech detected', 'error');
+    }
+  } catch (e) {
+    toast('Whisper: ' + e.message, 'error');
+    console.error('[Whisper]', e);
+  } finally {
+    setVoiceUI(false);
+    delete input.dataset.preVoice;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § SIDEBAR ACCORDION
+// ─────────────────────────────────────────────────────────────────────────────
+
+function togglePanel(btn) {
+  const panel = btn.closest('.sidebar-panel');
+  if (!panel) return;
+  const isOpen = panel.getAttribute('data-open') === 'true';
+  panel.setAttribute('data-open', isOpen ? 'false' : 'true');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § SYSTEM RESOURCES & MODEL INFO
+// ─────────────────────────────────────────────────────────────────────────────
+
+let systemInfo = null;
+let runningModelsDetailed = [];  // full objects from /v1/models/running
+
+async function loadSystemInfo() {
+  try {
+    const res = await fetch(`${PROXY}/v1/system`);
+    const data = await res.json();
+    systemInfo = data.system || null;
+    runningModelsDetailed = data.running_models || [];
+    runningModels = runningModelsDetailed.map(m => m.id || `ollama/${m.name}`);
+    updateSystemDisplay();
+    updateModelInfoCard();
+  } catch {
+    systemInfo = null;
+  }
+}
+
+function updateSystemDisplay() {
+  if (!systemInfo) return;
+  const m = systemInfo.memory;
+  const textEl = document.getElementById('sys-ram-text');
+  const fillEl = document.getElementById('sys-ram-fill');
+  if (textEl) textEl.textContent = `${m.used_label} / ${m.total_label} (${m.usage_pct}%)`;
+  if (fillEl) {
+    fillEl.style.width = m.usage_pct + '%';
+    fillEl.className = 'sys-mem-fill' + (m.usage_pct > 90 ? ' danger' : m.usage_pct > 75 ? ' warn' : '');
+  }
+}
+
+function updateModelInfoCard() {
+  const card = document.getElementById('model-info-card');
+  if (!card) return;
+
+  if (!selectedModel) {
+    card.style.display = 'none';
+    return;
+  }
+
+  const meta = modelMetadata[selectedModel] || {};
+  const name = selectedModel.replace(/^(ollama|lmstudio)\//, '');
+  const prov = selectedModel.startsWith('ollama/') ? 'ollama' : 'lmstudio';
+
+  // Check loaded status
+  const runningMatch = runningModelsDetailed.find(r =>
+    r.id === selectedModel || r.name === name || (r.id || '').includes(name)
+  );
+  const isLoaded = !!runningMatch;
+
+  card.style.display = 'block';
+
+  // Status
+  const statusEl = document.getElementById('mic-status');
+  if (prov === 'ollama') {
+    if (isLoaded) {
+      statusEl.textContent = '● Loaded in memory';
+      statusEl.className = 'mic-value loaded';
+    } else {
+      statusEl.textContent = '○ Not loaded — will load on first message';
+      statusEl.className = 'mic-value not-loaded';
+    }
+  } else {
+    statusEl.textContent = 'Managed by LM Studio';
+    statusEl.className = 'mic-value';
+  }
+
+  // Size
+  document.getElementById('mic-size').textContent = meta.size_label || '—';
+
+  // Params
+  document.getElementById('mic-params').textContent = meta.parameter_size
+    ? `${meta.parameter_size}${meta.quantization ? ' (' + meta.quantization + ')' : ''}`
+    : '—';
+
+  // Context
+  const ctxLen = meta.context_length;
+  document.getElementById('mic-context').textContent = ctxLen
+    ? `${(ctxLen).toLocaleString()} tokens (${(ctxLen/1024).toFixed(0)}K)`
+    : '—';
+
+  // VRAM (only if loaded)
+  const vramRow = document.getElementById('mic-vram-row');
+  if (runningMatch && runningMatch.vram > 0) {
+    vramRow.style.display = 'flex';
+    document.getElementById('mic-vram').textContent = runningMatch.vram_label;
+  } else {
+    vramRow.style.display = 'none';
+  }
+
+  // Context usage bar
+  updateContextBar();
+}
+
+function updateContextBar(promptTokens, completionTokens) {
+  const meta = modelMetadata[selectedModel] || {};
+  const ctxLimit = meta.context_length || 8192;
+  const used = (promptTokens || 0) + (completionTokens || 0);
+  const pct = ctxLimit > 0 ? Math.round((used / ctxLimit) * 100) : 0;
+
+  const fill = document.getElementById('mic-ctx-fill');
+  if (fill) {
+    fill.style.width = Math.min(pct, 100) + '%';
+    fill.className = 'mic-ctx-fill' + (pct > 90 ? ' danger' : pct > 75 ? ' warn' : '');
+  }
+}
+
+// Show/hide model loading banner with smart progress
+let loadingProgress = null; // { interval, pollInterval, startTime, estimatedMs, modelName }
+
+function showModelLoadingBanner(modelName) {
+  const banner  = document.getElementById('model-loading-banner');
+  const title   = document.getElementById('mlb-title');
+  const sub     = document.getElementById('mlb-sub');
+  const pctEl   = document.getElementById('mlb-pct');
+  const fillEl  = document.getElementById('mlb-fill');
+  const detail  = document.getElementById('mlb-detail');
+  if (!banner) return;
+
+  // Estimate loading time based on model size
+  const meta = modelMetadata[selectedModel] || {};
+  const sizeGB = meta.size_label
+    ? parseFloat(meta.size_label.replace(/[^\d.]/g, '')) * (meta.size_label.includes('MB') ? 0.001 : 1)
+    : 4; // fallback guess
+  // Rough estimate: ~2s per GB on Apple Silicon, ~5s per GB on CPU-only
+  const estimatedSec = Math.max(3, Math.ceil(sizeGB * 3));
+  const estimatedMs  = estimatedSec * 1000;
+
+  title.textContent = `Loading ${modelName} into memory…`;
+  sub.textContent   = `~${estimatedSec}s estimated · ${meta.size_label || '?'} · ${meta.parameter_size || '?'}`;
+  pctEl.textContent = '0%';
+  fillEl.style.width = '0%';
+  detail.innerHTML = [
+    meta.size_label     ? `<span>💾 ${meta.size_label}</span>` : '',
+    meta.parameter_size ? `<span>🧠 ${meta.parameter_size}</span>` : '',
+    meta.quantization   ? `<span>🎯 ${meta.quantization}</span>` : '',
+  ].filter(Boolean).join('');
+
+  banner.style.display = 'block';
+
+  // Start progress animation
+  const startTime = Date.now();
+
+  // Smooth progress: ease-out curve that reaches ~85% at estimated time
+  // Then polls /api/ps to detect actual load completion
+  const progressInterval = setInterval(() => {
+    const elapsed = Date.now() - startTime;
+    // Ease-out curve: fast start, slows down as it approaches target
+    // Caps at 85% (remaining 15% is "detecting model" + "first token")
+    const ratio = Math.min(elapsed / estimatedMs, 1);
+    const easedPct = Math.round(85 * (1 - Math.pow(1 - ratio, 2.5)));
+    pctEl.textContent = easedPct + '%';
+    fillEl.style.width = easedPct + '%';
+
+    // Update elapsed time display
+    const elapsedSec = (elapsed / 1000).toFixed(1);
+    sub.textContent = `${elapsedSec}s elapsed · ~${estimatedSec}s estimated`;
+  }, 200);
+
+  // Poll /api/ps to detect when model actually appears in running models
+  const pollInterval = setInterval(async () => {
+    try {
+      const res  = await fetch(`${PROXY}/v1/models/running`);
+      const data = await res.json();
+      const loaded = (data.models || []).some(m =>
+        m.name === modelName || (m.id || '').includes(modelName)
+      );
+      if (loaded) {
+        // Model detected in RAM! Jump to 90%
+        const pct = document.getElementById('mlb-pct');
+        const fill = document.getElementById('mlb-fill');
+        if (pct) pct.textContent = '90%';
+        if (fill) fill.style.width = '90%';
+        const subEl = document.getElementById('mlb-sub');
+        if (subEl) subEl.textContent = 'Model loaded — waiting for first token…';
+        clearInterval(pollInterval);
+      }
+    } catch { /* proxy might be busy, ignore */ }
+  }, 1500);
+
+  loadingProgress = { progressInterval, pollInterval, startTime, estimatedMs, modelName };
+}
+
+function hideModelLoadingBanner() {
+  const banner = document.getElementById('model-loading-banner');
+  if (!banner) return;
+
+  if (loadingProgress) {
+    clearInterval(loadingProgress.progressInterval);
+    clearInterval(loadingProgress.pollInterval);
+
+    // Show 100% briefly before hiding
+    const pctEl  = document.getElementById('mlb-pct');
+    const fillEl = document.getElementById('mlb-fill');
+    const subEl  = document.getElementById('mlb-sub');
+    const elapsed = ((Date.now() - loadingProgress.startTime) / 1000).toFixed(1);
+
+    if (pctEl)  pctEl.textContent = '100%';
+    if (fillEl) fillEl.style.width = '100%';
+    if (subEl)  subEl.textContent = `Done in ${elapsed}s ✓`;
+
+    // Fade out after 800ms
+    setTimeout(() => {
+      banner.style.display = 'none';
+      // Reset
+      if (pctEl)  pctEl.textContent = '0%';
+      if (fillEl) fillEl.style.width = '0%';
+    }, 800);
+
+    loadingProgress = null;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § WELCOME PROMPTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function useWelcomePrompt(text) {
+  const input = document.getElementById('msg-input');
+  input.value = text;
+  autoResize(input);
+  input.focus();
+  updateInputTokenCount();
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § BOOT
