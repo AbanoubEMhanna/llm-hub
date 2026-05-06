@@ -54,6 +54,9 @@
     <button class="topbar-btn" onclick="toggleCompareMode()" title="Compare models" id="compare-btn">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
     </button>
+    <button class="topbar-btn" onclick="openModelManager()" title="Model Manager — pull &amp; delete Ollama models" id="model-manager-btn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4.03 3-9 3S3 13.66 3 12"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg>
+    </button>
     <button class="topbar-btn" onclick="openTemplates()" title="Prompt templates">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
     </button>
@@ -499,6 +502,45 @@
         <div class="shortcut-row"><kbd>Esc</kbd><span>Close modal</span></div>
         <div class="shortcut-row"><kbd>?</kbd><span>Show this help</span></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Model Manager modal -->
+<div class="modal-overlay" id="model-manager-modal">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <div class="modal-title">Model Manager</div>
+      <button class="icon-btn" onclick="closeModal('model-manager-modal')">×</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Pull new model -->
+      <div class="mm-section">
+        <div class="mm-section-title">Pull a model from Ollama</div>
+        <div class="mm-pull-row">
+          <input type="text" id="mm-pull-input" class="mm-pull-input"
+            placeholder="e.g. llama3.2, mistral:7b, qwen2.5-coder:14b"
+            onkeydown="if(event.key==='Enter')pullModel()"/>
+          <button class="btn primary" id="mm-pull-btn" onclick="pullModel()">Pull</button>
+        </div>
+        <div class="mm-pull-progress" id="mm-pull-progress" style="display:none">
+          <div class="mm-progress-label" id="mm-progress-label">Pulling…</div>
+          <div class="mm-progress-bar">
+            <div class="mm-progress-fill" id="mm-progress-fill" style="width:0%"></div>
+          </div>
+          <div class="mm-progress-detail" id="mm-progress-detail"></div>
+        </div>
+      </div>
+
+      <!-- Installed models list -->
+      <div class="mm-section">
+        <div class="mm-section-title">Installed Ollama models</div>
+        <div id="mm-model-list" class="mm-model-list">
+          <div class="loading-row"><div class="spinner"></div> Loading…</div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>

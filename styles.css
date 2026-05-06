@@ -896,3 +896,80 @@ input[type=range]::-webkit-slider-thumb {
   cursor: pointer; font-size: 12px; padding: 0 2px;
 }
 .voice-status button:hover { color: var(--text); }
+
+/* ═══════════════════ MODEL MANAGER ═══════════════════ */
+.mm-section { margin-bottom: 20px; }
+.mm-section:last-child { margin-bottom: 0; }
+.mm-section-title {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); margin-bottom: 10px;
+}
+
+.mm-pull-row { display: flex; gap: 8px; }
+.mm-pull-input {
+  flex: 1; height: 34px; padding: 0 10px;
+  background: var(--s2); border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text); font-family: var(--mono); font-size: 13px;
+  outline: none; transition: border-color var(--transition);
+}
+.mm-pull-input:focus { border-color: var(--accent); }
+.mm-pull-input::placeholder { color: var(--muted); }
+
+.mm-pull-progress { margin-top: 12px; }
+.mm-progress-label {
+  font-family: var(--mono); font-size: 12px; color: var(--text2);
+  margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mm-progress-bar {
+  height: 4px; border-radius: 2px; background: var(--s3); overflow: hidden; margin-bottom: 4px;
+}
+.mm-progress-fill {
+  height: 100%; background: var(--accent); border-radius: 2px;
+  transition: width 200ms ease;
+}
+.mm-progress-detail {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+}
+
+.mm-model-list {
+  display: flex; flex-direction: column; gap: 6px;
+  max-height: 320px; overflow-y: auto;
+}
+.mm-model-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; background: var(--s2); border: 1px solid var(--border);
+  border-radius: var(--radius); transition: border-color var(--transition);
+}
+.mm-model-row:hover { border-color: var(--border2); }
+.mm-model-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 13px; color: #fff;
+}
+.mm-model-info { flex: 1; min-width: 0; }
+.mm-model-name {
+  font-family: var(--mono); font-size: 13px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mm-model-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.mm-model-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.mm-delete-btn {
+  height: 28px; padding: 0 10px; border-radius: 6px;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--muted); font-size: 11px; cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+  display: flex; align-items: center; gap: 5px;
+}
+.mm-delete-btn:hover { background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--red); border-color: var(--red); }
+.mm-delete-btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+.mm-loaded-badge {
+  font-size: 10px; padding: 2px 7px; border-radius: 4px;
+  background: color-mix(in srgb, var(--green) 15%, transparent);
+  color: var(--green); font-family: var(--mono); font-weight: 500;
+  border: 1px solid color-mix(in srgb, var(--green) 30%, transparent);
+}
+.mm-empty {
+  padding: 24px; text-align: center; color: var(--muted);
+  font-family: var(--mono); font-size: 12px;
+}
