@@ -1244,6 +1244,123 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // ── MODELS: pull (SSE progress stream from Ollama)
+    if (req.method === 'POST' && url.pathname === '/v1/models/pull') {
+      const body = await readBody(req);
+      const { name } = body;
+      if (!name || typeof name !== 'string' || !/^[a-zA-Z0-9_.:/\-]+$/.test(name.trim())) {
+        sendJSON(res, 400, { error: 'Valid model name required (e.g. llama3.2, mistral:7b)' });
+        return;
+      }
+      const modelName = name.trim();
+      const ollamaCfg = CONFIG.providers.ollama;
+
+      setCORS(res);
+      res.writeHead(200, {
+        'Content-Type':  'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection':    'keep-alive',
+        'X-Accel-Buffering': 'no',
+      });
+      const emit = (type, payload) => {
+        try { res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`); } catch {}
+      };
+
+      console.log(`[Models] Pulling: ${modelName}`);
+      const pullBody = JSON.stringify({ name: modelName, stream: true });
+      const pullReq = http.request(
+        {
+          hostname: ollamaCfg.host, port: ollamaCfg.port,
+          path: '/api/pull', method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(pullBody) },
+        },
+        (pullRes) => {
+          let lineBuf = '';
+          pullRes.on('data', (chunk) => {
+            lineBuf += chunk.toString();
+            const lines = lineBuf.split('\n');
+            lineBuf = lines.pop();
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed) continue;
+              try {
+                const evt = JSON.parse(trimmed);
+                if (evt.error) {
+                  emit('error', { message: evt.error });
+                } else if (evt.status === 'success') {
+                  emit('done', { model: modelName });
+                } else {
+                  emit('progress', {
+                    status:    evt.status    || '',
+                    digest:    evt.digest    || '',
+                    completed: evt.completed || 0,
+                    total:     evt.total     || 0,
+                  });
+                }
+              } catch {}
+            }
+          });
+          pullRes.on('end', () => {
+            if (lineBuf.trim()) {
+              try {
+                const evt = JSON.parse(lineBuf.trim());
+                if (evt.status === 'success') emit('done', { model: modelName });
+                else if (evt.error)           emit('error', { message: evt.error });
+              } catch {}
+            }
+            try { res.end(); } catch {}
+          });
+        }
+      );
+      pullReq.on('error', (e) => {
+        emit('error', { message: `Cannot reach Ollama: ${e.message}` });
+        try { res.end(); } catch {}
+      });
+      req.on('close', () => { try { pullReq.destroy(); } catch {} });
+      pullReq.write(pullBody);
+      pullReq.end();
+      return;
+    }
+
+    // ── MODELS: delete (Ollama only)
+    if (req.method === 'DELETE' && url.pathname.startsWith('/v1/models/')) {
+      const rawName = decodeURIComponent(url.pathname.replace('/v1/models/', ''));
+      const modelName = rawName.replace(/^ollama\//, '');
+      if (!modelName) { sendJSON(res, 400, { error: 'Model name required' }); return; }
+      const ollamaCfg = CONFIG.providers.ollama;
+      try {
+        const deleteBody = JSON.stringify({ name: modelName });
+        const result = await new Promise((resolve, reject) => {
+          const dr = http.request(
+            {
+              hostname: ollamaCfg.host, port: ollamaCfg.port,
+              path: '/api/delete', method: 'DELETE',
+              headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(deleteBody) },
+              timeout: 15000,
+            },
+            (dr2) => {
+              let buf = '';
+              dr2.on('data', (c) => (buf += c));
+              dr2.on('end', () => resolve({ status: dr2.statusCode, body: buf }));
+            }
+          );
+          dr.on('error', reject);
+          dr.on('timeout', () => { dr.destroy(new Error('timeout')); });
+          dr.write(deleteBody);
+          dr.end();
+        });
+        if (result.status === 200 || result.status === 404) {
+          console.log(`[Models] Deleted: ${modelName}`);
+          sendJSON(res, 200, { ok: true, model: modelName });
+        } else {
+          sendJSON(res, result.status, { error: result.body || 'Delete failed' });
+        }
+      } catch (e) {
+        sendJSON(res, 502, { error: `Cannot reach Ollama: ${e.message}` });
+      }
+      return;
+    }
+
     sendJSON(res, 404, { error: 'Not found' });
   } catch (e) {
     console.error('[Server error]', e);

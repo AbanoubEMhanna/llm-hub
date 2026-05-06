@@ -2309,6 +2309,180 @@ function useWelcomePrompt(text) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § MODEL MANAGER (pull / delete Ollama models)
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function openModelManager() {
+  document.getElementById('model-manager-modal').classList.add('open');
+  await refreshModelManagerList();
+}
+
+async function refreshModelManagerList() {
+  const listEl = document.getElementById('mm-model-list');
+  listEl.innerHTML = '<div class="loading-row"><div class="spinner"></div> Loading…</div>';
+
+  try {
+    const [modelsRes, runningRes] = await Promise.all([
+      fetch(`${PROXY}/v1/models`),
+      fetch(`${PROXY}/v1/models/running`),
+    ]);
+    const modelsData  = await modelsRes.json();
+    const runningData = await runningRes.json();
+
+    const allModels  = (modelsData.data  || []).filter(m => m.owned_by === 'ollama' || m.id?.startsWith('ollama/'));
+    const runningIds = new Set((runningData.models || []).map(m => m.id || m.name));
+
+    if (allModels.length === 0) {
+      listEl.innerHTML = '<div class="mm-empty">No Ollama models installed. Pull one above.</div>';
+      return;
+    }
+
+    listEl.innerHTML = '';
+    for (const m of allModels) {
+      const shortName = m.id.replace(/^ollama\//, '');
+      const isLoaded  = runningIds.has(m.id) || runningIds.has(shortName);
+      const meta = modelMetadata[m.id] || {};
+      const parts = [];
+      if (meta.parameter_size) parts.push(meta.parameter_size);
+      if (meta.quantization)   parts.push(meta.quantization);
+      if (m.size_label)        parts.push(m.size_label);
+
+      const row = document.createElement('div');
+      row.className = 'mm-model-row';
+      row.dataset.modelId = m.id;
+      row.innerHTML = `
+        <div class="mm-model-icon">&#x1F9E0;</div>
+        <div class="mm-model-info">
+          <div class="mm-model-name">${shortName}</div>
+          <div class="mm-model-meta">${parts.length ? parts.join(' &middot; ') : 'Ollama'}</div>
+        </div>
+        <div class="mm-model-actions">
+          ${isLoaded ? '<span class="mm-loaded-badge">loaded</span>' : ''}
+          <button class="mm-delete-btn" onclick="deleteModelFromManager('${shortName}', this)" title="Delete model from disk">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/>
+            </svg>
+            Delete
+          </button>
+        </div>`;
+      listEl.appendChild(row);
+    }
+  } catch (e) {
+    listEl.innerHTML = `<div class="mm-empty">Could not reach proxy — is it running?</div>`;
+  }
+}
+
+async function pullModel() {
+  const input  = document.getElementById('mm-pull-input');
+  const btn    = document.getElementById('mm-pull-btn');
+  const prog   = document.getElementById('mm-pull-progress');
+  const label  = document.getElementById('mm-progress-label');
+  const fill   = document.getElementById('mm-progress-fill');
+  const detail = document.getElementById('mm-progress-detail');
+
+  const name = input.value.trim();
+  if (!name) { input.focus(); return; }
+
+  btn.disabled   = true;
+  input.disabled = true;
+  prog.style.display = 'block';
+  label.textContent  = `Pulling ${name}…`;
+  fill.style.width   = '0%';
+  detail.textContent = '';
+
+  try {
+    const res = await fetch(`${PROXY}/v1/models/pull`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+
+    const reader = res.body.getReader();
+    const dec    = new TextDecoder();
+    let   buf    = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const evt = JSON.parse(line.slice(6));
+          if (evt.type === 'progress') {
+            label.textContent = evt.status || 'Working…';
+            if (evt.total > 0) {
+              const pct = Math.round((evt.completed / evt.total) * 100);
+              fill.style.width = pct + '%';
+              detail.textContent = `${formatMM(evt.completed)} / ${formatMM(evt.total)}`;
+            } else {
+              fill.style.width = '0%';
+              detail.textContent = '';
+            }
+          } else if (evt.type === 'done') {
+            label.textContent  = `${name} pulled successfully!`;
+            fill.style.width   = '100%';
+            detail.textContent = '';
+            input.value        = '';
+            showToast(`${name} is ready`, 'success');
+            await loadModels();
+            await refreshModelManagerList();
+          } else if (evt.type === 'error') {
+            label.textContent  = `Error: ${evt.message}`;
+            fill.style.width   = '0%';
+            detail.textContent = '';
+            showToast(evt.message, 'error');
+          }
+        } catch {}
+      }
+    }
+  } catch (e) {
+    label.textContent = `Failed: ${e.message}`;
+    showToast('Pull failed — is Ollama running?', 'error');
+  } finally {
+    btn.disabled   = false;
+    input.disabled = false;
+  }
+}
+
+async function deleteModelFromManager(modelName, btnEl) {
+  if (!confirm(`Delete "${modelName}" from disk? This cannot be undone.`)) return;
+
+  btnEl.disabled = true;
+  btnEl.textContent = 'Deleting…';
+
+  try {
+    const res  = await fetch(`${PROXY}/v1/models/${encodeURIComponent(modelName)}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) {
+      showToast(`${modelName} deleted`, 'success');
+      await loadModels();
+      await refreshModelManagerList();
+    } else {
+      showToast(data.error || 'Delete failed', 'error');
+      btnEl.disabled = false;
+      btnEl.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+        <path d="M10 11v6"/><path d="M14 11v6"/>
+      </svg> Delete`;
+    }
+  } catch (e) {
+    showToast('Delete failed — is Ollama running?', 'error');
+    btnEl.disabled = false;
+  }
+}
+
+function formatMM(bytes) {
+  if (!bytes) return '0 B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+  return (bytes / 1073741824).toFixed(2) + ' GB';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § BOOT
 // ─────────────────────────────────────────────────────────────────────────────
 
