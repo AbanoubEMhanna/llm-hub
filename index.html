@@ -256,6 +256,11 @@
         <svg class="panel-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <div class="panel-content">
+        <div class="param-presets">
+          <button class="preset-chip" id="pchip-precise" onclick="applySamplingPreset('precise')" title="Temp 0.2 · focused output">Precise</button>
+          <button class="preset-chip active" id="pchip-balanced" onclick="applySamplingPreset('balanced')" title="Temp 0.7 · balanced">Balanced</button>
+          <button class="preset-chip" id="pchip-creative" onclick="applySamplingPreset('creative')" title="Temp 1.2 · creative output">Creative</button>
+        </div>
         <div class="param-row">
           <span class="param-label">Temperature</span>
           <span class="param-value" id="temp-val">0.7</span>
@@ -549,5 +554,29 @@
 <div id="toast-container"></div>
 
 <script src="app.js"></script>
+<script>
+function applySamplingPreset(name) {
+  const map = {
+    precise:  { temp: 0.2, maxTokens: 2048 },
+    balanced: { temp: 0.7, maxTokens: 2048 },
+    creative: { temp: 1.2, maxTokens: 4096 }
+  };
+  const p = map[name]; if (!p) return;
+  const slider = document.getElementById('temp-slider');
+  const valEl  = document.getElementById('temp-val');
+  const tokEl  = document.getElementById('max-tokens');
+  if (slider) { slider.value = p.temp; valEl.textContent = p.temp; }
+  if (tokEl)  tokEl.value = p.maxTokens;
+  document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('pchip-' + name);
+  if (btn) btn.classList.add('active');
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const slider = document.getElementById('temp-slider');
+  if (slider) slider.addEventListener('input', () => {
+    document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('active'));
+  });
+});
+</script>
 </body>
 </html>
