@@ -874,7 +874,7 @@ function streamProvider(host, port, pathStr, body, { onChunk, onDone, onError, s
 // § AGENT LOOP
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function runAgentLoop({ model, messages, temperature, max_tokens, useTools, emit, signal }) {
+async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, useTools, emit, signal }) {
   const provider = resolveProvider(model);
   if (!provider) { emit('error', { message: `Model "${model}" not found` }); return; }
 
@@ -895,6 +895,10 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, useTools
       temperature: temperature ?? 0.7,
       max_tokens:  max_tokens  ?? 2048,
     };
+    if (top_p !== undefined)             body.top_p             = top_p;
+    if (top_k !== undefined)             body.top_k             = top_k;
+    if (repeat_penalty !== undefined)    body.repeat_penalty    = repeat_penalty;
+    if (frequency_penalty !== undefined) body.frequency_penalty = frequency_penalty;
     if (tools.length > 0) body.tools = tools;
 
     const roundResult = await new Promise((resolve) => {
@@ -1038,7 +1042,7 @@ const server = http.createServer(async (req, res) => {
     // ── CHAT (SSE)
     if (req.method === 'POST' && url.pathname === '/v1/chat') {
       const body = await readBody(req);
-      const { model, messages, temperature, max_tokens, use_tools = true } = body;
+      const { model, messages, temperature, max_tokens, use_tools = true, top_p, top_k, repeat_penalty, frequency_penalty } = body;
       if (!model || !messages) { sendJSON(res, 400, { error: 'model and messages required' }); return; }
       if (!resolveProvider(model)) await fetchAllModels();
 
@@ -1056,7 +1060,7 @@ const server = http.createServer(async (req, res) => {
         try { res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`); } catch {}
       };
       console.log(`[Chat] ${model} | tools:${use_tools} | msgs:${messages.length}`);
-      await runAgentLoop({ model, messages, temperature, max_tokens, useTools: use_tools, emit, signal });
+      await runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, useTools: use_tools, emit, signal });
       try { res.end(); } catch {}
       return;
     }

@@ -63,6 +63,9 @@
     <button class="topbar-btn" onclick="openConfigEditor()" title="Settings">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
     </button>
+    <button class="topbar-btn" onclick="toggleFocusMode()" title="Focus mode — hide sidebars (⌘⇧F)" id="focus-btn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3"/><path d="M21 8V5a2 2 0 00-2-2h-3"/><path d="M3 16v3a2 2 0 002 2h3"/><path d="M16 21h3a2 2 0 002-2v-3"/></svg>
+    </button>
     <div class="topbar-divider"></div>
     <button class="topbar-btn" onclick="toggleTheme()" title="Toggle theme" id="theme-btn">🌙</button>
   </div>
@@ -302,6 +305,35 @@
           oninput="document.getElementById('temp-val').textContent=this.value"/>
         <div class="param-row"><span class="param-label">Max tokens</span></div>
         <input class="param-num" type="number" id="max-tokens" value="2048" min="128" max="16384" step="128"/>
+
+        <!-- Advanced parameters -->
+        <details class="adv-params" id="adv-params">
+          <summary class="adv-params-toggle">Advanced</summary>
+          <div class="param-row">
+            <span class="param-label">Top-P</span>
+            <span class="param-value" id="top-p-val">0.90</span>
+          </div>
+          <input type="range" min="0" max="1" step="0.05" value="0.9" id="top-p-slider"
+            oninput="document.getElementById('top-p-val').textContent=parseFloat(this.value).toFixed(2)"/>
+          <div class="param-row">
+            <span class="param-label">Top-K</span>
+            <span class="param-value" id="top-k-val">40</span>
+          </div>
+          <input type="range" min="0" max="100" step="1" value="40" id="top-k-slider"
+            oninput="document.getElementById('top-k-val').textContent=this.value"/>
+          <div class="param-row">
+            <span class="param-label">Repeat Penalty</span>
+            <span class="param-value" id="repeat-val">1.00</span>
+          </div>
+          <input type="range" min="0.5" max="2" step="0.05" value="1" id="repeat-slider"
+            oninput="document.getElementById('repeat-val').textContent=parseFloat(this.value).toFixed(2)"/>
+          <div class="param-row">
+            <span class="param-label">Freq Penalty</span>
+            <span class="param-value" id="freq-val">0.0</span>
+          </div>
+          <input type="range" min="-2" max="2" step="0.1" value="0" id="freq-slider"
+            oninput="document.getElementById('freq-val').textContent=parseFloat(this.value).toFixed(1)"/>
+        </details>
       </div>
     </div>
 
@@ -538,6 +570,7 @@
         <div class="shortcut-row"><kbd>Enter</kbd><span>Send message</span></div>
         <div class="shortcut-row"><kbd>⇧ Enter</kbd><span>New line</span></div>
         <div class="shortcut-row"><kbd>Esc</kbd><span>Close modal</span></div>
+        <div class="shortcut-row"><kbd>⌘ ⇧ F</kbd><span>Toggle focus mode</span></div>
         <div class="shortcut-row"><kbd>?</kbd><span>Show this help</span></div>
       </div>
     </div>

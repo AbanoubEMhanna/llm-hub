@@ -96,7 +96,7 @@
 - [ ] Customizable accent color (color picker in settings)
 - [ ] Font size and chat density preferences (Compact / Comfortable / Spacious)
 - [ ] Animated page transitions and micro-interactions
-- [ ] **Full-screen focus mode** — hide all sidebars, center content
+- [x] **Full-screen focus mode** — hide all sidebars, center content (⌘⇧F)
 - [ ] Collapsible long messages (auto-collapse messages > N lines)
 - [ ] Custom welcome screen with quick-action card configuration
 - [ ] Inline message diff view for edited messages
@@ -171,7 +171,7 @@
 - [x] Plan mode (think step-by-step prefix)
 - [x] **Sampling presets: Precise / Balanced / Creative**
 - [ ] Per-model parameter profiles (save temperature + max tokens per model)
-- [ ] Advanced parameters: Top-P, Top-K, Repeat penalty, Frequency penalty
+- [x] Advanced parameters: Top-P, Top-K, Repeat penalty, Frequency penalty
 - [ ] Context length override per conversation
 - [ ] **Structured output mode** — force JSON schema response (JSON mode)
 - [ ] Seed control (reproducible outputs)
