@@ -191,18 +191,51 @@
 
   <!-- COMPARE AREA (hidden by default) -->
   <div class="compare-area" id="compare-area" style="display:none">
-    <div class="compare-pane">
-      <div class="compare-pane-header">
-        <select id="compare-model-a" onchange="onCompareModelChange()"></select>
+    <div class="compare-header">
+      <div class="compare-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
+        <span class="compare-title-text">Compare Models</span>
+        <span class="compare-title-sub">Send one prompt to two models side-by-side</span>
       </div>
-      <div class="compare-messages" id="compare-msgs-a"></div>
+      <div class="compare-header-actions">
+        <button class="ghost-btn" onclick="swapCompareModels()" title="Swap left and right models">↔ Swap</button>
+        <button class="ghost-btn" onclick="clearCompare()" title="Clear both panes">Clear</button>
+        <button class="ghost-btn" onclick="toggleCompareMode()" title="Exit compare mode">Exit</button>
+      </div>
     </div>
-    <div class="compare-divider"></div>
-    <div class="compare-pane">
-      <div class="compare-pane-header">
-        <select id="compare-model-b" onchange="onCompareModelChange()"></select>
+
+    <div class="compare-panes">
+      <div class="compare-pane">
+        <div class="compare-pane-header">
+          <select id="compare-model-a" onchange="onCompareModelChange()"></select>
+        </div>
+        <div class="compare-messages" id="compare-msgs-a"></div>
       </div>
-      <div class="compare-messages" id="compare-msgs-b"></div>
+      <div class="compare-divider"></div>
+      <div class="compare-pane">
+        <div class="compare-pane-header">
+          <select id="compare-model-b" onchange="onCompareModelChange()"></select>
+        </div>
+        <div class="compare-messages" id="compare-msgs-b"></div>
+      </div>
+    </div>
+
+    <div class="input-area compare-input-area">
+      <div class="input-row">
+        <div class="textarea-wrap">
+          <textarea class="msg-input" id="compare-input"
+            placeholder="Send a prompt to both models…" rows="1"
+            onkeydown="handleCompareKey(event)" oninput="autoResize(this);updateCompareSendState()"></textarea>
+        </div>
+        <button class="send-btn" id="compare-send-btn" onclick="onCompareSendClick()" disabled title="Send to both models">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+      <div class="input-hints">
+        <span><kbd>↵</kbd> Send to both</span>
+        <span><kbd>⇧↵</kbd> Newline</span>
+        <span id="compare-status" class="compare-status">Pick both models to start</span>
+      </div>
     </div>
   </div>
 

@@ -1512,21 +1512,112 @@ function toggleCompareMode() {
   document.getElementById('chat-area-single').style.display = compareMode ? 'none' : 'flex';
   document.getElementById('compare-area').style.display     = compareMode ? 'flex' : 'none';
   if (compareMode) {
-    document.getElementById('compare-msgs-a').innerHTML =
-      '<div class="empty"><div class="empty-icon">⚖️</div><div class="empty-title">Pick left model ↑</div></div>';
-    document.getElementById('compare-msgs-b').innerHTML =
-      '<div class="empty"><div class="empty-icon">⚖️</div><div class="empty-title">Pick right model ↑</div></div>';
+    const selA = document.getElementById('compare-model-a');
+    const selB = document.getElementById('compare-model-b');
+    // Pre-select the current chat model on the left if nothing is picked yet.
+    if (!selA.value && selectedModel) selA.value = selectedModel;
+    onCompareModelChange();
+    updateCompareEmptyState();
+    updateCompareSendState();
+    setTimeout(() => document.getElementById('compare-input')?.focus(), 50);
   }
 }
 
 function onCompareModelChange() {
   compareModelA = document.getElementById('compare-model-a').value || null;
   compareModelB = document.getElementById('compare-model-b').value || null;
+  updateCompareEmptyState();
+  updateCompareSendState();
+}
+
+function updateCompareEmptyState() {
+  const paneA = document.getElementById('compare-msgs-a');
+  const paneB = document.getElementById('compare-msgs-b');
+  // Only repaint empty state when the pane is empty or already showing one.
+  const renderEmpty = (pane, hasModel, side) => {
+    if (pane.children.length && !pane.querySelector('.empty')) return;
+    if (!hasModel) {
+      pane.innerHTML =
+        `<div class="empty"><div class="empty-icon">⚖️</div>` +
+        `<div class="empty-title">Pick ${side} model ↑</div>` +
+        `<div class="empty-sub">Choose a model in the dropdown above</div></div>`;
+    } else if (!compareModelA || !compareModelB) {
+      pane.innerHTML =
+        `<div class="empty"><div class="empty-icon">⚖️</div>` +
+        `<div class="empty-title">Waiting for the other model</div>` +
+        `<div class="empty-sub">Pick the other side, then send a prompt below</div></div>`;
+    } else {
+      pane.innerHTML =
+        `<div class="empty"><div class="empty-icon">💬</div>` +
+        `<div class="empty-title">Ready to compare</div>` +
+        `<div class="empty-sub">Type a prompt below ↓</div></div>`;
+    }
+  };
+  renderEmpty(paneA, !!compareModelA, 'left');
+  renderEmpty(paneB, !!compareModelB, 'right');
+}
+
+function updateCompareSendState() {
+  const btn   = document.getElementById('compare-send-btn');
+  const input = document.getElementById('compare-input');
+  const status = document.getElementById('compare-status');
+  if (!btn || !input || !status) return;
+  const hasText  = input.value.trim().length > 0;
+  const ready    = !!(compareModelA && compareModelB);
+  // While generating, keep the button enabled so it can act as Stop.
+  btn.disabled = isLoading ? false : !(ready && hasText);
+  status.classList.remove('ready', 'warn');
+  if (!compareModelA && !compareModelB)      { status.textContent = 'Pick both models to start'; }
+  else if (!compareModelA)                   { status.textContent = 'Pick the left model';  status.classList.add('warn'); }
+  else if (!compareModelB)                   { status.textContent = 'Pick the right model'; status.classList.add('warn'); }
+  else if (compareModelA === compareModelB)  { status.textContent = 'Same model on both sides — pick a different one to compare'; status.classList.add('warn'); }
+  else if (isLoading)                        { status.textContent = 'Generating… press the stop button to cancel'; }
+  else                                       { status.textContent = 'Ready — ↵ to send'; status.classList.add('ready'); }
+}
+
+function onCompareSendClick() {
+  if (isLoading) { stopGeneration(); return; }
+  sendCompare();
+}
+
+function handleCompareKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onCompareSendClick(); }
+}
+
+function swapCompareModels() {
+  const selA = document.getElementById('compare-model-a');
+  const selB = document.getElementById('compare-model-b');
+  [selA.value, selB.value] = [selB.value, selA.value];
+  onCompareModelChange();
+}
+
+function clearCompare() {
+  if (isLoading) stopGeneration();
+  document.getElementById('compare-msgs-a').innerHTML = '';
+  document.getElementById('compare-msgs-b').innerHTML = '';
+  updateCompareEmptyState();
+}
+
+function setCompareLoadingState(loading) {
+  isLoading = loading;
+  const btn = document.getElementById('compare-send-btn');
+  if (!btn) return;
+  if (loading) {
+    btn.classList.add('stopping');
+    btn.title = 'Stop generation';
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>';
+    btn.disabled = false;
+  } else {
+    btn.classList.remove('stopping');
+    btn.title = 'Send to both models';
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
+  }
+  updateCompareSendState();
 }
 
 async function sendCompare() {
   if (!compareModelA || !compareModelB) return toast('Pick both models', 'error');
-  const input = document.getElementById('msg-input');
+  const input = document.getElementById('compare-input');
   const text  = input.value.trim();
   if (!text) return;
   input.value = '';
@@ -1549,7 +1640,7 @@ async function sendCompare() {
     pane.appendChild(u);
   }
 
-  setLoadingState(true);
+  setCompareLoadingState(true);
   compareActiveCount = 2;
   compareAbortA = new AbortController();
   compareAbortB = new AbortController();
@@ -1616,7 +1707,7 @@ async function sendCompare() {
       else if (full) bubble.innerHTML = renderMarkdown(full) + '<div class="stopped-marker">⏹ Stopped</div>';
     }
     compareActiveCount--;
-    if (compareActiveCount <= 0) setLoadingState(false);
+    if (compareActiveCount <= 0) setCompareLoadingState(false);
     highlightNewCode();
   };
 
