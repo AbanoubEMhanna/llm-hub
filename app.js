@@ -326,6 +326,51 @@ function savePreset() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § SAMPLING PRESETS (Precise / Balanced / Creative)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SAMPLING_PROFILES = {
+  precise:  { temp: 0.2, topP: 0.9,  topK: 10,  repeat: 1.1, freq: 0.0 },
+  balanced: { temp: 0.7, topP: 0.9,  topK: 40,  repeat: 1.0, freq: 0.0 },
+  creative: { temp: 1.2, topP: 0.95, topK: 80,  repeat: 0.9, freq: 0.1 },
+};
+
+function applySamplingPreset(name) {
+  const p = SAMPLING_PROFILES[name];
+  if (!p) return;
+
+  const tempSlider = document.getElementById('temp-slider');
+  const topPSlider = document.getElementById('top-p-slider');
+  const topKSlider = document.getElementById('top-k-slider');
+  const repeatSlider = document.getElementById('repeat-slider');
+  const freqSlider = document.getElementById('freq-slider');
+
+  tempSlider.value   = p.temp;
+  document.getElementById('temp-val').textContent = p.temp.toFixed(2);
+  topPSlider.value   = p.topP;
+  document.getElementById('top-p-val').textContent = p.topP.toFixed(2);
+  topKSlider.value   = p.topK;
+  document.getElementById('top-k-val').textContent = p.topK;
+  repeatSlider.value = p.repeat;
+  document.getElementById('repeat-val').textContent = p.repeat.toFixed(2);
+  freqSlider.value   = p.freq;
+  document.getElementById('freq-val').textContent = p.freq.toFixed(1);
+
+  document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('active'));
+  document.getElementById(`pchip-${name}`)?.classList.add('active');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § FOCUS MODE
+// ─────────────────────────────────────────────────────────────────────────────
+
+function toggleFocusMode() {
+  const active = document.body.classList.toggle('focus-mode');
+  const btn = document.getElementById('focus-btn');
+  if (btn) btn.classList.toggle('active', active);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § ATTACHMENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -579,9 +624,13 @@ async function streamAssistantReply(conv) {
     ? [{ role: 'system', content: sysPrompt }, ...conv.messages]
     : [...conv.messages];
 
-  const useTools = document.getElementById('tools-toggle').classList.contains('on');
-  const temp     = parseFloat(document.getElementById('temp-slider').value);
-  const maxTok   = parseInt(document.getElementById('max-tokens').value) || 2048;
+  const useTools  = document.getElementById('tools-toggle').classList.contains('on');
+  const temp      = parseFloat(document.getElementById('temp-slider').value);
+  const maxTok    = parseInt(document.getElementById('max-tokens').value) || 2048;
+  const topP      = parseFloat(document.getElementById('top-p-slider').value);
+  const topK      = parseInt(document.getElementById('top-k-slider').value);
+  const repeatPen = parseFloat(document.getElementById('repeat-slider').value);
+  const freqPen   = parseFloat(document.getElementById('freq-slider').value);
 
   setLoadingState(true);
 
@@ -624,6 +673,7 @@ async function streamAssistantReply(conv) {
       body: JSON.stringify({
         model: selectedModel, messages: apiMsgs,
         temperature: temp, max_tokens: maxTok, use_tools: useTools,
+        top_p: topP, top_k: topK, repeat_penalty: repeatPen, frequency_penalty: freqPen,
       }),
       signal: activeAbortController.signal,
     });
@@ -1860,6 +1910,7 @@ function initHotkeys() {
 
     if (e.key === 'k' || e.key === 'K') { e.preventDefault(); openSearch(); return; }
     if (e.key === 'j' || e.key === 'J') { e.preventDefault(); newConversation(); return; }
+    if ((e.key === 'f' || e.key === 'F') && e.shiftKey) { e.preventDefault(); toggleFocusMode(); return; }
 
     if (e.key === '/') { e.preventDefault(); document.getElementById('tools-toggle').classList.toggle('on'); return; }
 
