@@ -449,7 +449,7 @@ function renderConvList() {
   list.innerHTML = sorted.map(c => `
     <div class="conv-item ${c.id === currentConvId ? 'active' : ''} ${c.pinned ? 'pinned' : ''}" data-id="${c.id}"
          onclick="loadConversation('${c.id}')">
-      <div class="conv-title">${escHtml(c.title)}</div>
+      <div class="conv-title" ondblclick="startRenameConv('${c.id}',event)" title="Double-click to rename">${escHtml(c.title)}</div>
       <div class="conv-meta">${c.messages.length} msgs · ${timeAgo(c.ts)}</div>
       <div class="conv-actions">
         <button onclick="togglePin('${c.id}',event)" title="${c.pinned ? 'Unpin' : 'Pin'}">${c.pinned ? '📌' : '📍'}</button>
@@ -464,6 +464,36 @@ function timeAgo(ts) {
   if (s < 3600)  return `${Math.floor(s/60)}m ago`;
   if (s < 86400) return `${Math.floor(s/3600)}h ago`;
   return `${Math.floor(s/86400)}d ago`;
+}
+
+function startRenameConv(id, e) {
+  e.stopPropagation();
+  const titleEl = e.currentTarget;
+  const conv = conversations.find(c => c.id === id);
+  if (!conv) return;
+
+  const input = document.createElement('input');
+  input.className = 'conv-title-input';
+  input.value = conv.title;
+  titleEl.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const commit = () => {
+    const newTitle = input.value.trim();
+    if (newTitle && newTitle !== conv.title) {
+      conv.title = newTitle.slice(0, 60);
+      saveConvs();
+    }
+    renderConvList();
+  };
+
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter')  { ev.preventDefault(); input.blur(); }
+    if (ev.key === 'Escape') { input.value = conv.title; input.blur(); }
+    ev.stopPropagation();
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -565,6 +595,12 @@ async function streamAssistantReply(conv) {
   let textDiv  = null;
   const toolEls = {};
 
+  // Live tokens/sec tracking
+  let genStart     = null;
+  let deltaCount   = 0;
+  let speedEl      = null;
+  let speedInterval = null;
+
   // Show model loading banner if model not loaded yet
   const modelName = selectedModel?.replace(/^(ollama|lmstudio)\//, '') || '';
   const modelIsLoaded = runningModels.some(r => r === selectedModel || r.includes(modelName));
@@ -618,6 +654,23 @@ async function streamAssistantReply(conv) {
             hideModelLoadingBanner();  // First token arrived — model is loaded
             ensureCleared();
             fullText += evt.delta;
+            deltaCount++;
+
+            if (!genStart) {
+              genStart = Date.now();
+              // Create live speed badge inside the bubble
+              speedEl = document.createElement('div');
+              speedEl.className = 'gen-speed';
+              speedEl.textContent = '…';
+              bubble.appendChild(speedEl);
+              speedInterval = setInterval(() => {
+                const secs = (Date.now() - genStart) / 1000;
+                if (secs > 0.2 && speedEl) {
+                  speedEl.textContent = `${(deltaCount / secs).toFixed(1)} tok/s`;
+                }
+              }, 400);
+            }
+
             textDiv.innerHTML = renderMarkdown(fullText);
             scrollBottom();
           } else if (evt.type === 'tool_call') {
@@ -632,7 +685,9 @@ async function streamAssistantReply(conv) {
             const el = toolEls[evt.id];
             if (el) updateToolResult(el, evt.result);
           } else if (evt.type === 'done') {
-            updateStats(evt);
+            if (speedInterval) { clearInterval(speedInterval); speedInterval = null; }
+            if (speedEl) { speedEl.remove(); speedEl = null; }
+            updateStats({ ...evt, completion_tokens: evt.completion_tokens ?? deltaCount });
             conv.messages.push({ role: 'assistant', content: fullText });
             saveConvs();
             reRenderLastAssistant(conv, fullText);
@@ -646,6 +701,8 @@ async function streamAssistantReply(conv) {
       }
     }
   } catch (e) {
+    if (speedInterval) { clearInterval(speedInterval); speedInterval = null; }
+    if (speedEl) { speedEl.remove(); speedEl = null; }
     if (e.name === 'AbortError') {
       if (fullText) {
         textDiv.innerHTML = renderMarkdown(fullText) + '<div class="stopped-marker">⏹ Stopped</div>';
@@ -926,6 +983,10 @@ function updateStats({ model, elapsed, prompt_tokens, completion_tokens }) {
   document.getElementById('stat-model').textContent  = model || '—';
   document.getElementById('stat-tokens').textContent =
     prompt_tokens != null ? `${prompt_tokens} → ${completion_tokens ?? 0}` : '—';
+  const tps = (elapsed && completion_tokens)
+    ? `${(completion_tokens / (elapsed / 1000)).toFixed(1)} tok/s`
+    : '—';
+  document.getElementById('stat-speed').textContent = tps;
   document.getElementById('stat-time').textContent   = elapsed ? `${elapsed}ms` : '—';
 
   // Use real context_length from model metadata, fallback to 8192
