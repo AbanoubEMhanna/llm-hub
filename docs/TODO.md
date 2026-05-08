@@ -13,12 +13,12 @@
 - ✅ Multi-provider model aggregation (single unified dropdown)
 - ✅ OpenAI-compatible `/v1/chat/completions` passthrough
 - ✅ Proxy binds to `127.0.0.1` by default (secure by default)
-- 🔥 **OpenAI provider** — cloud, with API key
-- 🔥 **Anthropic Claude provider** — cloud, with API key
-- 🔥 **Groq provider** — ultra-fast inference
-- 🔥 **OpenRouter provider** — unified cloud gateway
+- ✅ **OpenAI provider** — cloud, with API key (stored in localStorage)
+- ✅ **Anthropic Claude provider** — cloud, with API key (with OpenAI format conversion)
+- ✅ **Groq provider** — ultra-fast inference
+- ✅ **OpenRouter provider** — unified cloud gateway
 - 🔲 Mistral / Together / Fireworks providers
-- 🔥 **API key management** — AES-encrypted in localStorage, never sent to disk
+- ✅ **API key management** — stored in localStorage, transmitted to proxy via header only
 - 🔲 Custom provider endpoint configuration from UI
 - 🔲 Provider health monitoring with auto-reconnect
 - 🔲 Per-provider timeout and retry settings
