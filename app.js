@@ -822,6 +822,7 @@ function reRenderLastAssistant(conv, text, stopped = false) {
   const idx = conv.messages.length - 1;
   const replacement = buildAssistantWrap(idx, text, stopped);
   last.replaceWith(replacement);
+  applyCollapse(replacement);
   highlightNewCode();
 }
 
@@ -951,11 +952,38 @@ function renderMessages(msgs) {
       }
       appendUserBubble(i, text, imgs);
     } else if (m.role === 'assistant') {
-      container.appendChild(buildAssistantWrap(i, m.content || '', m.stopped));
+      const w = buildAssistantWrap(i, m.content || '', m.stopped);
+      container.appendChild(w);
+      applyCollapse(w);
     }
   });
   highlightNewCode();
   scrollBottom();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § COLLAPSIBLE LONG MESSAGES
+// ─────────────────────────────────────────────────────────────────────────────
+
+const COLLAPSE_THRESHOLD = 500; // px — ~22 lines at default line-height
+
+function applyCollapse(wrap) {
+  if (wrap.dataset.collapseChecked) return;
+  wrap.dataset.collapseChecked = '1';
+  const bubble = wrap.querySelector('.bubble');
+  if (!bubble) return;
+  requestAnimationFrame(() => {
+    if (bubble.scrollHeight <= COLLAPSE_THRESHOLD + 10) return;
+    bubble.classList.add('collapsed');
+    const btn = document.createElement('button');
+    btn.className = 'msg-collapse-btn';
+    btn.textContent = '▾ Show more';
+    btn.onclick = () => {
+      const nowCollapsed = bubble.classList.toggle('collapsed');
+      btn.textContent = nowCollapsed ? '▾ Show more' : '▴ Show less';
+    };
+    bubble.after(btn);
+  });
 }
 
 function appendUserBubble(idx, text, imgs = []) {
@@ -980,6 +1008,7 @@ function appendUserBubble(idx, text, imgs = []) {
       <button class="danger" onclick="deleteMessage(${idx})" title="Delete">🗑 Delete</button>
     </div>` : ''}`;
   container.appendChild(wrap);
+  applyCollapse(wrap);
 }
 
 function buildAssistantWrap(idx, content, stopped = false) {

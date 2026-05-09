@@ -57,7 +57,7 @@
 - [x] Conversation pinning
 - [x] Auto-title from first message
 - [x] Chat fuzzy search (⌘K)
-- [ ] **Conversation title rename** on double-click
+- [x] **Conversation title rename** on double-click
 - [ ] **Conversation folders** / tag-based organization
 - [ ] **Conversation branching** — fork from any message
 - [ ] Import conversations from JSON / ChatGPT export
@@ -97,7 +97,7 @@
 - [ ] Font size and chat density preferences (Compact / Comfortable / Spacious)
 - [ ] Animated page transitions and micro-interactions
 - [x] **Full-screen focus mode** — hide all sidebars, center content (⌘⇧F)
-- [ ] Collapsible long messages (auto-collapse messages > N lines)
+- [x] Collapsible long messages (auto-collapse messages > ~22 lines)
 - [ ] Custom welcome screen with quick-action card configuration
 - [ ] Inline message diff view for edited messages
 - [ ] Skeleton loading states instead of spinners
@@ -200,7 +200,7 @@
 - [x] Generation stats (total tokens, elapsed time)
 - [x] System RAM usage bar
 - [x] Context usage indicator (warns at >75%)
-- [ ] **Real-time tokens/sec counter** during generation
+- [x] **Real-time tokens/sec counter** during generation
 - [ ] **GPU / VRAM usage monitoring** (Ollama VRAM via API)
 - [ ] Response latency histogram (per-model statistics panel)
 - [ ] Session token usage totals (prompt + completion)
