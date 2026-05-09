@@ -208,6 +208,14 @@ async function checkRunningModels() {
   }
 }
 
+const MODEL_ID_PREFIX_RE = /^(ollama|lmstudio|openai|anthropic|groq|openrouter)\//;
+
+function parseModelId(modelId) {
+  const provider = modelId?.split('/')[0] || null;
+  const name     = (modelId || '').replace(MODEL_ID_PREFIX_RE, '');
+  return { provider, name };
+}
+
 const PROVIDER_LABELS = {
   ollama:     '🟠 Ollama',
   lmstudio:   '🟣 LM Studio',
@@ -285,9 +293,7 @@ function updateModelHeader() {
     tag.innerHTML = '<span style="color:var(--muted);font-family:var(--mono);font-size:12px">No model selected</span>';
     return;
   }
-  const name = selectedModel.replace(/^(ollama|lmstudio)\//, '');
-  const prov = selectedModel.startsWith('ollama/') ? 'ollama'
-             : selectedModel.startsWith('lmstudio/') ? 'lmstudio' : null;
+  const { provider: prov, name } = parseModelId(selectedModel);
   const meta = modelMetadata[selectedModel] || {};
   const isLoaded = runningModels.some(r => r === selectedModel || r === `ollama/${name}` || r.includes(name));
 
@@ -685,7 +691,7 @@ async function streamAssistantReply(conv) {
   let speedInterval = null;
 
   // Show model loading banner if model not loaded yet
-  const modelName = selectedModel?.replace(/^(ollama|lmstudio)\//, '') || '';
+  const modelName = parseModelId(selectedModel).name || '';
   const modelIsLoaded = runningModels.some(r => r === selectedModel || r.includes(modelName));
   if (!modelIsLoaded && selectedModel?.startsWith('ollama/')) {
     showModelLoadingBanner(modelName);
@@ -979,7 +985,7 @@ function appendUserBubble(idx, text, imgs = []) {
 function buildAssistantWrap(idx, content, stopped = false) {
   const wrap = document.createElement('div');
   wrap.className = 'msg-wrap';
-  const name = selectedModel?.replace(/^(ollama|lmstudio)\//, '') || '';
+  const name = parseModelId(selectedModel).name || '';
 
   // Parse plan blocks from content
   const parsed = parsePlanFromText(content || '');
@@ -1019,7 +1025,7 @@ function createAssistantWrap() {
   const container = document.getElementById('messages');
   const wrap = document.createElement('div');
   wrap.className = 'msg-wrap';
-  const name = selectedModel?.replace(/^(ollama|lmstudio)\//, '') || '';
+  const name = parseModelId(selectedModel).name || '';
   wrap.innerHTML = `
     <div class="msg assistant">
       <div class="avatar">🤖</div>
@@ -1497,6 +1503,24 @@ async function saveApiKeys() {
     count ? `Saved ${count} key(s). Refreshing models…` : 'All keys cleared.';
   closeModal('config-modal');
   await Promise.all([checkHealth(), loadModels()]);
+  // Clear any selected model that no longer exists after provider change
+  const available = new Set(availableModels.map(m => m.id));
+  if (selectedModel && !available.has(selectedModel)) {
+    selectedModel = null;
+    document.getElementById('model-select').value = '';
+    updateModelHeader();
+    updateModelInfoCard();
+    document.getElementById('send-btn').disabled = true;
+  }
+  if (compareModelA && !available.has(compareModelA)) {
+    compareModelA = null;
+    document.getElementById('compare-model-a').value = '';
+  }
+  if (compareModelB && !available.has(compareModelB)) {
+    compareModelB = null;
+    document.getElementById('compare-model-b').value = '';
+  }
+  updateCompareSendState();
   toast(`API keys saved — ${count} provider(s) configured`, 'success');
 }
 

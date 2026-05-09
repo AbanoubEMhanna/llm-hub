@@ -778,22 +778,11 @@ const registry = new ToolRegistry();
 
 const CLOUD_PROVIDERS = {
   openai:     { hostname: 'api.openai.com',   modelsPath: '/v1/models',          chatPath: '/v1/chat/completions',        keyProp: 'openai' },
-  anthropic:  { hostname: 'api.anthropic.com', modelsPath: null,                  chatPath: '/v1/messages',               keyProp: 'anthropic' },
+  anthropic:  { hostname: 'api.anthropic.com', modelsPath: '/v1/models',          chatPath: '/v1/messages',               keyProp: 'anthropic' },
   groq:       { hostname: 'api.groq.com',     modelsPath: '/openai/v1/models',   chatPath: '/openai/v1/chat/completions', keyProp: 'groq' },
   openrouter: { hostname: 'openrouter.ai',    modelsPath: '/api/v1/models',      chatPath: '/api/v1/chat/completions',    keyProp: 'openrouter' },
 };
 
-const ANTHROPIC_MODELS = [
-  { id: 'claude-opus-4-5',                context_length: 200000 },
-  { id: 'claude-sonnet-4-5',              context_length: 200000 },
-  { id: 'claude-haiku-4-5-20251001',      context_length: 200000 },
-  { id: 'claude-opus-4-7',                context_length: 200000 },
-  { id: 'claude-sonnet-4-6',              context_length: 200000 },
-  { id: 'claude-3-5-sonnet-20241022',     context_length: 200000 },
-  { id: 'claude-3-5-haiku-20241022',      context_length: 200000 },
-  { id: 'claude-3-opus-20240229',         context_length: 200000 },
-  { id: 'claude-3-haiku-20240307',        context_length: 200000 },
-];
 
 function convertToAnthropicMessages(messages) {
   let system = '';
@@ -932,23 +921,16 @@ async function fetchAllModels(apiKeys = {}) {
       for (const m of r.data.data) {
         const id = `${name}/${m.id}`;
         modelRegistry.set(id, name);
-        all.push({ id, object: 'model', owned_by: name, created: m.created || Date.now(), context_length: m.context_length || null });
+        all.push({
+          id, object: 'model', owned_by: name, created: m.created || Date.now(),
+          context_length: m.context_length || m.max_input_tokens || null,
+        });
       }
       console.log(`[Models] ${name}: ${r.data.data.length} model(s)`);
     } else if (result.status === 'fulfilled') {
       console.warn(`[Models] ${name}: HTTP ${r.status}`);
     }
   });
-
-  // Anthropic: hardcoded model list (no public /v1/models endpoint)
-  if (apiKeys.anthropic) {
-    for (const m of ANTHROPIC_MODELS) {
-      const id = `anthropic/${m.id}`;
-      modelRegistry.set(id, 'anthropic');
-      all.push({ id, object: 'model', owned_by: 'anthropic', created: Date.now(), context_length: m.context_length });
-    }
-    console.log(`[Models] anthropic: ${ANTHROPIC_MODELS.length} model(s) (hardcoded list)`);
-  }
 
   // === STEP 3: Enrich Ollama models with metadata (in background, non-blocking) ===
   // This runs AFTER both model lists are already returned to the UI
@@ -1290,7 +1272,7 @@ function setCORS(res) {
   // The server binds to localhost by default (see HOST env var).
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Api-Keys');
 }
 function sendJSON(res, status, data) {
   setCORS(res);
