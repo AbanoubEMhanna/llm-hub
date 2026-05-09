@@ -97,7 +97,7 @@
 - [ ] Font size and chat density preferences (Compact / Comfortable / Spacious)
 - [ ] Animated page transitions and micro-interactions
 - [x] **Full-screen focus mode** — hide all sidebars, center content (⌘⇧F)
-- [ ] Collapsible long messages (auto-collapse messages > N lines)
+- [x] Collapsible long messages (auto-collapse messages > ~22 lines)
 - [ ] Custom welcome screen with quick-action card configuration
 - [ ] Inline message diff view for edited messages
 - [ ] Skeleton loading states instead of spinners

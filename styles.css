@@ -362,6 +362,39 @@ input[type=range]::-webkit-slider-thumb {
 }
 .msg.user .bubble code { background: rgba(255,255,255,.15); color: #fff; }
 
+/* Collapsible long messages */
+.bubble.collapsed {
+  max-height: 500px;
+  overflow: hidden;
+  position: relative;
+}
+.bubble.collapsed::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 80px;
+  background: linear-gradient(transparent, var(--s2));
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  pointer-events: none;
+}
+.msg.user .bubble.collapsed::after {
+  background: linear-gradient(transparent, var(--accent));
+}
+.msg-collapse-btn {
+  display: inline-block;
+  margin-top: 6px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.msg-collapse-btn:hover { background: var(--s3); border-color: var(--border2); }
+
 .msg-meta {
   font-family: var(--mono); font-size: 10px; color: var(--muted);
   margin-top: 4px; display: flex; gap: 10px; align-items: center;

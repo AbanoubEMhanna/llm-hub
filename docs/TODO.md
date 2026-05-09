@@ -98,7 +98,7 @@
 - 🔥 **Command palette** (⌘P) — fuzzy search across all actions and conversations
 - 🔥 **Fully responsive mobile layout** — hamburger sidebar, touch-friendly
 - ✅ Full-screen focus mode — hide all sidebars, center content (⌘⇧F)
-- 🔥 **Collapsible long messages** — auto-collapse messages > N lines with "Show more"
+- ✅ Collapsible long messages — auto-collapse messages > ~22 lines with "Show more / Show less"
 - 🔲 Customizable accent color (color picker in settings)
 - 🔲 Font size and chat density preferences (Compact / Comfortable / Spacious)
 - 🔲 Animated page transitions and micro-interactions
