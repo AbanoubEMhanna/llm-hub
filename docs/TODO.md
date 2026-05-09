@@ -59,7 +59,7 @@
 - ✅ Conversation pinning
 - ✅ Auto-title from first message
 - ✅ Chat fuzzy search (⌘K)
-- 🔥 **Conversation title rename** — double-click to edit inline
+- ✅ Conversation title rename — double-click to edit inline
 - 🔥 **Conversation folders** / tag-based organization
 - 🔥 **Conversation branching** — fork from any message
 - 🔲 Import conversations from JSON / ChatGPT export
@@ -97,7 +97,7 @@
 - ✅ Sampling presets — Precise / Balanced / Creative one-click buttons
 - 🔥 **Command palette** (⌘P) — fuzzy search across all actions and conversations
 - 🔥 **Fully responsive mobile layout** — hamburger sidebar, touch-friendly
-- 🔥 **Full-screen focus mode** — hide all sidebars, center content
+- ✅ Full-screen focus mode — hide all sidebars, center content (⌘⇧F)
 - 🔥 **Collapsible long messages** — auto-collapse messages > N lines with "Show more"
 - 🔲 Customizable accent color (color picker in settings)
 - 🔲 Font size and chat density preferences (Compact / Comfortable / Spacious)
@@ -174,7 +174,7 @@
 - ✅ Prompt templates with variable substitution
 - ✅ Plan mode (think step-by-step prefix)
 - ✅ Sampling presets: Precise / Balanced / Creative
-- 🔥 **Advanced parameters** — Top-P, Top-K, Repeat penalty, Frequency penalty
+- ✅ Advanced parameters — Top-P, Top-K, Repeat penalty, Frequency penalty
 - 🔥 **Per-model parameter profiles** — save temperature + max tokens per model
 - 🔥 **Structured output mode** — force JSON schema response (JSON mode)
 - 🔲 Context length override per conversation
@@ -204,7 +204,7 @@
 - ✅ Generation stats (total tokens, elapsed time)
 - ✅ System RAM usage bar
 - ✅ Context usage indicator (warns at >75%)
-- 🔥 **Real-time tokens/sec counter** — live speed display during generation
+- ✅ Real-time tokens/sec counter — live speed display during generation
 - 🔥 **GPU / VRAM usage monitoring** — Ollama VRAM via API
 - 🔲 Response latency histogram (per-model statistics panel)
 - 🔲 Session token usage totals (prompt + completion)
@@ -272,7 +272,7 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ Done | ~45 |
-| 🔥 High priority | ~35 |
+| ✅ Done | ~49 |
+| 🔥 High priority | ~31 |
 | 🔲 Backlog | ~30 |
 | **Total** | **~110** |

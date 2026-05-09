@@ -57,7 +57,7 @@
 - [x] Conversation pinning
 - [x] Auto-title from first message
 - [x] Chat fuzzy search (⌘K)
-- [ ] **Conversation title rename** on double-click
+- [x] **Conversation title rename** on double-click
 - [ ] **Conversation folders** / tag-based organization
 - [ ] **Conversation branching** — fork from any message
 - [ ] Import conversations from JSON / ChatGPT export
@@ -200,7 +200,7 @@
 - [x] Generation stats (total tokens, elapsed time)
 - [x] System RAM usage bar
 - [x] Context usage indicator (warns at >75%)
-- [ ] **Real-time tokens/sec counter** during generation
+- [x] **Real-time tokens/sec counter** during generation
 - [ ] **GPU / VRAM usage monitoring** (Ollama VRAM via API)
 - [ ] Response latency histogram (per-model statistics panel)
 - [ ] Session token usage totals (prompt + completion)
