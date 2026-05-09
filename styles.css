@@ -91,13 +91,13 @@ body {
 .status-dot.online .dot {
   background: var(--green);
   box-shadow: 0 0 6px color-mix(in srgb, var(--green) 60%, transparent);
-  animation: dotPulse 2s ease-in-out infinite;
+  animation: dot-pulse 2s ease-in-out infinite;
 }
 .status-dot.offline .dot { background: var(--border2); }
 .status-dot.no-key .dot { background: var(--border); opacity: .5; }
 .cloud-dot { cursor: pointer; }
 .cloud-dot:hover span { color: var(--text); }
-@keyframes dotPulse {
+@keyframes dot-pulse {
   0%, 100% { opacity: 1; box-shadow: 0 0 6px color-mix(in srgb, var(--green) 60%, transparent); }
   50%      { opacity: .7; box-shadow: 0 0 2px color-mix(in srgb, var(--green) 30%, transparent); }
 }
