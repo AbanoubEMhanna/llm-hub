@@ -124,6 +124,29 @@ function httpsGet(hostname, pathStr, headers = {}, timeout = 8000) {
   });
 }
 
+function httpsPost(hostname, pathStr, body, headers = {}, timeout = 60000) {
+  return new Promise((resolve) => {
+    const data = JSON.stringify(body);
+    const req = https.request(
+      { hostname, path: pathStr, method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data), ...headers },
+        timeout },
+      (res) => {
+        let buf = '';
+        res.on('data', (c) => (buf += c));
+        res.on('end', () => {
+          try { resolve({ status: res.statusCode, data: JSON.parse(buf) }); }
+          catch { resolve({ status: res.statusCode, data: { error: { message: buf.slice(0, 500) } } }); }
+        });
+      }
+    );
+    req.on('error',   (e) => resolve({ status: 0, data: { error: { message: e.message } } }));
+    req.on('timeout', () => { req.destroy(); resolve({ status: 0, data: { error: { message: 'timeout' } } }); });
+    req.write(data);
+    req.end();
+  });
+}
+
 function streamHTTPS(hostname, pathStr, body, headers, { onChunk, onDone, onError, signal }) {
   const data = JSON.stringify({ ...body, stream: true });
   const req = https.request(
@@ -824,6 +847,33 @@ function convertToAnthropicMessages(messages) {
   return { system: system || undefined, messages: converted };
 }
 
+function convertAnthropicResponseToOpenAI(resp, modelId) {
+  const blocks = Array.isArray(resp?.content) ? resp.content : [];
+  const text = blocks.filter(b => b.type === 'text').map(b => b.text).join('');
+  const toolCalls = blocks.filter(b => b.type === 'tool_use').map((b, i) => ({
+    index: i,
+    id:    b.id,
+    type:  'function',
+    function: { name: b.name, arguments: JSON.stringify(b.input || {}) },
+  }));
+  const finish = resp?.stop_reason === 'tool_use' ? 'tool_calls'
+               : resp?.stop_reason === 'max_tokens' ? 'length' : 'stop';
+  const message = { role: 'assistant', content: text || null };
+  if (toolCalls.length) message.tool_calls = toolCalls;
+  return {
+    id:      resp?.id || `chatcmpl-${Date.now()}`,
+    object:  'chat.completion',
+    created: Math.floor(Date.now() / 1000),
+    model:   modelId,
+    choices: [{ index: 0, message, finish_reason: finish }],
+    usage: {
+      prompt_tokens:     resp?.usage?.input_tokens  || 0,
+      completion_tokens: resp?.usage?.output_tokens || 0,
+      total_tokens:     (resp?.usage?.input_tokens  || 0) + (resp?.usage?.output_tokens || 0),
+    },
+  };
+}
+
 function buildCloudHeaders(provider, apiKey) {
   if (provider === 'anthropic') {
     return { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'tools-2024-04-04' };
@@ -1389,15 +1439,54 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // ── PASSTHROUGH
+    // ── PASSTHROUGH (non-streaming OpenAI-compatible passthrough)
     if (req.method === 'POST' && url.pathname === '/v1/chat/completions') {
+      const apiKeys = getApiKeys(req);
       const body = await readBody(req);
       const { model } = body;
-      if (!resolveProvider(model)) await fetchAllModels();
+      if (!resolveProvider(model)) await fetchAllModels(apiKeys);
       const provider = resolveProvider(model);
       if (!provider) { sendJSON(res, 404, { error: { message: `Model "${model}" not found` } }); return; }
+
+      // Strip stream:true — passthrough is non-streaming. Streaming clients should use /v1/chat.
+      const { stream: _stream, ...rest } = body;
+      const upstreamBody = { ...rest, model: stripPrefix(model) };
+
+      if (provider in CLOUD_PROVIDERS) {
+        const cfg = CLOUD_PROVIDERS[provider];
+        const apiKey = apiKeys[cfg.keyProp];
+        if (!apiKey) {
+          sendJSON(res, 401, { error: { message: `No API key for ${provider}. Add it in Settings → API Keys.` } });
+          return;
+        }
+        const headers = buildCloudHeaders(provider, apiKey);
+
+        if (provider === 'anthropic') {
+          const { system, messages: anthropicMsgs } = convertToAnthropicMessages(upstreamBody.messages || []);
+          const anthBody = { model: upstreamBody.model, messages: anthropicMsgs, max_tokens: upstreamBody.max_tokens ?? 2048 };
+          if (system)                          anthBody.system      = system;
+          if (upstreamBody.temperature != null) anthBody.temperature = upstreamBody.temperature;
+          if (upstreamBody.top_p       != null) anthBody.top_p       = upstreamBody.top_p;
+          if (Array.isArray(upstreamBody.tools) && upstreamBody.tools.length) {
+            anthBody.tools = upstreamBody.tools.map(t => ({
+              name: t.function.name,
+              description: t.function.description,
+              input_schema: t.function.parameters,
+            }));
+          }
+          const r = await httpsPost(cfg.hostname, cfg.chatPath, anthBody, headers);
+          if (r.status >= 400 || !r.data) { sendJSON(res, r.status || 502, r.data || { error: { message: 'upstream error' } }); return; }
+          sendJSON(res, 200, convertAnthropicResponseToOpenAI(r.data, model));
+          return;
+        }
+
+        const r = await httpsPost(cfg.hostname, cfg.chatPath, upstreamBody, headers);
+        sendJSON(res, r.status || 502, r.data);
+        return;
+      }
+
       const cfg = CONFIG.providers[provider];
-      const result = await httpPost(cfg.host, cfg.port, '/v1/chat/completions', { ...body, model: stripPrefix(model) });
+      const result = await httpPost(cfg.host, cfg.port, '/v1/chat/completions', upstreamBody);
       sendJSON(res, result.status, result.data);
       return;
     }
