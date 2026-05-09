@@ -16,6 +16,16 @@ let userPresets    = JSON.parse(localStorage.getItem('llm-presets')   || '{}');
 let templates      = JSON.parse(localStorage.getItem('llm-templates') || 'null') || defaultTemplates();
 let userSettings   = JSON.parse(localStorage.getItem('llm-settings')  || '{"theme":"dark"}');
 
+// ── API key helpers (stored in localStorage, sent to proxy via header only)
+function getStoredApiKeys() {
+  try { return JSON.parse(localStorage.getItem('llm-api-keys') || '{}'); } catch { return {}; }
+}
+function apiKeyHeader() {
+  const keys = getStoredApiKeys();
+  if (!Object.keys(keys).length) return {};
+  return { 'X-Api-Keys': JSON.stringify(keys) };
+}
+
 let currentConvId        = null;
 let selectedModel        = null;
 let availableModels      = [];
@@ -130,10 +140,14 @@ async function init() {
 
 async function checkHealth() {
   try {
-    const res  = await fetch(`${PROXY}/health`);
+    const res  = await fetch(`${PROXY}/health`, { headers: apiKeyHeader() });
     const data = await res.json();
     setStatus('b-ollama',   data.providers?.ollama   === 'online');
     setStatus('b-lmstudio', data.providers?.lmstudio === 'online');
+    setCloudStatus('b-openai',     data.providers?.openai);
+    setCloudStatus('b-anthropic',  data.providers?.anthropic);
+    setCloudStatus('b-groq',       data.providers?.groq);
+    setCloudStatus('b-openrouter', data.providers?.openrouter);
     document.getElementById('proxy-alert').style.display = 'none';
   } catch {
     document.getElementById('proxy-alert').style.display = 'block';
@@ -143,10 +157,18 @@ function setStatus(id, online) {
   const el = document.getElementById(id);
   if (el) el.className = `status-dot ${online ? 'online' : 'offline'}`;
 }
+function setCloudStatus(id, status) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const cls = status === 'online' ? 'online' : status === 'offline' ? 'offline' : 'no-key';
+  el.className = `status-dot cloud-dot ${cls}`;
+  const hint = status === 'no-key' ? 'Add API key in Settings' : status === 'online' ? 'Connected' : 'Key invalid or offline';
+  el.title = `${el.querySelector('span')?.textContent || ''} — ${hint}`;
+}
 
 async function loadModels() {
   try {
-    const res  = await fetch(`${PROXY}/v1/models`);
+    const res  = await fetch(`${PROXY}/v1/models`, { headers: apiKeyHeader() });
     const data = await res.json();
     availableModels = data.data || [];
 
@@ -186,6 +208,23 @@ async function checkRunningModels() {
   }
 }
 
+const MODEL_ID_PREFIX_RE = /^(ollama|lmstudio|openai|anthropic|groq|openrouter)\//;
+
+function parseModelId(modelId) {
+  const provider = modelId?.split('/')[0] || null;
+  const name     = (modelId || '').replace(MODEL_ID_PREFIX_RE, '');
+  return { provider, name };
+}
+
+const PROVIDER_LABELS = {
+  ollama:     '🟠 Ollama',
+  lmstudio:   '🟣 LM Studio',
+  openai:     '🟢 OpenAI',
+  anthropic:  '🟡 Anthropic',
+  groq:       '🔵 Groq',
+  openrouter: '🔴 OpenRouter',
+};
+
 function fillModelSelect(sel) {
   if (!sel) return;
   sel.innerHTML = '<option value="">— select model —</option>';
@@ -193,13 +232,16 @@ function fillModelSelect(sel) {
   for (const m of availableModels) {
     (groups[m.owned_by] = groups[m.owned_by] || []).push(m);
   }
-  for (const [p, models] of Object.entries(groups)) {
+  const ORDER = ['ollama', 'lmstudio', 'openai', 'anthropic', 'groq', 'openrouter'];
+  const sorted = ORDER.filter(p => groups[p]).concat(Object.keys(groups).filter(p => !ORDER.includes(p)));
+  for (const p of sorted) {
+    const models = groups[p];
     const og = document.createElement('optgroup');
-    og.label = p === 'ollama' ? '🟠 Ollama' : '🟣 LM Studio';
+    og.label = PROVIDER_LABELS[p] || p;
     for (const m of models) {
       const o = document.createElement('option');
       o.value = m.id;
-      const name = m.id.replace(/^(ollama|lmstudio)\//, '');
+      const name = m.id.replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter)\//, '');
       const meta = modelMetadata[m.id] || {};
       const parts = [name];
       if (meta.parameter_size) parts.push(`(${meta.parameter_size})`);
@@ -251,9 +293,7 @@ function updateModelHeader() {
     tag.innerHTML = '<span style="color:var(--muted);font-family:var(--mono);font-size:12px">No model selected</span>';
     return;
   }
-  const name = selectedModel.replace(/^(ollama|lmstudio)\//, '');
-  const prov = selectedModel.startsWith('ollama/') ? 'ollama'
-             : selectedModel.startsWith('lmstudio/') ? 'lmstudio' : null;
+  const { provider: prov, name } = parseModelId(selectedModel);
   const meta = modelMetadata[selectedModel] || {};
   const isLoaded = runningModels.some(r => r === selectedModel || r === `ollama/${name}` || r.includes(name));
 
@@ -651,7 +691,7 @@ async function streamAssistantReply(conv) {
   let speedInterval = null;
 
   // Show model loading banner if model not loaded yet
-  const modelName = selectedModel?.replace(/^(ollama|lmstudio)\//, '') || '';
+  const modelName = parseModelId(selectedModel).name || '';
   const modelIsLoaded = runningModels.some(r => r === selectedModel || r.includes(modelName));
   if (!modelIsLoaded && selectedModel?.startsWith('ollama/')) {
     showModelLoadingBanner(modelName);
@@ -669,7 +709,7 @@ async function streamAssistantReply(conv) {
   try {
     const res = await fetch(`${PROXY}/v1/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...apiKeyHeader() },
       body: JSON.stringify({
         model: selectedModel, messages: apiMsgs,
         temperature: temp, max_tokens: maxTok, use_tools: useTools,
@@ -945,7 +985,7 @@ function appendUserBubble(idx, text, imgs = []) {
 function buildAssistantWrap(idx, content, stopped = false) {
   const wrap = document.createElement('div');
   wrap.className = 'msg-wrap';
-  const name = selectedModel?.replace(/^(ollama|lmstudio)\//, '') || '';
+  const name = parseModelId(selectedModel).name || '';
 
   // Parse plan blocks from content
   const parsed = parsePlanFromText(content || '');
@@ -985,7 +1025,7 @@ function createAssistantWrap() {
   const container = document.getElementById('messages');
   const wrap = document.createElement('div');
   wrap.className = 'msg-wrap';
-  const name = selectedModel?.replace(/^(ollama|lmstudio)\//, '') || '';
+  const name = parseModelId(selectedModel).name || '';
   wrap.innerHTML = `
     <div class="msg assistant">
       <div class="avatar">🤖</div>
@@ -1082,7 +1122,15 @@ function renderMarkdown(text) {
     return escHtml(text).replace(/\n/g, '<br/>');
   }
 
-  // Post-process via DOMParser (safe — marked already escapes dangerous content)
+  // Sanitize: marked v11 does not strip raw HTML. Without this, model output like
+  // <img src=x onerror=...> would execute on innerHTML assignment and could
+  // exfiltrate localStorage['llm-api-keys'].
+  if (typeof DOMPurify !== 'undefined') {
+    html = DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
+  } else {
+    return escHtml(text).replace(/\n/g, '<br/>');
+  }
+
   const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
   const wrap = doc.body.firstChild;
 
@@ -1412,6 +1460,7 @@ function runTemplate() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function openConfigEditor() {
+  switchSettingsTab('config');
   try {
     const res  = await fetch(`${PROXY}/v1/config`);
     const data = await res.json();
@@ -1421,6 +1470,75 @@ async function openConfigEditor() {
   } catch (e) {
     toast('Failed to load config: ' + e.message, 'error');
   }
+}
+
+function openApiKeySettings() {
+  switchSettingsTab('apikeys');
+  const keys = getStoredApiKeys();
+  ['openai', 'anthropic', 'groq', 'openrouter'].forEach(p => {
+    const el = document.getElementById(`key-${p}`);
+    if (el) el.value = keys[p] || '';
+  });
+  document.getElementById('apikey-status').textContent = '';
+  openModal('config-modal');
+}
+
+function switchSettingsTab(tab) {
+  ['config', 'apikeys'].forEach(t => {
+    document.getElementById(`settings-panel-${t}`).style.display = t === tab ? '' : 'none';
+    document.getElementById(`settings-footer-${t}`).style.display = t === tab ? '' : 'none';
+    const btn = document.getElementById(`tab-${t}`);
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+}
+
+function toggleKeyVisibility(inputId, btn) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  el.type = el.type === 'password' ? 'text' : 'password';
+  if (btn) btn.textContent = el.type === 'password' ? 'Show' : 'Hide';
+}
+
+async function saveApiKeys() {
+  const keys = {};
+  ['openai', 'anthropic', 'groq', 'openrouter'].forEach(p => {
+    const v = (document.getElementById(`key-${p}`)?.value || '').trim();
+    if (v) keys[p] = v;
+  });
+  localStorage.setItem('llm-api-keys', JSON.stringify(keys));
+  const count = Object.keys(keys).length;
+  document.getElementById('apikey-status').textContent =
+    count ? `Saved ${count} key(s). Refreshing models…` : 'All keys cleared.';
+  closeModal('config-modal');
+  await Promise.all([checkHealth(), loadModels()]);
+  // Clear any selected model that no longer exists after provider change
+  const available = new Set(availableModels.map(m => m.id));
+  if (selectedModel && !available.has(selectedModel)) {
+    selectedModel = null;
+    document.getElementById('model-select').value = '';
+    updateModelHeader();
+    updateModelInfoCard();
+    document.getElementById('send-btn').disabled = true;
+  }
+  if (compareModelA && !available.has(compareModelA)) {
+    compareModelA = null;
+    document.getElementById('compare-model-a').value = '';
+  }
+  if (compareModelB && !available.has(compareModelB)) {
+    compareModelB = null;
+    document.getElementById('compare-model-b').value = '';
+  }
+  updateCompareSendState();
+  toast(`API keys saved — ${count} provider(s) configured`, 'success');
+}
+
+function clearAllApiKeys() {
+  localStorage.removeItem('llm-api-keys');
+  ['openai', 'anthropic', 'groq', 'openrouter'].forEach(p => {
+    const el = document.getElementById(`key-${p}`);
+    if (el) el.value = '';
+  });
+  document.getElementById('apikey-status').textContent = 'All keys cleared.';
 }
 
 async function saveConfig() {
@@ -1776,7 +1894,7 @@ async function sendCompare() {
     try {
       const res = await fetch(`${PROXY}/v1/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...apiKeyHeader() },
         body: JSON.stringify({
           model, messages: apiMsgs,
           temperature: parseFloat(document.getElementById('temp-slider').value),

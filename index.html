@@ -9,6 +9,8 @@
 <link rel="stylesheet" href="styles.css"/>
 <!-- Markdown renderer -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
+<!-- HTML sanitizer (XSS protection for rendered markdown) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
 <!-- Prism.js for syntax highlighting -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
@@ -38,6 +40,10 @@
     <div class="status-dots">
       <div class="status-dot" id="b-ollama" title="Ollama"><div class="dot"></div><span>Ollama</span></div>
       <div class="status-dot" id="b-lmstudio" title="LM Studio"><div class="dot"></div><span>LM Studio</span></div>
+      <div class="status-dot cloud-dot" id="b-openai" title="OpenAI — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>OpenAI</span></div>
+      <div class="status-dot cloud-dot" id="b-anthropic" title="Anthropic — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>Anthropic</span></div>
+      <div class="status-dot cloud-dot" id="b-groq" title="Groq — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>Groq</span></div>
+      <div class="status-dot cloud-dot" id="b-openrouter" title="OpenRouter — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>OpenRouter</span></div>
     </div>
   </div>
 
@@ -487,14 +493,68 @@
       <div class="modal-title">Settings</div>
       <button class="icon-btn" onclick="closeModal('config-modal')">×</button>
     </div>
-    <div class="modal-body">
+    <div class="settings-tabs">
+      <button class="settings-tab active" id="tab-config" onclick="switchSettingsTab('config')">Config JSON</button>
+      <button class="settings-tab" id="tab-apikeys" onclick="switchSettingsTab('apikeys')">API Keys</button>
+    </div>
+
+    <!-- Tab: Config JSON -->
+    <div class="modal-body" id="settings-panel-config">
       <label>config.json — MCP servers reload on save</label>
       <textarea class="config-json" id="config-editor"></textarea>
       <div id="config-error" style="color:var(--red);font-family:var(--mono);font-size:11px;margin-top:6px"></div>
     </div>
-    <div class="modal-footer">
+    <div class="modal-footer" id="settings-footer-config">
       <button class="btn" onclick="closeModal('config-modal')">Cancel</button>
       <button class="btn primary" onclick="saveConfig()">Save & Reload</button>
+    </div>
+
+    <!-- Tab: API Keys -->
+    <div class="modal-body" id="settings-panel-apikeys" style="display:none">
+      <p style="color:var(--muted);font-size:12px;margin-bottom:16px">
+        Keys are stored in your browser's localStorage — never written to disk or sent anywhere except the provider's own API over HTTPS.
+        Cloud models appear in the model selector once a valid key is saved.
+      </p>
+      <div class="api-key-fields">
+        <div class="api-key-row">
+          <label class="api-key-label">
+            <span class="provider-badge openai-badge">OpenAI</span>
+            <span class="provider-hint">gpt-4o, gpt-4.1, o1, o3…</span>
+          </label>
+          <input class="api-key-input" id="key-openai" type="password" placeholder="sk-…" autocomplete="off"/>
+          <button class="btn btn-sm" onclick="toggleKeyVisibility('key-openai', this)">Show</button>
+        </div>
+        <div class="api-key-row">
+          <label class="api-key-label">
+            <span class="provider-badge anthropic-badge">Anthropic</span>
+            <span class="provider-hint">claude-3-5-sonnet, claude-opus-4…</span>
+          </label>
+          <input class="api-key-input" id="key-anthropic" type="password" placeholder="sk-ant-…" autocomplete="off"/>
+          <button class="btn btn-sm" onclick="toggleKeyVisibility('key-anthropic', this)">Show</button>
+        </div>
+        <div class="api-key-row">
+          <label class="api-key-label">
+            <span class="provider-badge groq-badge">Groq</span>
+            <span class="provider-hint">llama-3.3-70b, deepseek-r1…</span>
+          </label>
+          <input class="api-key-input" id="key-groq" type="password" placeholder="gsk_…" autocomplete="off"/>
+          <button class="btn btn-sm" onclick="toggleKeyVisibility('key-groq', this)">Show</button>
+        </div>
+        <div class="api-key-row">
+          <label class="api-key-label">
+            <span class="provider-badge openrouter-badge">OpenRouter</span>
+            <span class="provider-hint">200+ models via one key</span>
+          </label>
+          <input class="api-key-input" id="key-openrouter" type="password" placeholder="sk-or-…" autocomplete="off"/>
+          <button class="btn btn-sm" onclick="toggleKeyVisibility('key-openrouter', this)">Show</button>
+        </div>
+      </div>
+      <div id="apikey-status" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
+    </div>
+    <div class="modal-footer" id="settings-footer-apikeys" style="display:none">
+      <button class="btn" onclick="clearAllApiKeys()">Clear All</button>
+      <button class="btn" onclick="closeModal('config-modal')">Cancel</button>
+      <button class="btn primary" onclick="saveApiKeys()">Save Keys &amp; Refresh Models</button>
     </div>
   </div>
 </div>

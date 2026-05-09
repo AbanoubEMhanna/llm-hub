@@ -105,6 +105,140 @@ function httpGet(host, port, pathStr, timeout = 5000) {
   });
 }
 
+function httpsGet(hostname, pathStr, headers = {}, timeout = 8000) {
+  return new Promise((resolve) => {
+    const req = https.request(
+      { hostname, path: pathStr, method: 'GET', headers, timeout },
+      (res) => {
+        let buf = '';
+        res.on('data', (c) => (buf += c));
+        res.on('end', () => {
+          try { resolve({ ok: res.statusCode < 400, status: res.statusCode, data: JSON.parse(buf) }); }
+          catch { resolve({ ok: res.statusCode < 400, status: res.statusCode, data: null }); }
+        });
+      }
+    );
+    req.on('error', () => resolve({ ok: false, status: 0, data: null }));
+    req.on('timeout', () => { req.destroy(); resolve({ ok: false, status: 0, data: null }); });
+    req.end();
+  });
+}
+
+function httpsPost(hostname, pathStr, body, headers = {}, timeout = 60000) {
+  return new Promise((resolve) => {
+    const data = JSON.stringify(body);
+    const req = https.request(
+      { hostname, path: pathStr, method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data), ...headers },
+        timeout },
+      (res) => {
+        let buf = '';
+        res.on('data', (c) => (buf += c));
+        res.on('end', () => {
+          try { resolve({ status: res.statusCode, data: JSON.parse(buf) }); }
+          catch { resolve({ status: res.statusCode, data: { error: { message: buf.slice(0, 500) } } }); }
+        });
+      }
+    );
+    req.on('error',   (e) => resolve({ status: 0, data: { error: { message: e.message } } }));
+    req.on('timeout', () => { req.destroy(); resolve({ status: 0, data: { error: { message: 'timeout' } } }); });
+    req.write(data);
+    req.end();
+  });
+}
+
+function streamHTTPS(hostname, pathStr, body, headers, { onChunk, onDone, onError, signal }) {
+  const data = JSON.stringify({ ...body, stream: true });
+  const req = https.request(
+    { hostname, path: pathStr, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data), ...headers } },
+    (res) => {
+      if (res.statusCode >= 400) {
+        let buf = '';
+        res.on('data', c => (buf += c));
+        res.on('end', () => onError(`HTTP ${res.statusCode}: ${buf.slice(0, 300)}`));
+        return;
+      }
+      let buffer = '';
+      res.on('data', (chunk) => {
+        if (signal?.aborted) { try { req.destroy(); } catch {} return; }
+        buffer += chunk.toString();
+        let idx;
+        while ((idx = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, idx).trim();
+          buffer = buffer.slice(idx + 1);
+          if (!line.startsWith('data:')) continue;
+          const payload = line.slice(5).trim();
+          if (!payload || payload === '[DONE]') continue;
+          try { onChunk(JSON.parse(payload)); } catch {}
+        }
+      });
+      res.on('end',   () => onDone());
+      res.on('error', (e) => onError(e.message));
+    }
+  );
+  req.on('error', (e) => onError(e.message));
+  if (signal) signal.onAbort = () => { try { req.destroy(); } catch {} };
+  req.write(data);
+  req.end();
+  return req;
+}
+
+// Anthropic SSE → OpenAI-compatible chunk converter
+function streamAnthropic(hostname, pathStr, body, headers, { onChunk, onDone, onError, signal }) {
+  const data = JSON.stringify({ ...body, stream: true });
+  const req = https.request(
+    { hostname, path: pathStr, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data), ...headers } },
+    (res) => {
+      if (res.statusCode >= 400) {
+        let buf = '';
+        res.on('data', c => (buf += c));
+        res.on('end', () => onError(`HTTP ${res.statusCode}: ${buf.slice(0, 300)}`));
+        return;
+      }
+      let buffer = '';
+      const toolUseBlocks = {};
+      res.on('data', (chunk) => {
+        if (signal?.aborted) { try { req.destroy(); } catch {} return; }
+        buffer += chunk.toString();
+        let idx;
+        while ((idx = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, idx).trim();
+          buffer = buffer.slice(idx + 1);
+          if (!line.startsWith('data:')) continue;
+          const payload = line.slice(5).trim();
+          if (!payload) continue;
+          try {
+            const evt = JSON.parse(payload);
+            if (evt.type === 'content_block_delta') {
+              if (evt.delta?.type === 'text_delta') {
+                onChunk({ choices: [{ index: 0, delta: { content: evt.delta.text }, finish_reason: null }] });
+              } else if (evt.delta?.type === 'input_json_delta') {
+                onChunk({ choices: [{ index: 0, delta: { tool_calls: [{ index: evt.index, function: { arguments: evt.delta.partial_json } }] }, finish_reason: null }] });
+              }
+            } else if (evt.type === 'content_block_start' && evt.content_block?.type === 'tool_use') {
+              toolUseBlocks[evt.index] = evt.content_block;
+              onChunk({ choices: [{ index: 0, delta: { tool_calls: [{ index: evt.index, id: evt.content_block.id, type: 'function', function: { name: evt.content_block.name, arguments: '' } }] }, finish_reason: null }] });
+            } else if (evt.type === 'message_delta' && evt.usage) {
+              onChunk({ usage: { prompt_tokens: 0, completion_tokens: evt.usage.output_tokens || 0 } });
+            } else if (evt.type === 'message_start' && evt.message?.usage) {
+              onChunk({ usage: { prompt_tokens: evt.message.usage.input_tokens || 0, completion_tokens: 0 } });
+            }
+          } catch {}
+        }
+      });
+      res.on('end',   () => onDone());
+      res.on('error', (e) => onError(e.message));
+    }
+  );
+  req.on('error', (e) => onError(e.message));
+  if (signal) signal.onAbort = () => { try { req.destroy(); } catch {} };
+  req.write(data);
+  req.end();
+  return req;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // § RAG ENGINE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -665,24 +799,132 @@ const registry = new ToolRegistry();
 // § PROVIDER UTILS
 // ─────────────────────────────────────────────────────────────────────────────
 
+const CLOUD_PROVIDERS = {
+  openai:     { hostname: 'api.openai.com',   modelsPath: '/v1/models',          chatPath: '/v1/chat/completions',        keyProp: 'openai' },
+  anthropic:  { hostname: 'api.anthropic.com', modelsPath: '/v1/models',          chatPath: '/v1/messages',               keyProp: 'anthropic' },
+  groq:       { hostname: 'api.groq.com',     modelsPath: '/openai/v1/models',   chatPath: '/openai/v1/chat/completions', keyProp: 'groq' },
+  openrouter: { hostname: 'openrouter.ai',    modelsPath: '/api/v1/models',      chatPath: '/api/v1/chat/completions',    keyProp: 'openrouter' },
+};
+
+
+function convertToAnthropicMessages(messages) {
+  let system = '';
+  const converted = [];
+  for (const m of messages) {
+    if (m.role === 'system') {
+      system += (system ? '\n' : '') + (typeof m.content === 'string' ? m.content : (m.content || []).map(c => c.text || '').join(''));
+    } else if (m.role === 'tool') {
+      converted.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: m.tool_call_id, content: m.content }] });
+    } else if (m.role === 'assistant' && m.tool_calls?.length) {
+      const content = [];
+      if (m.content) content.push({ type: 'text', text: m.content });
+      for (const tc of m.tool_calls) {
+        let input = {};
+        try { input = JSON.parse(tc.function.arguments || '{}'); } catch {}
+        content.push({ type: 'tool_use', id: tc.id, name: tc.function.name, input });
+      }
+      converted.push({ role: 'assistant', content });
+    } else {
+      let content;
+      if (typeof m.content === 'string') {
+        content = m.content;
+      } else {
+        content = (m.content || []).map(c => {
+          if (c.type === 'image_url') {
+            const url = c.image_url?.url || '';
+            if (url.startsWith('data:')) {
+              const [meta, b64] = url.split(',');
+              return { type: 'image', source: { type: 'base64', media_type: meta.replace('data:', '').replace(';base64', ''), data: b64 } };
+            }
+            return { type: 'image', source: { type: 'url', url } };
+          }
+          return { type: 'text', text: c.text || '' };
+        });
+      }
+      converted.push({ role: m.role, content });
+    }
+  }
+  return { system: system || undefined, messages: converted };
+}
+
+function convertAnthropicResponseToOpenAI(resp, modelId) {
+  const blocks = Array.isArray(resp?.content) ? resp.content : [];
+  const text = blocks.filter(b => b.type === 'text').map(b => b.text).join('');
+  const toolCalls = blocks.filter(b => b.type === 'tool_use').map((b, i) => ({
+    index: i,
+    id:    b.id,
+    type:  'function',
+    function: { name: b.name, arguments: JSON.stringify(b.input || {}) },
+  }));
+  const finish = resp?.stop_reason === 'tool_use' ? 'tool_calls'
+               : resp?.stop_reason === 'max_tokens' ? 'length' : 'stop';
+  const message = { role: 'assistant', content: text || null };
+  if (toolCalls.length) message.tool_calls = toolCalls;
+  return {
+    id:      resp?.id || `chatcmpl-${Date.now()}`,
+    object:  'chat.completion',
+    created: Math.floor(Date.now() / 1000),
+    model:   modelId,
+    choices: [{ index: 0, message, finish_reason: finish }],
+    usage: {
+      prompt_tokens:     resp?.usage?.input_tokens  || 0,
+      completion_tokens: resp?.usage?.output_tokens || 0,
+      total_tokens:     (resp?.usage?.input_tokens  || 0) + (resp?.usage?.output_tokens || 0),
+    },
+  };
+}
+
+function buildCloudHeaders(provider, apiKey) {
+  if (provider === 'anthropic') {
+    return { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'tools-2024-04-04' };
+  }
+  const h = { Authorization: `Bearer ${apiKey}` };
+  if (provider === 'openrouter') {
+    h['HTTP-Referer'] = 'http://localhost:8765';
+    h['X-Title'] = 'LLM Hub';
+  }
+  return h;
+}
+
+function getApiKeys(req) {
+  try {
+    const h = req.headers['x-api-keys'];
+    if (!h) return {};
+    return JSON.parse(h);
+  } catch { return {}; }
+}
+
 const modelRegistry = new Map();
 
 function resolveProvider(m) {
-  if (m?.startsWith('ollama/'))   return 'ollama';
-  if (m?.startsWith('lmstudio/')) return 'lmstudio';
+  if (m?.startsWith('ollama/'))     return 'ollama';
+  if (m?.startsWith('lmstudio/'))   return 'lmstudio';
+  if (m?.startsWith('openai/'))     return 'openai';
+  if (m?.startsWith('anthropic/'))  return 'anthropic';
+  if (m?.startsWith('groq/'))       return 'groq';
+  if (m?.startsWith('openrouter/')) return 'openrouter';
   return modelRegistry.get(m) || null;
 }
-function stripPrefix(m) { return m?.replace(/^(ollama|lmstudio)\//, '') || m; }
+function stripPrefix(m) { return m?.replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter)\//, '') || m; }
 
-async function fetchAllModels() {
+async function fetchAllModels(apiKeys = {}) {
   modelRegistry.clear();
   const all = [];
 
-  // === STEP 1: Fetch model lists from BOTH providers IN PARALLEL ===
-  const [olResult, lmResult] = await Promise.allSettled([
+  // === STEP 1: Fetch model lists from local + cloud providers IN PARALLEL ===
+  const cloudFetches = {};
+  for (const [name, cfg] of Object.entries(CLOUD_PROVIDERS)) {
+    const key = apiKeys[cfg.keyProp];
+    if (!key || !cfg.modelsPath) continue;
+    cloudFetches[name] = httpsGet(cfg.hostname, cfg.modelsPath, buildCloudHeaders(name, key), 8000);
+  }
+
+  const [olResult, lmResult, ...cloudResults] = await Promise.allSettled([
     httpGet(CONFIG.providers.ollama.host, CONFIG.providers.ollama.port, '/api/tags', 8000),
     httpGet(CONFIG.providers.lmstudio.host, CONFIG.providers.lmstudio.port, '/v1/models', 8000),
+    ...Object.values(cloudFetches),
   ]);
+  const cloudNames = Object.keys(cloudFetches);
 
   // --- Ollama models ---
   const ol = olResult.status === 'fulfilled' ? olResult.value : { ok: false };
@@ -720,7 +962,27 @@ async function fetchAllModels() {
     console.warn(`[Models] LM Studio: cannot reach port ${port}. Make sure Developer → Server is started in LM Studio.`);
   }
 
-  // === STEP 2: Enrich Ollama models with metadata (in background, non-blocking) ===
+  // === STEP 2: Cloud provider models ===
+  cloudNames.forEach((name, i) => {
+    const result = cloudResults[i];
+    const r = result.status === 'fulfilled' ? result.value : { ok: false };
+    const cfg = CLOUD_PROVIDERS[name];
+    if (r.ok && r.data?.data) {
+      for (const m of r.data.data) {
+        const id = `${name}/${m.id}`;
+        modelRegistry.set(id, name);
+        all.push({
+          id, object: 'model', owned_by: name, created: m.created || Date.now(),
+          context_length: m.context_length || m.max_input_tokens || null,
+        });
+      }
+      console.log(`[Models] ${name}: ${r.data.data.length} model(s)`);
+    } else if (result.status === 'fulfilled') {
+      console.warn(`[Models] ${name}: HTTP ${r.status}`);
+    }
+  });
+
+  // === STEP 3: Enrich Ollama models with metadata (in background, non-blocking) ===
   // This runs AFTER both model lists are already returned to the UI
   if (ol.ok && ol.data?.models) {
     const enrichPromises = all.filter(m => m.owned_by === 'ollama').map(async (m) => {
@@ -874,11 +1136,12 @@ function streamProvider(host, port, pathStr, body, { onChunk, onDone, onError, s
 // § AGENT LOOP
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, useTools, emit, signal }) {
+async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, useTools, apiKeys = {}, emit, signal }) {
   const provider = resolveProvider(model);
   if (!provider) { emit('error', { message: `Model "${model}" not found` }); return; }
 
-  const cfg         = CONFIG.providers[provider];
+  const isCloud     = provider in CLOUD_PROVIDERS;
+  const cfg         = isCloud ? CLOUD_PROVIDERS[provider] : CONFIG.providers[provider];
   const actualModel = stripPrefix(model);
   const tools       = useTools ? registry.getOpenAITools() : [];
   let   history     = [...messages];
@@ -886,6 +1149,98 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
   const t0          = Date.now();
   const usage       = { prompt_tokens: 0, completion_tokens: 0 };
 
+  if (isCloud) {
+    const apiKey = apiKeys[cfg.keyProp];
+    if (!apiKey) { emit('error', { message: `No API key for ${provider}. Add it in Settings → Providers.` }); return; }
+    const headers = buildCloudHeaders(provider, apiKey);
+
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      if (signal?.aborted) return;
+
+      let body, streamFn;
+      if (provider === 'anthropic') {
+        const { system, messages: anthropicMsgs } = convertToAnthropicMessages(history);
+        body = { model: actualModel, messages: anthropicMsgs, max_tokens: max_tokens ?? 2048 };
+        if (system) body.system = system;
+        if (temperature !== undefined) body.temperature = temperature;
+        if (tools.length > 0) {
+          body.tools = tools.map(t => ({
+            name: t.function.name,
+            description: t.function.description,
+            input_schema: t.function.parameters,
+          }));
+        }
+        streamFn = (cb) => streamAnthropic(cfg.hostname, cfg.chatPath, body, headers, cb);
+      } else {
+        body = {
+          model:       actualModel,
+          messages:    history,
+          temperature: temperature ?? 0.7,
+          max_tokens:  max_tokens  ?? 2048,
+        };
+        if (top_p !== undefined)  body.top_p  = top_p;
+        if (tools.length > 0)     body.tools  = tools;
+        streamFn = (cb) => streamHTTPS(cfg.hostname, cfg.chatPath, body, headers, cb);
+      }
+
+      const roundResult = await new Promise((resolve) => {
+        let content = '';
+        const toolCalls = [];
+        streamFn({
+          signal,
+          onChunk(chunk) {
+            const delta = chunk.choices?.[0]?.delta || {};
+            if (typeof delta.content === 'string' && delta.content.length) {
+              content += delta.content;
+              emit('text_delta', { delta: delta.content });
+            }
+            if (Array.isArray(delta.tool_calls)) {
+              for (const tc of delta.tool_calls) {
+                const i = tc.index ?? 0;
+                if (!toolCalls[i]) toolCalls[i] = { id: '', type: 'function', function: { name: '', arguments: '' } };
+                if (tc.id)                  toolCalls[i].id = tc.id;
+                if (tc.function?.name)      toolCalls[i].function.name      += tc.function.name;
+                if (tc.function?.arguments) toolCalls[i].function.arguments += tc.function.arguments;
+              }
+            }
+            if (chunk.usage) {
+              usage.prompt_tokens     += chunk.usage.prompt_tokens     || 0;
+              usage.completion_tokens += chunk.usage.completion_tokens || 0;
+            }
+          },
+          onDone()  { resolve({ ok: true, content, toolCalls: toolCalls.filter(tc => tc?.function?.name) }); },
+          onError(e){ resolve({ ok: false, error: e }); },
+        });
+      });
+
+      if (signal?.aborted) return;
+      if (!roundResult.ok) { emit('error', { message: roundResult.error }); return; }
+
+      if (roundResult.toolCalls.length > 0) {
+        history.push({ role: 'assistant', content: roundResult.content || null, tool_calls: roundResult.toolCalls });
+        for (const tc of roundResult.toolCalls) {
+          if (signal?.aborted) return;
+          const toolName = tc.function.name;
+          let toolArgs = {};
+          try { toolArgs = JSON.parse(tc.function.arguments || '{}'); } catch {}
+          emit('tool_call', { id: tc.id, name: toolName, args: toolArgs });
+          let toolResult;
+          try { toolResult = await registry.execute(toolName, toolArgs); }
+          catch (e) { toolResult = JSON.stringify({ error: e.message }); }
+          emit('tool_result', { id: tc.id, name: toolName, result: toolResult });
+          history.push({ role: 'tool', tool_call_id: tc.id, name: toolName, content: toolResult });
+        }
+        continue;
+      }
+
+      emit('done', { model: actualModel, provider, elapsed: Date.now() - t0, ...usage });
+      return;
+    }
+    emit('error', { message: 'Max tool-calling rounds reached' });
+    return;
+  }
+
+  // ── Local provider (Ollama / LM Studio) ──
   for (let round = 0; round < MAX_ROUNDS; round++) {
     if (signal?.aborted) return;
 
@@ -967,7 +1322,7 @@ function setCORS(res) {
   // The server binds to localhost by default (see HOST env var).
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Api-Keys');
 }
 function sendJSON(res, status, data) {
   setCORS(res);
@@ -999,15 +1354,32 @@ const server = http.createServer(async (req, res) => {
   try {
     // ── HEALTH
     if (req.method === 'GET' && url.pathname === '/health') {
+      const apiKeys = getApiKeys(req);
+      const cloudChecks = {};
+      for (const [name, cfg] of Object.entries(CLOUD_PROVIDERS)) {
+        const key = apiKeys[cfg.keyProp];
+        if (key) {
+          cloudChecks[name] = httpsGet(cfg.hostname, cfg.modelsPath || '/v1/models', buildCloudHeaders(name, key), 5000);
+        }
+      }
       const [ol, lm] = await Promise.allSettled([
         httpGet(CONFIG.providers.ollama.host,   CONFIG.providers.ollama.port,   '/api/tags'),
         httpGet(CONFIG.providers.lmstudio.host, CONFIG.providers.lmstudio.port, '/v1/models'),
       ]);
+      const cloudStatuses = {};
+      for (const [name, promise] of Object.entries(cloudChecks)) {
+        try { const r = await promise; cloudStatuses[name] = (r.ok || r.status === 200) ? 'online' : 'offline'; }
+        catch { cloudStatuses[name] = 'offline'; }
+      }
+      for (const name of Object.keys(CLOUD_PROVIDERS)) {
+        if (!(name in cloudStatuses)) cloudStatuses[name] = apiKeys[CLOUD_PROVIDERS[name].keyProp] ? 'offline' : 'no-key';
+      }
       sendJSON(res, 200, {
         proxy: 'running', version: '3.1', port: PORT,
         providers: {
           ollama:   ol.status === 'fulfilled' && ol.value.ok ? 'online' : 'offline',
           lmstudio: lm.status === 'fulfilled' && lm.value.ok ? 'online' : 'offline',
+          ...cloudStatuses,
         },
         tools: registry.getStatus(),
         rag:   { enabled: CONFIG.rag?.enabled, collections: rag.listCollections().length },
@@ -1017,7 +1389,8 @@ const server = http.createServer(async (req, res) => {
 
     // ── MODELS
     if (req.method === 'GET' && url.pathname === '/v1/models') {
-      sendJSON(res, 200, { object: 'list', data: await fetchAllModels() }); return;
+      const apiKeys = getApiKeys(req);
+      sendJSON(res, 200, { object: 'list', data: await fetchAllModels(apiKeys) }); return;
     }
 
     // ── TOOLS
@@ -1041,10 +1414,11 @@ const server = http.createServer(async (req, res) => {
 
     // ── CHAT (SSE)
     if (req.method === 'POST' && url.pathname === '/v1/chat') {
+      const apiKeys = getApiKeys(req);
       const body = await readBody(req);
       const { model, messages, temperature, max_tokens, use_tools = true, top_p, top_k, repeat_penalty, frequency_penalty } = body;
       if (!model || !messages) { sendJSON(res, 400, { error: 'model and messages required' }); return; }
-      if (!resolveProvider(model)) await fetchAllModels();
+      if (!resolveProvider(model)) await fetchAllModels(apiKeys);
 
       setCORS(res);
       res.writeHead(200, {
@@ -1059,21 +1433,60 @@ const server = http.createServer(async (req, res) => {
         if (signal.aborted) return;
         try { res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`); } catch {}
       };
-      console.log(`[Chat] ${model} | tools:${use_tools} | msgs:${messages.length}`);
-      await runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, useTools: use_tools, emit, signal });
+      console.log(`[Chat] ${model} | provider:${resolveProvider(model)} | tools:${use_tools} | msgs:${messages.length}`);
+      await runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, useTools: use_tools, apiKeys, emit, signal });
       try { res.end(); } catch {}
       return;
     }
 
-    // ── PASSTHROUGH
+    // ── PASSTHROUGH (non-streaming OpenAI-compatible passthrough)
     if (req.method === 'POST' && url.pathname === '/v1/chat/completions') {
+      const apiKeys = getApiKeys(req);
       const body = await readBody(req);
       const { model } = body;
-      if (!resolveProvider(model)) await fetchAllModels();
+      if (!resolveProvider(model)) await fetchAllModels(apiKeys);
       const provider = resolveProvider(model);
       if (!provider) { sendJSON(res, 404, { error: { message: `Model "${model}" not found` } }); return; }
+
+      // Strip stream:true — passthrough is non-streaming. Streaming clients should use /v1/chat.
+      const { stream: _stream, ...rest } = body;
+      const upstreamBody = { ...rest, model: stripPrefix(model) };
+
+      if (provider in CLOUD_PROVIDERS) {
+        const cfg = CLOUD_PROVIDERS[provider];
+        const apiKey = apiKeys[cfg.keyProp];
+        if (!apiKey) {
+          sendJSON(res, 401, { error: { message: `No API key for ${provider}. Add it in Settings → API Keys.` } });
+          return;
+        }
+        const headers = buildCloudHeaders(provider, apiKey);
+
+        if (provider === 'anthropic') {
+          const { system, messages: anthropicMsgs } = convertToAnthropicMessages(upstreamBody.messages || []);
+          const anthBody = { model: upstreamBody.model, messages: anthropicMsgs, max_tokens: upstreamBody.max_tokens ?? 2048 };
+          if (system)                          anthBody.system      = system;
+          if (upstreamBody.temperature != null) anthBody.temperature = upstreamBody.temperature;
+          if (upstreamBody.top_p       != null) anthBody.top_p       = upstreamBody.top_p;
+          if (Array.isArray(upstreamBody.tools) && upstreamBody.tools.length) {
+            anthBody.tools = upstreamBody.tools.map(t => ({
+              name: t.function.name,
+              description: t.function.description,
+              input_schema: t.function.parameters,
+            }));
+          }
+          const r = await httpsPost(cfg.hostname, cfg.chatPath, anthBody, headers);
+          if (r.status >= 400 || !r.data) { sendJSON(res, r.status || 502, r.data || { error: { message: 'upstream error' } }); return; }
+          sendJSON(res, 200, convertAnthropicResponseToOpenAI(r.data, model));
+          return;
+        }
+
+        const r = await httpsPost(cfg.hostname, cfg.chatPath, upstreamBody, headers);
+        sendJSON(res, r.status || 502, r.data);
+        return;
+      }
+
       const cfg = CONFIG.providers[provider];
-      const result = await httpPost(cfg.host, cfg.port, '/v1/chat/completions', { ...body, model: stripPrefix(model) });
+      const result = await httpPost(cfg.host, cfg.port, '/v1/chat/completions', upstreamBody);
       sendJSON(res, result.status, result.data);
       return;
     }

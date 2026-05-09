@@ -91,13 +91,54 @@ body {
 .status-dot.online .dot {
   background: var(--green);
   box-shadow: 0 0 6px color-mix(in srgb, var(--green) 60%, transparent);
-  animation: dotPulse 2s ease-in-out infinite;
+  animation: dot-pulse 2s ease-in-out infinite;
 }
 .status-dot.offline .dot { background: var(--border2); }
-@keyframes dotPulse {
+.status-dot.no-key .dot { background: var(--border); opacity: .5; }
+.cloud-dot { cursor: pointer; }
+.cloud-dot:hover span { color: var(--text); }
+@keyframes dot-pulse {
   0%, 100% { opacity: 1; box-shadow: 0 0 6px color-mix(in srgb, var(--green) 60%, transparent); }
   50%      { opacity: .7; box-shadow: 0 0 2px color-mix(in srgb, var(--green) 30%, transparent); }
 }
+
+/* Settings tabs */
+.settings-tabs {
+  display: flex; gap: 0; border-bottom: 1px solid var(--border);
+  padding: 0 20px; background: var(--s1);
+}
+.settings-tab {
+  background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--muted); font-size: 13px; font-family: var(--sans);
+  padding: 10px 16px; cursor: pointer; transition: var(--transition);
+  margin-bottom: -1px;
+}
+.settings-tab:hover { color: var(--text); }
+.settings-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+/* API key manager */
+.api-key-fields { display: flex; flex-direction: column; gap: 12px; }
+.api-key-row {
+  display: grid; grid-template-columns: 200px 1fr auto;
+  align-items: center; gap: 10px;
+}
+.api-key-label { display: flex; flex-direction: column; gap: 2px; }
+.provider-badge {
+  display: inline-block; padding: 2px 7px; border-radius: 4px;
+  font-size: 11px; font-weight: 600; font-family: var(--mono); letter-spacing: .02em;
+}
+.openai-badge     { background: color-mix(in srgb, #10a37f 15%, transparent); color: #10a37f; }
+.anthropic-badge  { background: color-mix(in srgb, #d97706 15%, transparent); color: #d97706; }
+.groq-badge       { background: color-mix(in srgb, #6366f1 15%, transparent); color: #6366f1; }
+.openrouter-badge { background: color-mix(in srgb, #ec4899 15%, transparent); color: #ec4899; }
+.provider-hint { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+.api-key-input {
+  width: 100%; background: var(--s2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 7px 10px; color: var(--text);
+  font-family: var(--mono); font-size: 12px; transition: var(--transition);
+}
+.api-key-input:focus { outline: none; border-color: var(--accent); }
+.btn-sm { padding: 5px 10px; font-size: 11px; white-space: nowrap; }
 
 .topbar-search {
   flex: 0 1 320px; display: flex; align-items: center; gap: 6px;
