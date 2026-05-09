@@ -1122,7 +1122,15 @@ function renderMarkdown(text) {
     return escHtml(text).replace(/\n/g, '<br/>');
   }
 
-  // Post-process via DOMParser (safe — marked already escapes dangerous content)
+  // Sanitize: marked v11 does not strip raw HTML. Without this, model output like
+  // <img src=x onerror=...> would execute on innerHTML assignment and could
+  // exfiltrate localStorage['llm-api-keys'].
+  if (typeof DOMPurify !== 'undefined') {
+    html = DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
+  } else {
+    return escHtml(text).replace(/\n/g, '<br/>');
+  }
+
   const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
   const wrap = doc.body.firstChild;
 
