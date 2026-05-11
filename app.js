@@ -2034,6 +2034,104 @@ document.addEventListener('click', (e) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § COMMAND PALETTE
+// ─────────────────────────────────────────────────────────────────────────────
+
+let paletteSelectedIdx = 0;
+let paletteItems       = [];
+
+function buildPaletteCommands() {
+  const conv = currentConv();
+  return [
+    { group: 'Actions',   icon: '✏️',  label: 'New Conversation',         kbd: '⌘J',   action: () => newConversation() },
+    { group: 'Actions',   icon: '🔍',  label: 'Search Conversations',      kbd: '⌘K',   action: () => openSearch() },
+    { group: 'Actions',   icon: '⛶',   label: 'Toggle Focus Mode',         kbd: '⌘⇧F', action: () => toggleFocusMode() },
+    { group: 'Actions',   icon: '🎨',  label: 'Toggle Theme',                            action: () => toggleTheme() },
+    ...(conv ? [
+      { group: 'Chat',    icon: '📋',  label: 'Export Chat as Markdown',                 action: () => exportConv('md') },
+      { group: 'Chat',    icon: '📋',  label: 'Export Chat as JSON',                     action: () => exportConv('json') },
+    ] : []),
+    { group: 'Models',    icon: '📦',  label: 'Model Manager',                           action: () => openModelManager() },
+    { group: 'Models',    icon: '🔄',  label: 'Reload Models',                           action: () => loadModels() },
+    { group: 'Settings',  icon: '⚙️',  label: 'Open Settings',                           action: () => openConfigEditor() },
+    { group: 'Settings',  icon: '🔑',  label: 'API Keys',                                action: () => openApiKeySettings() },
+    { group: 'Tools',     icon: '🔧',  label: 'Toggle Agent Tools',        kbd: '⌘/',   action: () => document.getElementById('tools-toggle').click() },
+    { group: 'Tools',     icon: '📄',  label: 'Prompt Templates',                        action: () => openTemplates() },
+    { group: 'Tools',     icon: '📚',  label: 'Add to Knowledge Base',                   action: () => openRagUpload() },
+    { group: 'Help',      icon: '⌨️',  label: 'Keyboard Shortcuts',        kbd: '?',    action: () => openModal('shortcuts-modal') },
+  ];
+}
+
+function openPalette() {
+  openModal('palette-modal');
+  const input = document.getElementById('palette-input');
+  input.value = '';
+  setTimeout(() => input.focus(), 50);
+  filterPalette('');
+}
+
+function filterPalette(q) {
+  const all = buildPaletteCommands();
+  if (!q) {
+    paletteItems = all;
+  } else {
+    const lq = q.toLowerCase();
+    paletteItems = all.filter(c =>
+      c.label.toLowerCase().includes(lq) || c.group.toLowerCase().includes(lq)
+    );
+  }
+  paletteSelectedIdx = 0;
+  renderPalette();
+}
+
+function renderPalette() {
+  const el = document.getElementById('palette-results');
+  if (!paletteItems.length) {
+    el.innerHTML = '<div class="palette-empty">No matching commands</div>';
+    return;
+  }
+  let html = '';
+  let lastGroup = null;
+  paletteItems.forEach((item, i) => {
+    if (item.group !== lastGroup) {
+      html += `<div class="palette-group-label">${escHtml(item.group)}</div>`;
+      lastGroup = item.group;
+    }
+    html += `<div class="palette-item ${i === paletteSelectedIdx ? 'selected' : ''}" onclick="runPaletteItem(${i})">
+      <span class="palette-item-icon">${item.icon}</span>
+      <span class="palette-item-label">${escHtml(item.label)}</span>
+      ${item.kbd ? `<kbd class="palette-item-kbd">${escHtml(item.kbd)}</kbd>` : ''}
+    </div>`;
+  });
+  el.innerHTML = html;
+  const selected = el.querySelector('.palette-item.selected');
+  if (selected) selected.scrollIntoView({ block: 'nearest' });
+}
+
+function onPaletteInput() {
+  filterPalette(document.getElementById('palette-input').value.trim());
+}
+
+function onPaletteKeydown(e) {
+  if (e.key === 'ArrowDown') {
+    paletteSelectedIdx = Math.min(paletteItems.length - 1, paletteSelectedIdx + 1);
+    renderPalette(); e.preventDefault();
+  } else if (e.key === 'ArrowUp') {
+    paletteSelectedIdx = Math.max(0, paletteSelectedIdx - 1);
+    renderPalette(); e.preventDefault();
+  } else if (e.key === 'Enter') {
+    runPaletteItem(paletteSelectedIdx); e.preventDefault();
+  }
+}
+
+function runPaletteItem(idx) {
+  const item = paletteItems[idx];
+  if (!item) return;
+  closeModal('palette-modal');
+  setTimeout(() => item.action(), 50);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § HOTKEYS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2055,6 +2153,7 @@ function initHotkeys() {
 
     if (!meta) return;
 
+    if (e.key === 'p' || e.key === 'P') { e.preventDefault(); openPalette(); return; }
     if (e.key === 'k' || e.key === 'K') { e.preventDefault(); openSearch(); return; }
     if (e.key === 'j' || e.key === 'J') { e.preventDefault(); newConversation(); return; }
     if ((e.key === 'f' || e.key === 'F') && e.shiftKey) { e.preventDefault(); toggleFocusMode(); return; }

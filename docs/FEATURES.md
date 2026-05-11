@@ -88,10 +88,10 @@
 - [x] Dark and light themes
 - [x] Linear/Vercel-inspired design tokens (Inter + JetBrains Mono)
 - [x] Collapsible right-sidebar accordion panels
-- [x] Keyboard shortcuts (⌘K, ⌘J, ⌘R, ⌘E, ⌘/)
+- [x] Keyboard shortcuts (⌘P, ⌘K, ⌘J, ⌘R, ⌘E, ⌘/)
 - [x] Keyboard shortcuts help modal (`?`)
 - [x] **Sampling presets** — Precise / Balanced / Creative one-click buttons
-- [ ] **Command palette** (⌘P) with fuzzy action search
+- [x] **Command palette** (⌘P) with fuzzy action search
 - [ ] **Fully responsive mobile layout** (hamburger sidebar, touch-friendly)
 - [ ] Customizable accent color (color picker in settings)
 - [ ] Font size and chat density preferences (Compact / Comfortable / Spacious)
