@@ -39,8 +39,8 @@
 - [ ] Favorite / pin models to top of selector
 - [ ] **Model benchmark runner** — tokens/sec speed test per model
 - [ ] Recommended model suggestions based on task type
-- [ ] Model capability badges (vision, tools, code, long-context)
-- [ ] Model family grouping in the dropdown (Llama 3, Qwen, Mistral…)
+- [x] Model capability badges (vision, tools, code, long-context)
+- [x] Model family grouping in the dropdown (Llama 3, Qwen, Mistral…)
 - [ ] **Hardware-aware model suggestions** — recommend models that fit in available VRAM
 
 ---
@@ -91,7 +91,7 @@
 - [x] Keyboard shortcuts (⌘K, ⌘J, ⌘R, ⌘E, ⌘/)
 - [x] Keyboard shortcuts help modal (`?`)
 - [x] **Sampling presets** — Precise / Balanced / Creative one-click buttons
-- [ ] **Command palette** (⌘P) with fuzzy action search
+- [x] **Command palette** (⌘P) with fuzzy action search
 - [ ] **Fully responsive mobile layout** (hamburger sidebar, touch-friendly)
 - [ ] Customizable accent color (color picker in settings)
 - [ ] Font size and chat density preferences (Compact / Comfortable / Spacious)
@@ -218,7 +218,7 @@
 - [ ] Provider connection test button (ping + model count)
 - [ ] Theme customizer (accent color, font, density)
 - [ ] Keyboard shortcut remapping
-- [ ] **Backup & restore** all settings + conversations as a single JSON
+- [x] **Backup & restore** all settings + conversations as a single JSON
 - [ ] Onboarding wizard for first-time setup
 - [ ] Per-workspace configuration profiles
 

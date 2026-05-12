@@ -1118,3 +1118,26 @@ input[type=range]::-webkit-slider-thumb {
   padding: 24px; text-align: center; color: var(--muted);
   font-family: var(--mono); font-size: 12px;
 }
+
+/* ═══════════════════ BACKUP PANEL ═══════════════════ */
+.backup-section-label {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: .8px; color: var(--muted); font-weight: 600; margin-bottom: 8px;
+}
+.backup-summary {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 16px;
+}
+.backup-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.backup-stat-val {
+  font-family: var(--mono); font-size: 20px; font-weight: 600; color: var(--text);
+}
+.backup-stat-label { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+.backup-import-zone {
+  border: 1px dashed var(--border); border-radius: var(--radius);
+  padding: 18px 24px; display: flex; align-items: center; gap: 10px;
+  cursor: pointer; transition: var(--transition);
+  color: var(--muted); font-family: var(--mono); font-size: 12px;
+}
+.backup-import-zone:hover { border-color: var(--accent); color: var(--accent); }
