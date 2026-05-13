@@ -1,6 +1,10 @@
 # LLM Hub — Product Vision & Feature Checklist
 
 > **Vision:** Build the best local-first AI workbench — combining **LM Studio's** model management and hardware awareness with **OpenCode's** code-first agent workflow, all wrapped in a polished **Linear/Vercel-inspired UI** that feels fast, focused, and professional.
+>
+> **Target:** Feel like LM Studio + OpenCode, but prettier and faster.
+
+**Legend:** `[x]` Done · `[ ]` Not started · `[~]` In review (open PR) · **Bold** = High priority next
 
 ---
 
@@ -61,7 +65,7 @@
 - [ ] **Conversation folders** / tag-based organization
 - [ ] **Conversation branching** — fork from any message
 - [ ] Import conversations from JSON / ChatGPT export
-- [ ] **Share conversation** as a self-contained HTML file
+- [~] **Share conversation** as a self-contained HTML file *(this PR)*
 - [ ] Multi-tab chat (several conversations open side-by-side)
 - [ ] Message reactions (👍 👎 — RLHF-style feedback)
 - [ ] Bulk conversation management (select all → delete / export)
@@ -269,5 +273,6 @@
 | Symbol | Meaning |
 |--------|---------|
 | [x] | Done / shipped |
+| [~] | In review — open PR, not yet merged |
 | [ ] | Not started |
 | **Bold** | High priority — next to implement |

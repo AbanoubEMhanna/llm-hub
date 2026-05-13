@@ -98,7 +98,14 @@
         <span style="color:var(--muted);font-family:var(--mono);font-size:12px">No model selected</span>
       </div>
       <div class="header-actions">
-        <button class="ghost-btn" onclick="exportConv('md')">Export</button>
+        <div class="export-drop" id="export-drop">
+          <button class="ghost-btn" onclick="toggleExportMenu()" title="Export conversation">Export ▾</button>
+          <div class="export-menu" id="export-menu" style="display:none">
+            <button onclick="exportConv('md');toggleExportMenu()">Markdown</button>
+            <button onclick="exportConv('json');toggleExportMenu()">JSON</button>
+            <button onclick="exportConvHtml();toggleExportMenu()">HTML (standalone)</button>
+          </div>
+        </div>
         <button class="ghost-btn" onclick="clearMessages()">Clear</button>
       </div>
     </div>
