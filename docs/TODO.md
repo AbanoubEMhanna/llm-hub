@@ -63,7 +63,7 @@
 - 🔥 **Conversation folders** / tag-based organization
 - 🔥 **Conversation branching** — fork from any message
 - 🔲 Import conversations from JSON / ChatGPT export
-- 🔥 **Share conversation** — export as self-contained HTML file
+- ✅ **Share conversation** — export as self-contained HTML file (PR #11)
 - 🔲 Multi-tab chat (several conversations open side-by-side)
 - 🔲 Message reactions (👍 👎 — RLHF-style feedback)
 - 🔲 Bulk conversation management (select all → delete / export)
@@ -205,10 +205,10 @@
 - ✅ System RAM usage bar
 - ✅ Context usage indicator (warns at >75%)
 - ✅ Real-time tokens/sec counter — live speed display during generation
-- 🔥 **GPU / VRAM usage monitoring** — Ollama VRAM via API
+- ✅ **GPU / VRAM usage monitoring** — live VRAM bar per loaded model in sidebar (PR #13)
 - 🔲 Response latency histogram (per-model statistics panel)
 - 🔲 Session token usage totals (prompt + completion)
-- 🔲 Cost estimation for cloud API providers (per-model pricing table)
+- ✅ Cost estimation for cloud API providers — per-response USD cost (PR #12)
 - 🔲 Performance dashboard — charts comparing models over time
 - 🔲 CPU / GPU temperature display (where available)
 
@@ -272,7 +272,7 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ Done | ~49 |
-| 🔥 High priority | ~31 |
+| ✅ Done | ~52 |
+| 🔥 High priority | ~28 |
 | 🔲 Backlog | ~30 |
 | **Total** | **~110** |

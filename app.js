@@ -2845,6 +2845,30 @@ function updateSystemDisplay() {
     fillEl.style.width = m.usage_pct + '%';
     fillEl.className = 'sys-mem-fill' + (m.usage_pct > 90 ? ' danger' : m.usage_pct > 75 ? ' warn' : '');
   }
+
+  // GPU VRAM — show only when models are actually loaded in GPU memory
+  const vramSection = document.getElementById('sys-vram-section');
+  const vramText    = document.getElementById('sys-vram-text');
+  const vramModels  = document.getElementById('sys-vram-models');
+  const gpuModels   = runningModelsDetailed.filter(r => r.vram > 0);
+  if (vramSection) {
+    if (gpuModels.length > 0) {
+      vramSection.style.display = 'block';
+      const totalVram = gpuModels.reduce((sum, r) => sum + r.vram, 0);
+      if (vramText) vramText.textContent = formatMM(totalVram);
+      if (vramModels) {
+        vramModels.innerHTML = gpuModels.map(r => {
+          const shortName = r.name.replace(/:latest$/, '');
+          return `<div class="sys-vram-row">
+            <span class="sys-vram-name" title="${r.name}">${shortName}</span>
+            <span class="sys-vram-size">${r.vram_label}</span>
+          </div>`;
+        }).join('');
+      }
+    } else {
+      vramSection.style.display = 'none';
+    }
+  }
 }
 
 function updateModelInfoCard() {

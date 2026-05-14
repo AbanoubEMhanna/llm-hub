@@ -205,7 +205,7 @@
 - [x] System RAM usage bar
 - [x] Context usage indicator (warns at >75%)
 - [x] **Real-time tokens/sec counter** during generation
-- [ ] **GPU / VRAM usage monitoring** (Ollama VRAM via API)
+- [~] **GPU / VRAM usage monitoring** — live VRAM bar per loaded model in sidebar (PR #13)
 - [ ] Response latency histogram (per-model statistics panel)
 - [ ] Session token usage totals (prompt + completion)
 - [ ] **Cost estimation** for cloud API providers (per-model pricing table)
@@ -276,3 +276,13 @@
 | [~] | In review — open PR, not yet merged |
 | [ ] | Not started |
 | **Bold** | High priority — next to implement |
+
+---
+
+## Open PRs
+
+| PR | Title | Status |
+|----|-------|--------|
+| #11 | Export conversation as standalone HTML | Open |
+| #12 | Cloud API cost estimation in stats bar | Open |
+| #13 | GPU / VRAM monitoring in sidebar | Open |

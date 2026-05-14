@@ -972,6 +972,14 @@ input[type=range]::-webkit-slider-thumb {
 .sys-mem-fill.warn { background: var(--orange); }
 .sys-mem-fill.danger { background: var(--red); }
 
+.sys-vram-models { margin-top: 4px; }
+.sys-vram-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1px 0; font-family: var(--mono); font-size: 10px;
+}
+.sys-vram-name { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.sys-vram-size { color: var(--purple); flex-shrink: 0; margin-left: 6px; }
+
 /* ═══════════════════ MODEL LOADING BANNER ═══════════════════ */
 .model-loading-banner {
   margin: 0 16px; flex-shrink: 0;
