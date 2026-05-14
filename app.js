@@ -225,6 +225,56 @@ const PROVIDER_LABELS = {
   openrouter: '🔴 OpenRouter',
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// § MODEL CAPABILITY & FAMILY DETECTION
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CAP_LABELS = {
+  vision:     { label: 'vision',   title: 'Accepts image/vision input' },
+  code:       { label: 'code',     title: 'Code-specialist model' },
+  'long-ctx': { label: 'long-ctx', title: 'Long context window (≥32K tokens)' },
+  tools:      { label: 'tools',    title: 'Supports function/tool calling' },
+};
+
+function detectModelCapabilities(modelId, meta) {
+  const n = (modelId || '').toLowerCase().replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter)\//, '');
+  const caps = [];
+  if (/\b(vision|vl|llava|bakllava|pixtral|moondream|cogvlm|internvl|minicpm-v)\b/.test(n) ||
+      /qwen[^/]*vl|llama[^/]*vision|mistral[^/]*pixtral/.test(n)) {
+    caps.push('vision');
+  }
+  if (/\b(code|coder|starcoder|codellama|devstral)\b/.test(n) ||
+      /qwen[^/]*coder|deepseek[^/]*code/.test(n)) {
+    caps.push('code');
+  }
+  if ((meta?.context_length || 0) >= 32768) {
+    caps.push('long-ctx');
+  }
+  if (/\b(llama-?3|qwen2|mistral|mixtral|command-r|gemma2?|phi-?[34]|hermes|functionary|nous)\b/.test(n)) {
+    caps.push('tools');
+  }
+  return caps;
+}
+
+function detectModelFamily(modelId) {
+  const n = (modelId || '').toLowerCase().replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter)\//, '');
+  if (/llama/.test(n))              return 'Llama';
+  if (/qwen/.test(n))               return 'Qwen';
+  if (/mistral|mixtral|devstral/.test(n)) return 'Mistral';
+  if (/gemma/.test(n))              return 'Gemma';
+  if (/phi/.test(n))                return 'Phi';
+  if (/deepseek/.test(n))           return 'DeepSeek';
+  if (/starcoder|codellama/.test(n)) return 'Code';
+  if (/command-r/.test(n))          return 'Command-R';
+  if (/claude/.test(n))             return 'Claude';
+  if (/gpt/.test(n))                return 'GPT';
+  if (/\bo[1-9]/.test(n))           return 'o-series';
+  if (/nomic|bge|embed|whisper/.test(n)) return 'Embedding';
+  return 'Other';
+}
+
+const CAP_ICONS = { vision: '👁', code: '⌨', 'long-ctx': '∞', tools: '⚙' };
+
 function fillModelSelect(sel) {
   if (!sel) return;
   sel.innerHTML = '<option value="">— select model —</option>';
@@ -235,18 +285,24 @@ function fillModelSelect(sel) {
   const ORDER = ['ollama', 'lmstudio', 'openai', 'anthropic', 'groq', 'openrouter'];
   const sorted = ORDER.filter(p => groups[p]).concat(Object.keys(groups).filter(p => !ORDER.includes(p)));
   for (const p of sorted) {
-    const models = groups[p];
     const og = document.createElement('optgroup');
     og.label = PROVIDER_LABELS[p] || p;
-    for (const m of models) {
+    // Sort within each provider group by detected family name, then alphabetically
+    const sortedModels = [...groups[p]].sort((a, b) => {
+      const fa = detectModelFamily(a.id), fb = detectModelFamily(b.id);
+      return fa !== fb ? fa.localeCompare(fb) : a.id.localeCompare(b.id);
+    });
+    for (const m of sortedModels) {
       const o = document.createElement('option');
       o.value = m.id;
       const name = m.id.replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter)\//, '');
       const meta = modelMetadata[m.id] || {};
+      const caps = detectModelCapabilities(m.id, meta);
       const parts = [name];
       if (meta.parameter_size) parts.push(`(${meta.parameter_size})`);
       if (meta.size_label)     parts.push(`[${meta.size_label}]`);
       if (meta.context_length) parts.push(`ctx:${(meta.context_length/1024).toFixed(0)}K`);
+      if (caps.length)         parts.push(caps.map(c => CAP_ICONS[c] || c).join(''));
       o.text = parts.join(' ');
       og.appendChild(o);
     }
@@ -2511,6 +2567,22 @@ function updateModelInfoCard() {
   document.getElementById('mic-context').textContent = ctxLen
     ? `${(ctxLen).toLocaleString()} tokens (${(ctxLen/1024).toFixed(0)}K)`
     : '—';
+
+  // Capabilities
+  const caps = detectModelCapabilities(selectedModel, meta);
+  const capsRow = document.getElementById('mic-caps-row');
+  const capsEl  = document.getElementById('mic-caps');
+  if (capsRow && capsEl) {
+    if (caps.length) {
+      capsRow.style.display = 'flex';
+      capsEl.innerHTML = caps.map(c => {
+        const info = CAP_LABELS[c] || { label: c, title: c };
+        return `<span class="cap-badge ${c}" title="${info.title}">${info.label}</span>`;
+      }).join('');
+    } else {
+      capsRow.style.display = 'none';
+    }
+  }
 
   // VRAM (only if loaded)
   const vramRow = document.getElementById('mic-vram-row');
