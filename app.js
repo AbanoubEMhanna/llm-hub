@@ -1947,7 +1947,7 @@ function exportConvHtml() {
       } else if (Array.isArray(m.content)) {
         for (const p of m.content) {
           if (p.type === 'text') text = p.text;
-          else if (p.type === 'image_url' && p.image_url?.url) {
+          else if (p.type === 'image_url' && p.image_url?.url?.startsWith('data:')) {
             imgTags.push(`<img src="${escHtml(p.image_url.url)}" class="bubble-img" alt="attached image">`);
           }
         }
@@ -1976,7 +1976,6 @@ function exportConvHtml() {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${safeTitle} — LLM Hub</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 :root {
   --bg:#09090b; --s1:#18181b; --s2:#27272a; --text:#fafafa; --text2:#d4d4d8;
   --muted:#71717a; --accent:#3b82f6; --border:#27272a;
@@ -2044,7 +2043,7 @@ ${msgsHtml}
   a.download = `${slug}.html`;
   a.click();
   URL.revokeObjectURL(a.href);
-  showToast('Conversation exported as HTML');
+  toast('Conversation exported as HTML', 'success');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
