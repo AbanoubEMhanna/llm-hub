@@ -65,7 +65,7 @@
 - [ ] **Conversation folders** / tag-based organization
 - [ ] **Conversation branching** — fork from any message
 - [ ] Import conversations from JSON / ChatGPT export
-- [~] **Share conversation** as a self-contained HTML file *(this PR)*
+- [x] **Share conversation** as a self-contained HTML file
 - [ ] Multi-tab chat (several conversations open side-by-side)
 - [ ] Message reactions (👍 👎 — RLHF-style feedback)
 - [ ] Bulk conversation management (select all → delete / export)
@@ -205,10 +205,10 @@
 - [x] System RAM usage bar
 - [x] Context usage indicator (warns at >75%)
 - [x] **Real-time tokens/sec counter** during generation
-- [ ] **GPU / VRAM usage monitoring** (Ollama VRAM via API)
+- [~] **GPU / VRAM usage monitoring** (Ollama VRAM via API) *(PR #13)*
 - [ ] Response latency histogram (per-model statistics panel)
 - [ ] Session token usage totals (prompt + completion)
-- [ ] **Cost estimation** for cloud API providers (per-model pricing table)
+- [~] **Cost estimation** for cloud API providers (per-model pricing table) *(PR #12)*
 - [ ] Performance dashboard — charts comparing models over time
 - [ ] CPU / GPU temperature display (where available)
 
@@ -275,4 +275,15 @@
 | [x] | Done / shipped |
 | [~] | In review — open PR, not yet merged |
 | [ ] | Not started |
+| [~] | In review (open PR) |
 | **Bold** | High priority — next to implement |
+
+---
+
+## Open PRs
+
+| PR | Feature | Status |
+|----|---------|--------|
+| [#11](https://github.com/AbanoubEMhanna/llm-hub/pull/11) | Export conversation as standalone HTML | In review |
+| [#12](https://github.com/AbanoubEMhanna/llm-hub/pull/12) | Cloud API cost estimation + showToast fix | In review |
+| [#13](https://github.com/AbanoubEMhanna/llm-hub/pull/13) | GPU/VRAM live monitoring panel | In review |
