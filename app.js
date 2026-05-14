@@ -275,6 +275,65 @@ function detectModelFamily(modelId) {
 
 const CAP_ICONS = { vision: '👁', code: '⌨', 'long-ctx': '∞', tools: '⚙' };
 
+// ── Cloud API pricing (USD per 1M tokens, input / output)
+const MODEL_PRICING = {
+  // OpenAI
+  'gpt-4o-mini':            { in: 0.15,  out: 0.60  },
+  'gpt-4o':                 { in: 2.50,  out: 10.00 },
+  'gpt-4.1-nano':           { in: 0.10,  out: 0.40  },
+  'gpt-4.1-mini':           { in: 0.40,  out: 1.60  },
+  'gpt-4.1':                { in: 2.00,  out: 8.00  },
+  'o1-mini':                { in: 1.10,  out: 4.40  },
+  'o1':                     { in: 15.00, out: 60.00 },
+  'o3-mini':                { in: 1.10,  out: 4.40  },
+  'o3':                     { in: 10.00, out: 40.00 },
+  'o4-mini':                { in: 1.10,  out: 4.40  },
+  // Anthropic
+  'claude-opus-4':          { in: 15.00, out: 75.00 },
+  'claude-sonnet-4':        { in: 3.00,  out: 15.00 },
+  'claude-haiku-4':         { in: 0.80,  out: 4.00  },
+  'claude-3-5-sonnet':      { in: 3.00,  out: 15.00 },
+  'claude-3-5-haiku':       { in: 0.80,  out: 4.00  },
+  'claude-3-opus':          { in: 15.00, out: 75.00 },
+  'claude-3-sonnet':        { in: 3.00,  out: 15.00 },
+  'claude-3-haiku':         { in: 0.25,  out: 1.25  },
+  // Groq
+  'llama-3.3-70b':          { in: 0.59,  out: 0.79  },
+  'llama-3.1-70b':          { in: 0.59,  out: 0.79  },
+  'llama-3.1-8b':           { in: 0.05,  out: 0.08  },
+  'llama-3.2-90b':          { in: 0.90,  out: 0.90  },
+  'llama-3.2-11b':          { in: 0.18,  out: 0.18  },
+  'llama-3.2-3b':           { in: 0.06,  out: 0.06  },
+  'llama-3.2-1b':           { in: 0.04,  out: 0.04  },
+  'deepseek-r1-distill':    { in: 0.75,  out: 0.99  },
+  'deepseek-r1':            { in: 0.75,  out: 0.99  },
+  'mixtral-8x7b':           { in: 0.24,  out: 0.24  },
+  'gemma2-9b':              { in: 0.20,  out: 0.20  },
+  'qwen-qwq-32b':           { in: 0.29,  out: 0.39  },
+};
+
+function lookupPricing(modelName) {
+  const lower = (modelName || '').toLowerCase();
+  if (MODEL_PRICING[lower]) return MODEL_PRICING[lower];
+  let best = null, bestLen = 0;
+  for (const key of Object.keys(MODEL_PRICING)) {
+    if (lower.includes(key) && key.length > bestLen) {
+      best = MODEL_PRICING[key];
+      bestLen = key.length;
+    }
+  }
+  return best;
+}
+
+function estimateCost(provider, modelName, promptTokens, completionTokens) {
+  if (!provider || provider === 'ollama' || provider === 'lmstudio') return null;
+  if (!promptTokens && !completionTokens) return null;
+  const pricing = lookupPricing(modelName);
+  if (!pricing) return null;
+  return ((promptTokens || 0) * pricing.in + (completionTokens || 0) * pricing.out) / 1_000_000;
+}
+
+
 function fillModelSelect(sel) {
   if (!sel) return;
   sel.innerHTML = '<option value="">— select model —</option>';
@@ -1175,6 +1234,20 @@ function updateStats({ model, elapsed, prompt_tokens, completion_tokens }) {
 
   // Update sidebar context bar too
   updateContextBar(prompt_tokens, completion_tokens);
+
+  // Cost estimate — cloud models only
+  const { provider: cProv, name: cName } = parseModelId(selectedModel || model || '');
+  const cost = estimateCost(cProv, cName, prompt_tokens, completion_tokens);
+  const costWrap = document.getElementById('stat-cost-wrap');
+  if (costWrap) {
+    if (cost !== null) {
+      costWrap.style.display = '';
+      document.getElementById('stat-cost').textContent =
+        cost < 0.0001 ? '<$0.0001' : `$${cost.toFixed(4)}`;
+    } else {
+      costWrap.style.display = 'none';
+    }
+  }
 }
 
 function clearMessages() {
@@ -2478,6 +2551,7 @@ function toast(msg, kind = '') {
   document.getElementById('toast-container').appendChild(el);
   setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 200); }, 2500);
 }
+function showToast(msg, kind = '') { return toast(msg, kind); }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § UTILS
