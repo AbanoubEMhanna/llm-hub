@@ -574,7 +574,7 @@
       <p style="color:var(--muted);font-size:12px;margin-bottom:12px">
         Restore from a previously exported backup. This overwrites your current conversations, presets, and templates.
       </p>
-      <div class="backup-import-zone" id="backup-import-zone"
+      <button type="button" class="backup-import-zone" id="backup-import-zone"
            onclick="document.getElementById('backup-file-input').click()"
            ondragover="event.preventDefault()"
            ondrop="onBackupDrop(event)">
@@ -584,7 +584,7 @@
           <line x1="12" y1="3" x2="12" y2="15"/>
         </svg>
         <span>Drop backup.json here or click to browse</span>
-      </div>
+      </button>
       <input type="file" id="backup-file-input" accept=".json" style="display:none"
              onchange="importBackup(this)"/>
       <div id="backup-status" style="margin-top:8px;font-size:12px;font-family:var(--mono);color:var(--muted)"></div>

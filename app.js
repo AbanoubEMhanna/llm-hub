@@ -1519,6 +1519,21 @@ function switchSettingsTab(tab) {
     const btn = document.getElementById(`tab-${t}`);
     if (btn) btn.classList.toggle('active', t === tab);
   });
+  if (tab === 'backup') renderBackupSummary();
+}
+
+function renderBackupSummary() {
+  const convs   = JSON.parse(localStorage.getItem('llm-convs')     || '[]');
+  const presets  = JSON.parse(localStorage.getItem('llm-presets')   || '{}');
+  const tpls     = JSON.parse(localStorage.getItem('llm-templates') || '[]');
+  const totalMsg = convs.reduce((n, c) => n + (c.messages?.length || 0), 0);
+  const el = document.getElementById('backup-summary');
+  if (el) el.innerHTML = `
+    <div class="backup-stat"><span class="backup-stat-val">${convs.length}</span><span class="backup-stat-label">Conversations</span></div>
+    <div class="backup-stat"><span class="backup-stat-val">${totalMsg}</span><span class="backup-stat-label">Messages</span></div>
+    <div class="backup-stat"><span class="backup-stat-val">${Object.keys(presets).length}</span><span class="backup-stat-label">Presets</span></div>
+    <div class="backup-stat"><span class="backup-stat-val">${Array.isArray(tpls) ? tpls.length : 0}</span><span class="backup-stat-label">Templates</span></div>
+  `;
 }
 
 function openBackupSettings() {
@@ -1579,12 +1594,19 @@ function applyBackupFile(file) {
   reader.onload  = (e) => {
     try {
       const payload = JSON.parse(e.target.result);
-      if (payload.app !== 'llm-hub' || !payload.data) throw new Error('Not a valid LLM Hub backup file.');
+      if (payload.app !== 'llm-hub' || payload.version !== 1 || !payload.data) {
+        throw new Error('Not a valid LLM Hub backup file.');
+      }
       const { conversations: convs, presets, templates: tpls, settings } = payload.data;
-      if (convs)    localStorage.setItem('llm-convs',     JSON.stringify(convs));
-      if (presets)  localStorage.setItem('llm-presets',   JSON.stringify(presets));
-      if (tpls)     localStorage.setItem('llm-templates', JSON.stringify(tpls));
-      if (settings) localStorage.setItem('llm-settings',  JSON.stringify(settings));
+      if (!Array.isArray(convs)) throw new Error('Invalid conversations payload.');
+      if (!presets || typeof presets !== 'object' || Array.isArray(presets)) throw new Error('Invalid presets payload.');
+      if (!Array.isArray(tpls)) throw new Error('Invalid templates payload.');
+      if (!settings || typeof settings !== 'object' || Array.isArray(settings)) throw new Error('Invalid settings payload.');
+      if (!confirm('Restore backup? This will overwrite your current conversations and settings.')) return;
+      localStorage.setItem('llm-convs',     JSON.stringify(convs));
+      localStorage.setItem('llm-presets',   JSON.stringify(presets));
+      localStorage.setItem('llm-templates', JSON.stringify(tpls));
+      localStorage.setItem('llm-settings',  JSON.stringify(settings));
       closeModal('config-modal');
       toast('Backup restored — reloading…', 'success');
       setTimeout(() => window.location.reload(), 800);
