@@ -65,7 +65,7 @@
 - [ ] **Conversation folders** / tag-based organization
 - [ ] **Conversation branching** — fork from any message
 - [ ] Import conversations from JSON / ChatGPT export
-- [~] **Share conversation** as a self-contained HTML file *(this PR)*
+- [x] **Share conversation** as a self-contained HTML file (standalone HTML export)
 - [ ] Multi-tab chat (several conversations open side-by-side)
 - [ ] Message reactions (👍 👎 — RLHF-style feedback)
 - [ ] Bulk conversation management (select all → delete / export)
@@ -96,7 +96,7 @@
 - [x] Keyboard shortcuts help modal (`?`)
 - [x] **Sampling presets** — Precise / Balanced / Creative one-click buttons
 - [x] **Command palette** (⌘P) with fuzzy action search
-- [ ] **Fully responsive mobile layout** (hamburger sidebar, touch-friendly)
+- [~] **Fully responsive mobile layout** — drawer sidebars, touch-friendly UI (PR #14)
 - [ ] Customizable accent color (color picker in settings)
 - [ ] Font size and chat density preferences (Compact / Comfortable / Spacious)
 - [ ] Animated page transitions and micro-interactions
@@ -174,7 +174,7 @@
 - [x] Prompt templates with variable substitution
 - [x] Plan mode (think step-by-step prefix)
 - [x] **Sampling presets: Precise / Balanced / Creative**
-- [ ] Per-model parameter profiles (save temperature + max tokens per model)
+- [~] **Per-model parameter profiles** — auto-save & restore all sampling params per model (PR #15)
 - [x] Advanced parameters: Top-P, Top-K, Repeat penalty, Frequency penalty
 - [ ] Context length override per conversation
 - [ ] **Structured output mode** — force JSON schema response (JSON mode)
@@ -205,10 +205,10 @@
 - [x] System RAM usage bar
 - [x] Context usage indicator (warns at >75%)
 - [x] **Real-time tokens/sec counter** during generation
-- [ ] **GPU / VRAM usage monitoring** (Ollama VRAM via API)
+- [~] **GPU / VRAM usage monitoring** — live sidebar panel per loaded model (PR #13)
 - [ ] Response latency histogram (per-model statistics panel)
 - [ ] Session token usage totals (prompt + completion)
-- [ ] **Cost estimation** for cloud API providers (per-model pricing table)
+- [~] **Cloud API cost estimation** — per-response USD cost for OpenAI / Anthropic / Groq (PR #12)
 - [ ] Performance dashboard — charts comparing models over time
 - [ ] CPU / GPU temperature display (where available)
 
@@ -265,6 +265,17 @@
 - [ ] End-to-end tests with Playwright
 - [ ] Automated screenshot regression tests
 - [ ] Performance benchmark suite (tokens/sec baseline)
+
+---
+
+## Open PRs
+
+| PR | Feature | Status |
+|----|---------|--------|
+| #12 | Cloud API cost estimation + showToast fix | 🟡 Open |
+| #13 | GPU / VRAM live monitoring panel | 🟡 Open |
+| #14 | Fully responsive mobile layout (drawer sidebars) | 🟡 Open |
+| #15 | Per-model parameter profiles (auto-save/restore) | 🟡 Open |
 
 ---
 
