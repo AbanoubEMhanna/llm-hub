@@ -500,6 +500,7 @@
     <div class="settings-tabs">
       <button class="settings-tab active" id="tab-config" onclick="switchSettingsTab('config')">Config JSON</button>
       <button class="settings-tab" id="tab-apikeys" onclick="switchSettingsTab('apikeys')">API Keys</button>
+      <button class="settings-tab" id="tab-backup" onclick="switchSettingsTab('backup')">Backup</button>
     </div>
 
     <!-- Tab: Config JSON -->
@@ -559,6 +560,41 @@
       <button class="btn" onclick="clearAllApiKeys()">Clear All</button>
       <button class="btn" onclick="closeModal('config-modal')">Cancel</button>
       <button class="btn primary" onclick="saveApiKeys()">Save Keys &amp; Refresh Models</button>
+    </div>
+
+    <!-- Tab: Backup / Restore -->
+    <div class="modal-body" id="settings-panel-backup" style="display:none">
+      <div class="backup-section-label">Current data</div>
+      <div class="backup-summary" id="backup-summary"></div>
+
+      <div class="backup-section-label" style="margin-top:20px">Export</div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:12px">
+        Download a complete snapshot of all conversations, presets, templates, and settings.
+        API keys are excluded from the backup for security.
+      </p>
+      <button class="btn primary" onclick="exportBackup()">↓ Download Backup</button>
+
+      <div class="backup-section-label" style="margin-top:20px">Import / Restore</div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:12px">
+        Restore from a previously exported backup. This overwrites your current conversations, presets, and templates.
+      </p>
+      <button type="button" class="backup-import-zone" id="backup-import-zone"
+           onclick="document.getElementById('backup-file-input').click()"
+           ondragover="event.preventDefault()"
+           ondrop="onBackupDrop(event)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span>Drop backup.json here or click to browse</span>
+      </button>
+      <input type="file" id="backup-file-input" accept=".json" style="display:none"
+             onchange="importBackup(this)"/>
+      <div id="backup-status" style="margin-top:8px;font-size:12px;font-family:var(--mono);color:var(--muted)"></div>
+    </div>
+    <div class="modal-footer" id="settings-footer-backup" style="display:none">
+      <button class="btn" onclick="closeModal('config-modal')">Close</button>
     </div>
   </div>
 </div>

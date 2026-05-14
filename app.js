@@ -1569,12 +1569,109 @@ function openApiKeySettings() {
 }
 
 function switchSettingsTab(tab) {
-  ['config', 'apikeys'].forEach(t => {
+  ['config', 'apikeys', 'backup'].forEach(t => {
     document.getElementById(`settings-panel-${t}`).style.display = t === tab ? '' : 'none';
     document.getElementById(`settings-footer-${t}`).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById(`tab-${t}`);
     if (btn) btn.classList.toggle('active', t === tab);
   });
+  if (tab === 'backup') renderBackupSummary();
+}
+
+function renderBackupSummary() {
+  const convs   = JSON.parse(localStorage.getItem('llm-convs')     || '[]');
+  const presets  = JSON.parse(localStorage.getItem('llm-presets')   || '{}');
+  const tpls     = JSON.parse(localStorage.getItem('llm-templates') || '[]');
+  const totalMsg = convs.reduce((n, c) => n + (c.messages?.length || 0), 0);
+  const el = document.getElementById('backup-summary');
+  if (el) el.innerHTML = `
+    <div class="backup-stat"><span class="backup-stat-val">${convs.length}</span><span class="backup-stat-label">Conversations</span></div>
+    <div class="backup-stat"><span class="backup-stat-val">${totalMsg}</span><span class="backup-stat-label">Messages</span></div>
+    <div class="backup-stat"><span class="backup-stat-val">${Object.keys(presets).length}</span><span class="backup-stat-label">Presets</span></div>
+    <div class="backup-stat"><span class="backup-stat-val">${Array.isArray(tpls) ? tpls.length : 0}</span><span class="backup-stat-label">Templates</span></div>
+  `;
+}
+
+function openBackupSettings() {
+  switchSettingsTab('backup');
+  const convs   = JSON.parse(localStorage.getItem('llm-convs')     || '[]');
+  const presets  = JSON.parse(localStorage.getItem('llm-presets')   || '{}');
+  const tpls     = JSON.parse(localStorage.getItem('llm-templates') || '[]');
+  const totalMsg = convs.reduce((n, c) => n + (c.messages?.length || 0), 0);
+  const el = document.getElementById('backup-summary');
+  if (el) el.innerHTML = `
+    <div class="backup-stat"><span class="backup-stat-val">${convs.length}</span><span class="backup-stat-label">Conversations</span></div>
+    <div class="backup-stat"><span class="backup-stat-val">${totalMsg}</span><span class="backup-stat-label">Messages</span></div>
+    <div class="backup-stat"><span class="backup-stat-val">${Object.keys(presets).length}</span><span class="backup-stat-label">Presets</span></div>
+    <div class="backup-stat"><span class="backup-stat-val">${Array.isArray(tpls) ? tpls.length : 0}</span><span class="backup-stat-label">Templates</span></div>
+  `;
+  const statusEl = document.getElementById('backup-status');
+  if (statusEl) { statusEl.textContent = ''; statusEl.style.color = 'var(--muted)'; }
+  openModal('config-modal');
+}
+
+function exportBackup() {
+  const payload = {
+    version: 1,
+    app: 'llm-hub',
+    exportedAt: new Date().toISOString(),
+    data: {
+      conversations: JSON.parse(localStorage.getItem('llm-convs')     || '[]'),
+      presets:       JSON.parse(localStorage.getItem('llm-presets')   || '{}'),
+      templates:     JSON.parse(localStorage.getItem('llm-templates') || '[]'),
+      settings:      JSON.parse(localStorage.getItem('llm-settings')  || '{}'),
+    },
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `llm-hub-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Backup downloaded', 'success');
+}
+
+function onBackupDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer?.files?.[0];
+  if (file) applyBackupFile(file);
+}
+
+function importBackup(input) {
+  const file = input.files?.[0];
+  input.value = '';
+  if (file) applyBackupFile(file);
+}
+
+function applyBackupFile(file) {
+  const statusEl = document.getElementById('backup-status');
+  const reader   = new FileReader();
+  reader.onload  = (e) => {
+    try {
+      const payload = JSON.parse(e.target.result);
+      if (payload.app !== 'llm-hub' || payload.version !== 1 || !payload.data) {
+        throw new Error('Not a valid LLM Hub backup file.');
+      }
+      const { conversations: convs, presets, templates: tpls, settings } = payload.data;
+      if (!Array.isArray(convs)) throw new Error('Invalid conversations payload.');
+      if (!presets || typeof presets !== 'object' || Array.isArray(presets)) throw new Error('Invalid presets payload.');
+      if (!Array.isArray(tpls)) throw new Error('Invalid templates payload.');
+      if (!settings || typeof settings !== 'object' || Array.isArray(settings)) throw new Error('Invalid settings payload.');
+      if (!confirm('Restore backup? This will overwrite your current conversations and settings.')) return;
+      localStorage.setItem('llm-convs',     JSON.stringify(convs));
+      localStorage.setItem('llm-presets',   JSON.stringify(presets));
+      localStorage.setItem('llm-templates', JSON.stringify(tpls));
+      localStorage.setItem('llm-settings',  JSON.stringify(settings));
+      closeModal('config-modal');
+      toast('Backup restored — reloading…', 'success');
+      setTimeout(() => window.location.reload(), 800);
+    } catch (err) {
+      statusEl.textContent = '✗ ' + err.message;
+      statusEl.style.color = 'var(--red)';
+    }
+  };
+  reader.readAsText(file);
 }
 
 function toggleKeyVisibility(inputId, btn) {
