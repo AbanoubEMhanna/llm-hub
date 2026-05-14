@@ -4,7 +4,7 @@
 >
 > **Target:** Feel like LM Studio + OpenCode, but prettier and faster.
 
-**Legend:** `[x]` Done · `[ ]` Not started · `[~]` In review (open PR) · **Bold** = High priority next
+**Legend:** `[x]` Done · `[ ]` Not started · `[~]` In review (open PR) · **Bold** = High priority — next to implement
 
 ---
 
