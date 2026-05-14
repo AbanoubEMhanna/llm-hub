@@ -326,7 +326,8 @@ function lookupPricing(modelName) {
 }
 
 function estimateCost(provider, modelName, promptTokens, completionTokens) {
-  if (!provider || provider === 'ollama' || provider === 'lmstudio') return null;
+  const SUPPORTED = new Set(['openai', 'anthropic', 'groq']);
+  if (!provider || !SUPPORTED.has(provider)) return null;
   if (!promptTokens && !completionTokens) return null;
   const pricing = lookupPricing(modelName);
   if (!pricing) return null;

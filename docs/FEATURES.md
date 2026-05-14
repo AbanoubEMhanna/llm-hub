@@ -38,8 +38,8 @@
 - [x] Model loading banner with live progress
 - [x] **Model pull / download with live progress bar** (Ollama)
 - [x] **Model delete from disk** (Ollama)
-- [~] **Model capability badges** — vision, code, long-ctx, tools auto-detected (PR #8)
-- [~] **Model family grouping** in the dropdown (Llama, Qwen, Mistral…) (PR #8)
+- [x] Model capability badges (vision, tools, code, long-context)
+- [x] Model family grouping in the dropdown (Llama 3, Qwen, Mistral…)
 - [ ] **Model library browser** — search ollama.com/library inline
 - [ ] **GGUF file drag-and-drop import** (load any GGUF into LM Studio)
 - [ ] Model tags and aliasing (give friendly names to models)
@@ -47,8 +47,6 @@
 - [ ] Favorite / pin models to top of selector
 - [ ] **Model benchmark runner** — tokens/sec speed test per model
 - [ ] Recommended model suggestions based on task type
-- [x] Model capability badges (vision, tools, code, long-context)
-- [x] Model family grouping in the dropdown (Llama 3, Qwen, Mistral…)
 - [ ] **Hardware-aware model suggestions** — recommend models that fit in available VRAM
 
 ---
@@ -209,7 +207,7 @@
 - [x] System RAM usage bar
 - [x] Context usage indicator (warns at >75%)
 - [x] **Real-time tokens/sec counter** during generation
-- [x] **Cloud API cost estimation** — per-response USD cost for OpenAI / Anthropic / Groq (PR #12)
+- [~] **Cloud API cost estimation** — per-response USD cost for OpenAI / Anthropic / Groq (PR #12)
 - [ ] **GPU / VRAM usage monitoring** (Ollama VRAM via API)
 - [ ] Response latency histogram (per-model statistics panel)
 - [ ] Session token usage totals (prompt + completion)
