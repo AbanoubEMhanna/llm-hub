@@ -1189,6 +1189,21 @@ function clearMessages() {
   updateInputTokenCount();
 }
 
+function toggleExportMenu() {
+  const menu = document.getElementById('export-menu');
+  const isOpen = menu.style.display !== 'none';
+  menu.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    const close = e => {
+      if (!document.getElementById('export-drop').contains(e.target)) {
+        menu.style.display = 'none';
+        document.removeEventListener('click', close);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', close), 0);
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // § MARKDOWN + HIGHLIGHTING + ARTIFACTS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1911,6 +1926,124 @@ function exportConv(format) {
   a.href = URL.createObjectURL(blob);
   a.download = `${conv.title.slice(0, 40).replace(/[^\w-]+/g, '-')}.${ext}`;
   a.click();
+}
+
+function exportConvHtml() {
+  const conv = currentConv();
+  if (!conv) return;
+
+  const date = new Date(conv.ts).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const msgCount = conv.messages.filter(m => m.role !== 'system').length;
+
+  const msgsHtml = conv.messages
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .map(m => {
+      const isUser = m.role === 'user';
+      let text = '';
+      const imgTags = [];
+
+      if (typeof m.content === 'string') {
+        text = m.content;
+      } else if (Array.isArray(m.content)) {
+        for (const p of m.content) {
+          if (p.type === 'text') text = p.text;
+          else if (p.type === 'image_url' && p.image_url?.url?.startsWith('data:')) {
+            imgTags.push(`<img src="${escHtml(p.image_url.url)}" class="bubble-img" alt="attached image">`);
+          }
+        }
+      }
+
+      const bodyHtml = renderMarkdown(text);
+      return `
+    <div class="msg-wrap">
+      <div class="msg ${isUser ? 'user' : 'assistant'}">
+        <div class="avatar">${isUser ? '👤' : '🤖'}</div>
+        <div class="bubble">
+          ${imgTags.join('')}
+          ${bodyHtml}
+        </div>
+      </div>
+    </div>`;
+    }).join('\n');
+
+  const slug = conv.title.slice(0, 40).replace(/[^\w-]+/g, '-');
+  const safeTitle = escHtml(conv.title);
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${safeTitle} — LLM Hub</title>
+<style>
+:root {
+  --bg:#09090b; --s1:#18181b; --s2:#27272a; --text:#fafafa; --text2:#d4d4d8;
+  --muted:#71717a; --accent:#3b82f6; --border:#27272a;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+  --sans:'Inter',system-ui,-apple-system,sans-serif;
+  --radius:12px;
+}
+@media (prefers-color-scheme:light) {
+  :root {
+    --bg:#ffffff; --s1:#f4f4f5; --s2:#e4e4e7; --text:#09090b; --text2:#3f3f46;
+    --muted:#71717a; --accent:#2563eb; --border:#e4e4e7;
+  }
+}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text); font-family:var(--sans); font-size:14px; line-height:1.6; min-height:100vh; }
+a { color:var(--accent); text-decoration:none; }
+a:hover { text-decoration:underline; }
+.page-header { border-bottom:1px solid var(--border); padding:16px 24px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.header-brand { font-family:var(--mono); font-size:13px; color:var(--muted); flex-shrink:0; }
+.header-brand span { color:var(--accent); }
+.header-title { font-size:15px; font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.header-meta { font-family:var(--mono); font-size:11px; color:var(--muted); flex-shrink:0; }
+.chat { max-width:780px; margin:0 auto; padding:24px 16px 48px; display:flex; flex-direction:column; gap:4px; }
+.msg-wrap { display:flex; flex-direction:column; gap:4px; }
+.msg { display:flex; gap:12px; padding:4px 0; }
+.msg.user { flex-direction:row-reverse; }
+.avatar { width:32px; height:32px; border-radius:50%; background:var(--s2); display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+.bubble { padding:12px 16px; border-radius:var(--radius); max-width:82%; word-wrap:break-word; overflow-wrap:break-word; }
+.msg.user .bubble { background:var(--accent); color:#fff; border-bottom-right-radius:4px; }
+.msg.user .bubble a { color:rgba(255,255,255,.85); }
+.msg.assistant .bubble { background:var(--s1); border:1px solid var(--border); border-bottom-left-radius:4px; }
+.bubble-img { max-width:100%; border-radius:8px; margin-bottom:8px; display:block; }
+.bubble p { margin:0 0 8px; } .bubble p:last-child { margin-bottom:0; }
+.bubble h1,.bubble h2,.bubble h3,.bubble h4 { margin:16px 0 8px; font-weight:600; line-height:1.3; }
+.bubble h1 { font-size:1.25em; } .bubble h2 { font-size:1.1em; } .bubble h3,.bubble h4 { font-size:1em; }
+.bubble ul,.bubble ol { margin:8px 0; padding-left:20px; }
+.bubble li { margin:4px 0; }
+.bubble blockquote { border-left:3px solid var(--border); margin:8px 0; padding:4px 12px; color:var(--text2); }
+.bubble code { font-family:var(--mono); font-size:12px; background:var(--s2); border-radius:4px; padding:1px 5px; }
+.bubble pre { background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; overflow-x:auto; margin:10px 0; }
+.bubble pre code { background:none; padding:0; font-size:12px; line-height:1.5; }
+.bubble table { border-collapse:collapse; width:100%; margin:10px 0; font-size:13px; }
+.bubble th,.bubble td { border:1px solid var(--border); padding:6px 10px; text-align:left; }
+.bubble th { background:var(--s2); font-weight:600; }
+.bubble hr { border:none; border-top:1px solid var(--border); margin:12px 0; }
+.page-footer { text-align:center; padding:24px; font-family:var(--mono); font-size:11px; color:var(--muted); border-top:1px solid var(--border); }
+</style>
+</head>
+<body>
+<header class="page-header">
+  <div class="header-brand">⚡ <span>LLM Hub</span></div>
+  <div class="header-title">${safeTitle}</div>
+  <div class="header-meta">${escHtml(date)} · ${msgCount} messages</div>
+</header>
+<main class="chat">
+${msgsHtml}
+</main>
+<footer class="page-footer">Exported from <a href="https://github.com/abanoubEMhanna/local-llm-hub" target="_blank" rel="noopener">LLM Hub</a></footer>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${slug}.html`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Conversation exported as HTML', 'success');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
