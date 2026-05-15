@@ -197,7 +197,7 @@ body {
 }
 .conv-item:hover { background: var(--s2); }
 .conv-item.active { background: var(--s2); border-color: var(--border); }
-.conv-item.pinned .conv-title::before { content: "📌 "; font-size: 10px; }
+.conv-item.pinned .conv-title::after { content: " 📌"; font-size: 9px; opacity: .6; }
 .conv-title {
   font-size: 12px; font-weight: 500;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -221,6 +221,65 @@ body {
 }
 .conv-actions button:hover { color: var(--text); background: var(--s3); }
 .conv-actions button.danger:hover { color: var(--red); }
+.conv-actions button.labeled { color: var(--accent) !important; opacity: 1 !important; }
+
+/* ── Conversation label dot ── */
+.conv-label-dot {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  flex-shrink: 0; margin-right: 5px; vertical-align: middle; margin-top: -1px;
+}
+
+/* ── Conversation filter chips ── */
+.conv-filter-area {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  padding: 0 8px 6px; min-height: 0;
+}
+.conv-filter-chip {
+  display: flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 20px; font-size: 10px;
+  font-family: var(--mono); cursor: pointer; transition: var(--transition);
+  background: var(--s3); border: 1px solid var(--border); color: var(--muted);
+  white-space: nowrap;
+}
+.conv-filter-chip:hover { border-color: var(--lc, var(--border2)); color: var(--text); }
+.conv-filter-chip.active {
+  background: color-mix(in srgb, var(--lc, var(--accent)) 14%, transparent);
+  border-color: var(--lc, var(--accent));
+  color: var(--lc, var(--accent));
+}
+.label-dot-sm {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; display: inline-block;
+}
+
+/* ── Label picker popup ── */
+.label-picker {
+  position: fixed; z-index: 10100; background: var(--s1);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px; box-shadow: var(--shadow-lg); min-width: 130px;
+}
+.label-picker-title {
+  font-size: 10px; font-family: var(--mono); color: var(--muted);
+  text-transform: uppercase; letter-spacing: .6px;
+  padding: 2px 6px 6px;
+}
+.label-picker-opt {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 5px 8px; border-radius: 5px; border: none; background: none;
+  color: var(--text); font-size: 12px; cursor: pointer; transition: var(--transition);
+  text-align: left;
+}
+.label-picker-opt:hover { background: var(--s2); }
+.label-picker-opt.active { background: color-mix(in srgb, var(--lc) 12%, transparent); }
+.label-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block;
+}
+.label-picker-clear {
+  display: block; width: 100%; margin-top: 4px; padding: 5px 8px;
+  border: none; background: none; color: var(--muted); font-size: 11px;
+  font-family: var(--mono); cursor: pointer; border-top: 1px solid var(--border);
+  text-align: center; transition: var(--transition); border-radius: 0 0 4px 4px;
+}
+.label-picker-clear:hover { color: var(--red); }
 
 /* ── Right sidebar ── */
 .sidebar-right {

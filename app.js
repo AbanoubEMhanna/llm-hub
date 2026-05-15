@@ -35,6 +35,7 @@ let availableRagCollections = [];
 let isLoading            = false;
 let activeAbortController = null;
 let attachments          = [];                   // [{ dataUrl, name }]
+let activeConvFilter     = null;                 // active label filter for conv list
 
 // Compare mode
 let compareMode          = false;
@@ -58,6 +59,77 @@ let editingMessageIdx    = null;
 // ─────────────────────────────────────────────────────────────────────────────
 // § DEFAULTS
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § CONVERSATION LABELS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CONV_LABELS = {
+  work:     { color: '#3b82f6', name: 'Work' },
+  code:     { color: '#22c55e', name: 'Code' },
+  research: { color: '#a78bfa', name: 'Research' },
+  ideas:    { color: '#f97316', name: 'Ideas' },
+  personal: { color: '#ec4899', name: 'Personal' },
+};
+
+function setConvLabel(id, label, e) {
+  e?.stopPropagation();
+  const conv = conversations.find(c => c.id === id);
+  if (!conv) return;
+  conv.label = conv.label === label ? null : label;
+  saveConvs();
+  renderConvList();
+  document.getElementById('label-picker')?.remove();
+}
+
+function openLabelPicker(id, e) {
+  e.stopPropagation();
+  document.getElementById('label-picker')?.remove();
+  const conv = conversations.find(c => c.id === id);
+  if (!conv) return;
+
+  const picker = document.createElement('div');
+  picker.id = 'label-picker';
+  picker.className = 'label-picker';
+  picker.innerHTML = `
+    <div class="label-picker-title">Label</div>
+    ${Object.entries(CONV_LABELS).map(([key, lbl]) => `
+      <button class="label-picker-opt ${conv.label === key ? 'active' : ''}"
+              onclick="setConvLabel('${id}','${key}',event)"
+              style="--lc:${lbl.color}">
+        <span class="label-dot" style="background:${lbl.color}"></span>${lbl.name}
+      </button>`).join('')}
+    ${conv.label ? `<button class="label-picker-clear" onclick="setConvLabel('${id}',null,event)">Clear</button>` : ''}
+  `;
+
+  const rect = e.currentTarget.getBoundingClientRect();
+  picker.style.top  = rect.bottom + 4 + 'px';
+  picker.style.left = rect.left + 'px';
+  document.body.appendChild(picker);
+
+  const dismiss = (ev) => {
+    if (!picker.contains(ev.target)) { picker.remove(); document.removeEventListener('click', dismiss, true); }
+  };
+  setTimeout(() => document.addEventListener('click', dismiss, true), 0);
+}
+
+function toggleLabelFilter(label) {
+  activeConvFilter = activeConvFilter === label ? null : label;
+  renderConvFilter();
+  renderConvList();
+}
+
+function renderConvFilter() {
+  const area = document.getElementById('conv-filter-area');
+  if (!area) return;
+  area.innerHTML = Object.entries(CONV_LABELS).map(([key, lbl]) => `
+    <button class="conv-filter-chip ${activeConvFilter === key ? 'active' : ''}"
+            onclick="toggleLabelFilter('${key}')"
+            style="--lc:${lbl.color}"
+            title="Filter: ${lbl.name}">
+      <span class="label-dot-sm" style="background:${lbl.color}"></span>${lbl.name}
+    </button>`).join('');
+}
 
 const BUILT_IN_PRESETS = {
   'Code Assistant':  'You are an expert senior software engineer. Help with code, explain trade-offs clearly, and write clean, production-ready solutions. Prefer correctness and clarity over cleverness.',
@@ -130,6 +202,7 @@ async function init() {
   initDragDrop();
   initHotkeys();
   initVoice();
+  renderConvFilter();
   renderConvList();
   if (!conversations.length) newConversation();
   else loadConversation(conversations[0].id);
@@ -583,20 +656,31 @@ function togglePin(id, e) {
 
 function renderConvList() {
   const list = document.getElementById('conv-list');
-  const sorted = [...conversations].sort((a, b) => {
+  let sorted = [...conversations].sort((a, b) => {
     if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
     return b.ts - a.ts;
   });
-  list.innerHTML = sorted.map(c => `
+  if (activeConvFilter) sorted = sorted.filter(c => c.label === activeConvFilter);
+
+  list.innerHTML = sorted.map(c => {
+    const lbl = c.label ? CONV_LABELS[c.label] : null;
+    const labelDot = lbl
+      ? `<span class="conv-label-dot" style="background:${lbl.color}" title="${lbl.name}"></span>`
+      : '';
+    return `
     <div class="conv-item ${c.id === currentConvId ? 'active' : ''} ${c.pinned ? 'pinned' : ''}" data-id="${c.id}"
          onclick="loadConversation('${c.id}')">
-      <div class="conv-title" ondblclick="startRenameConv('${c.id}',event)" title="Double-click to rename">${escHtml(c.title)}</div>
+      <div class="conv-title" ondblclick="startRenameConv('${c.id}',event)" title="Double-click to rename">
+        ${labelDot}${escHtml(c.title)}
+      </div>
       <div class="conv-meta">${c.messages.length} msgs · ${timeAgo(c.ts)}</div>
       <div class="conv-actions">
+        <button onclick="openLabelPicker('${c.id}',event)" title="Label" class="${c.label ? 'labeled' : ''}">🏷</button>
         <button onclick="togglePin('${c.id}',event)" title="${c.pinned ? 'Unpin' : 'Pin'}">${c.pinned ? '📌' : '📍'}</button>
         <button class="danger" onclick="deleteConversation('${c.id}',event)" title="Delete">×</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function timeAgo(ts) {

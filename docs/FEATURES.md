@@ -62,10 +62,12 @@
 - [x] Auto-title from first message
 - [x] Chat fuzzy search (⌘K)
 - [x] **Conversation title rename** on double-click
+- [x] Collapsible long messages (auto-collapse messages > ~22 lines)
+- [x] **Conversation color labels** — Work / Code / Research / Ideas / Personal, with sidebar filter
 - [ ] **Conversation folders** / tag-based organization
 - [ ] **Conversation branching** — fork from any message
 - [ ] Import conversations from JSON / ChatGPT export
-- [~] **Share conversation** as a self-contained HTML file *(this PR)*
+- [x] **Share conversation** as a self-contained HTML file
 - [ ] Multi-tab chat (several conversations open side-by-side)
 - [ ] Message reactions (👍 👎 — RLHF-style feedback)
 - [ ] Bulk conversation management (select all → delete / export)
