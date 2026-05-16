@@ -3234,6 +3234,126 @@ function formatMM(bytes) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § MODEL LIBRARY BROWSER
+// ─────────────────────────────────────────────────────────────────────────────
+
+const OLLAMA_LIBRARY = [
+  // ── Meta Llama ──────────────────────────────────────────────────────────────
+  { name: 'llama3.3',         org: 'Meta',      icon: '🦙', size: '43 GB',  tags: ['large'],           desc: 'Llama 3.3 70B — Meta\'s latest flagship for reasoning and instruction following.' },
+  { name: 'llama3.2',         org: 'Meta',      icon: '🦙', size: '2 GB',   tags: ['fast'],            desc: 'Llama 3.2 3B — fast, capable small model good for everyday tasks.' },
+  { name: 'llama3.2:1b',      org: 'Meta',      icon: '🦙', size: '1.3 GB', tags: ['fast'],            desc: 'Llama 3.2 1B — ultra-light, runs on anything.' },
+  { name: 'llama3.2-vision',  org: 'Meta',      icon: '🦙', size: '8 GB',   tags: ['vision'],          desc: 'Llama 3.2 11B Vision — multimodal model for image understanding.' },
+  { name: 'llama3.1',         org: 'Meta',      icon: '🦙', size: '5 GB',   tags: [],                  desc: 'Llama 3.1 8B — solid all-rounder with 128K context.' },
+  { name: 'llama3.1:70b',     org: 'Meta',      icon: '🦙', size: '40 GB',  tags: ['large'],           desc: 'Llama 3.1 70B — high-quality reasoning and instruction following.' },
+  // ── Qwen ────────────────────────────────────────────────────────────────────
+  { name: 'qwen2.5',          org: 'Alibaba',   icon: '🟣', size: '5 GB',   tags: [],                  desc: 'Qwen 2.5 7B — strong multilingual and coding performance.' },
+  { name: 'qwen2.5:14b',      org: 'Alibaba',   icon: '🟣', size: '9 GB',   tags: [],                  desc: 'Qwen 2.5 14B — excellent balance of quality and speed.' },
+  { name: 'qwen2.5:32b',      org: 'Alibaba',   icon: '🟣', size: '19 GB',  tags: ['large'],           desc: 'Qwen 2.5 32B — powerful, near-frontier quality.' },
+  { name: 'qwen2.5-coder',    org: 'Alibaba',   icon: '🟣', size: '5 GB',   tags: ['code'],            desc: 'Qwen 2.5 Coder 7B — specialized for code generation and review.' },
+  { name: 'qwen2.5-coder:14b',org: 'Alibaba',   icon: '🟣', size: '9 GB',   tags: ['code'],            desc: 'Qwen 2.5 Coder 14B — excellent code model rivaling GPT-4 on benchmarks.' },
+  { name: 'qwq',              org: 'Alibaba',   icon: '🟣', size: '20 GB',  tags: ['large'],           desc: 'QwQ 32B — reasoning-focused model with strong math and logic.' },
+  // ── Mistral / Mixtral ───────────────────────────────────────────────────────
+  { name: 'mistral',          org: 'Mistral AI',icon: '💠', size: '4 GB',   tags: ['fast'],            desc: 'Mistral 7B — blazing fast, concise, great for instruction following.' },
+  { name: 'mistral-small',    org: 'Mistral AI',icon: '💠', size: '14 GB',  tags: [],                  desc: 'Mistral Small 3 — strong all-rounder at an efficient size.' },
+  { name: 'mixtral',          org: 'Mistral AI',icon: '💠', size: '26 GB',  tags: ['large'],           desc: 'Mixtral 8×7B MoE — sparse expert model with excellent quality.' },
+  // ── DeepSeek ────────────────────────────────────────────────────────────────
+  { name: 'deepseek-r1',      org: 'DeepSeek',  icon: '🔷', size: '5 GB',   tags: ['fast'],            desc: 'DeepSeek-R1 7B — chain-of-thought reasoning, open-source frontier.' },
+  { name: 'deepseek-r1:14b',  org: 'DeepSeek',  icon: '🔷', size: '9 GB',   tags: [],                  desc: 'DeepSeek-R1 14B — strong math and coding with extended thinking.' },
+  { name: 'deepseek-r1:32b',  org: 'DeepSeek',  icon: '🔷', size: '19 GB',  tags: ['large'],           desc: 'DeepSeek-R1 32B — near-GPT-4 reasoning quality.' },
+  { name: 'deepseek-coder-v2',org: 'DeepSeek',  icon: '🔷', size: '9 GB',   tags: ['code'],            desc: 'DeepSeek Coder v2 16B — top-tier code model, outperforms GPT-4o on code.' },
+  // ── Microsoft Phi ───────────────────────────────────────────────────────────
+  { name: 'phi4',             org: 'Microsoft', icon: '🔵', size: '8 GB',   tags: ['fast'],            desc: 'Phi-4 14B — punches well above its weight on reasoning tasks.' },
+  { name: 'phi4-mini',        org: 'Microsoft', icon: '🔵', size: '2.5 GB', tags: ['fast'],            desc: 'Phi-4 Mini 3.8B — ultra-efficient, great for constrained environments.' },
+  { name: 'phi3.5',           org: 'Microsoft', icon: '🔵', size: '2.2 GB', tags: ['fast'],            desc: 'Phi-3.5 Mini — fast and smart small model from Microsoft.' },
+  // ── Google Gemma ────────────────────────────────────────────────────────────
+  { name: 'gemma3',           org: 'Google',    icon: '🟤', size: '5 GB',   tags: ['vision'],          desc: 'Gemma 3 9B — multimodal, strong reasoning, Google\'s open model.' },
+  { name: 'gemma3:27b',       org: 'Google',    icon: '🟤', size: '17 GB',  tags: ['vision', 'large'], desc: 'Gemma 3 27B — Google\'s largest open model with vision capabilities.' },
+  { name: 'gemma2',           org: 'Google',    icon: '🟤', size: '5 GB',   tags: [],                  desc: 'Gemma 2 9B — efficient, high-quality model from Google.' },
+  // ── Code-specialized ────────────────────────────────────────────────────────
+  { name: 'codellama',        org: 'Meta',      icon: '💻', size: '4 GB',   tags: ['code'],            desc: 'Code Llama 7B — purpose-built for code generation and debugging.' },
+  { name: 'codellama:34b',    org: 'Meta',      icon: '💻', size: '19 GB',  tags: ['code', 'large'],   desc: 'Code Llama 34B — powerful coding assistant.' },
+  { name: 'starcoder2',       org: 'HuggingFace',icon:'💻', size: '9 GB',   tags: ['code'],            desc: 'StarCoder2 15B — trained on 600+ languages, great for open-source code.' },
+  // ── Embeddings ──────────────────────────────────────────────────────────────
+  { name: 'nomic-embed-text', org: 'Nomic',     icon: '📐', size: '274 MB', tags: ['embed'],           desc: 'Nomic Embed Text v1.5 — fast, local embedding model for RAG.' },
+  { name: 'mxbai-embed-large',org: 'MixedBread',icon: '📐', size: '670 MB', tags: ['embed'],           desc: 'MixedBread Large — high-quality English embedding model.' },
+  // ── Vision ──────────────────────────────────────────────────────────────────
+  { name: 'llava',            org: 'LLaVA',     icon: '👁',  size: '4 GB',   tags: ['vision'],          desc: 'LLaVA 1.6 7B — image understanding and visual Q&A.' },
+  { name: 'moondream',        org: 'Moondream', icon: '👁',  size: '1.7 GB', tags: ['vision', 'fast'],  desc: 'Moondream 2 — tiny but capable vision-language model.' },
+];
+
+const MM_LIB_CATEGORIES = ['All', 'fast', 'code', 'vision', 'large', 'embed'];
+let   mmLibActiveFilter  = 'All';
+
+function switchModelManagerTab(tab) {
+  document.getElementById('mm-panel-installed').style.display = tab === 'installed' ? '' : 'none';
+  document.getElementById('mm-panel-library').style.display   = tab === 'library'   ? '' : 'none';
+  document.getElementById('mm-tab-installed').classList.toggle('active', tab === 'installed');
+  document.getElementById('mm-tab-library').classList.toggle('active', tab === 'library');
+  if (tab === 'library') {
+    renderLibraryFilters();
+    renderModelLibrary('');
+  }
+}
+
+function renderLibraryFilters() {
+  const el = document.getElementById('mm-library-filters');
+  el.innerHTML = MM_LIB_CATEGORIES.map(cat =>
+    `<button class="mm-filter-chip${mmLibActiveFilter === cat ? ' active' : ''}"
+       onclick="mmSetFilter('${cat}')">${cat === 'All' ? 'All models' : cat}</button>`
+  ).join('');
+}
+
+function mmSetFilter(cat) {
+  mmLibActiveFilter = cat;
+  renderLibraryFilters();
+  renderModelLibrary(document.getElementById('mm-library-search').value || '');
+}
+
+function renderModelLibrary(query = '') {
+  const q = query.toLowerCase().trim();
+  const filtered = OLLAMA_LIBRARY.filter(m => {
+    const matchesFilter = mmLibActiveFilter === 'All' || m.tags.includes(mmLibActiveFilter);
+    const matchesQuery  = !q || m.name.includes(q) || m.org.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q);
+    return matchesFilter && matchesQuery;
+  });
+
+  const grid = document.getElementById('mm-library-grid');
+  if (!filtered.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:12px">No models match your search.</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(m => {
+    const tags = m.tags.map(t => `<span class="mm-lib-tag ${t}">${t}</span>`).join('');
+    return `<div class="mm-lib-card">
+      <div class="mm-lib-card-header">
+        <div class="mm-lib-icon" style="background:var(--s3)">${m.icon}</div>
+        <div class="mm-lib-name-wrap">
+          <div class="mm-lib-name">${m.name}</div>
+          <div class="mm-lib-org">${m.org}</div>
+        </div>
+      </div>
+      <div class="mm-lib-desc">${m.desc}</div>
+      <div class="mm-lib-footer">
+        <div class="mm-lib-tags">${tags}</div>
+        <span class="mm-lib-size">${m.size}</span>
+        <button class="mm-lib-pull-btn" onclick="pullFromLibrary('${m.name}', this)" title="Pull ${m.name}">↓ Pull</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function pullFromLibrary(name, btnEl) {
+  switchModelManagerTab('installed');
+  const input = document.getElementById('mm-pull-input');
+  input.value = name;
+  input.focus();
+  btnEl.classList.add('pulling');
+  btnEl.textContent = 'Queued';
+  setTimeout(() => pullModel(), 100);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § BOOT
 // ─────────────────────────────────────────────────────────────────────────────
 

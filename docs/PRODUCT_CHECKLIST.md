@@ -1,10 +1,22 @@
-# LLM Hub — Product Vision & Feature Checklist
+# LLM Hub — Product Checklist
 
-> **Vision:** Build the best local-first AI workbench — combining **LM Studio's** model management and hardware awareness with **OpenCode's** code-first agent workflow, all wrapped in a polished **Linear/Vercel-inspired UI** that feels fast, focused, and professional.
->
-> **Target:** Feel like LM Studio + OpenCode, but prettier and faster.
+> **Vision:** The best local-first AI workbench — combining **LM Studio**'s model management and hardware awareness with **OpenCode**'s code-first agent workflow, all wrapped in a polished **Linear/Vercel-inspired UI** that feels fast, focused, and professional.
 
-**Legend:** `[x]` Done · `[ ]` Not started · `[~]` In review (open PR) · **Bold** = High priority — next to implement
+**Legend:**
+| Mark | Meaning |
+|------|---------|
+| `[x]` | Done / shipped on `main` |
+| `[~]` | In review — open PR, not yet merged |
+| `[ ]` | Not started |
+| 🔥 | High priority — implement next |
+
+**Quick stats (as of 2026-05-16):**
+
+| Status | Count |
+|--------|-------|
+| `[x]` Done | ~55 |
+| `[~]` In review | 5 PRs open |
+| `[ ]` Not started | ~60 |
 
 ---
 
@@ -15,13 +27,13 @@
 - [x] Multi-provider model aggregation (single unified dropdown)
 - [x] OpenAI-compatible `/v1/chat/completions` passthrough
 - [x] Proxy binds to `127.0.0.1` by default (secure by default)
-- [x] **OpenAI provider** (cloud, with API key)
-- [x] **Anthropic Claude provider** (cloud, with API key — format conversion included)
-- [x] **Groq provider** (ultra-fast inference)
-- [x] **OpenRouter provider** (unified cloud gateway)
-- [ ] **Mistral / Together / Fireworks providers**
-- [x] API key management (localStorage, transmitted via header — never on disk)
-- [ ] Custom provider endpoint configuration from UI
+- [x] OpenAI provider (cloud, with API key)
+- [x] Anthropic Claude provider (cloud, with API key — format conversion)
+- [x] Groq provider (ultra-fast inference)
+- [x] OpenRouter provider (unified cloud gateway)
+- [x] API key management (localStorage only — never on disk)
+- [ ] 🔥 Mistral / Together / Fireworks providers
+- [ ] 🔥 Custom provider endpoint configuration from UI
 - [ ] Provider health monitoring with auto-reconnect
 - [ ] Per-provider timeout and retry settings
 - [ ] `npx local-llm-hub` zero-install launcher
@@ -34,19 +46,19 @@
 - [x] Running model detection (currently loaded in RAM/VRAM)
 - [x] Model metadata display (size, params, context, quantization)
 - [x] Model loading banner with live progress
-- [x] **Model pull / download with live progress bar** (Ollama)
-- [x] **Model delete from disk** (Ollama)
-- [x] **Model library browser** — browse & pull 30+ popular Ollama models in-app (curated list)
-- [ ] **Model library search** — live search against ollama.com/library API
-- [ ] **GGUF file drag-and-drop import** (load any GGUF into LM Studio)
+- [x] Model pull / download with live progress bar (Ollama)
+- [x] Model delete from disk (Ollama)
+- [x] Model capability badges (vision, tools, code, long-context)
+- [x] Model family grouping in the dropdown
+- [x] 🔥 **Model Library Browser** — browse & pull popular Ollama models in-app
+- [ ] 🔥 Search ollama.com/library inline (live API query)
+- [ ] GGUF file drag-and-drop import (load any GGUF into LM Studio)
 - [ ] Model tags and aliasing (give friendly names to models)
 - [ ] Update check — notify when a newer version of a model exists
 - [ ] Favorite / pin models to top of selector
-- [ ] **Model benchmark runner** — tokens/sec speed test per model
+- [ ] 🔥 Model benchmark runner — tokens/sec speed test per model
 - [ ] Recommended model suggestions based on task type
-- [x] Model capability badges (vision, tools, code, long-context)
-- [x] Model family grouping in the dropdown (Llama 3, Qwen, Mistral…)
-- [ ] **Hardware-aware model suggestions** — recommend models that fit in available VRAM
+- [ ] Hardware-aware model suggestions — recommend models that fit in available VRAM
 
 ---
 
@@ -56,22 +68,25 @@
 - [x] Stop generation mid-stream
 - [x] Persistent chat history (localStorage)
 - [x] Chat export — Markdown and JSON
+- [x] Chat export — standalone HTML (offline-capable)
 - [x] Message edit & regenerate
 - [x] Message copy
 - [x] Continue generation
 - [x] Conversation pinning
 - [x] Auto-title from first message
 - [x] Chat fuzzy search (⌘K)
-- [x] **Conversation title rename** on double-click
-- [ ] **Conversation folders** / tag-based organization
-- [ ] **Conversation branching** — fork from any message
+- [x] Conversation title rename (double-click)
+- [x] Collapsible long messages (auto-collapse > ~22 lines)
+- [~] Conversation color labels + sidebar filter chips (PR #16)
+- [ ] 🔥 Conversation folders / tag-based organization
+- [ ] 🔥 Conversation branching — fork from any message
 - [ ] Import conversations from JSON / ChatGPT export
-- [~] **Share conversation** as a self-contained HTML file *(this PR)*
 - [ ] Multi-tab chat (several conversations open side-by-side)
 - [ ] Message reactions (👍 👎 — RLHF-style feedback)
 - [ ] Bulk conversation management (select all → delete / export)
-- [ ] Context window timeline visualization (which messages fit in context)
+- [ ] Context window timeline visualization
 - [ ] Inline message threading / replies
+- [ ] Message search within a single conversation
 
 ---
 
@@ -79,8 +94,9 @@
 
 - [x] Side-by-side split-screen comparison
 - [x] Parallel streaming to two models simultaneously
-- [ ] Response quality grading (thumbs up/down per pane)
-- [ ] **Diff view** between two model responses
+- [x] Per-pane latency and token stats
+- [ ] 🔥 Response quality grading — thumbs up/down per pane
+- [ ] Diff view between two model responses
 - [ ] Save comparison as a formatted report
 - [ ] A/B test mode (random model selection, reveal after both respond)
 - [ ] Multi-model tournament (bracket-style comparison)
@@ -95,14 +111,13 @@
 - [x] Collapsible right-sidebar accordion panels
 - [x] Keyboard shortcuts (⌘P, ⌘K, ⌘J, ⌘R, ⌘E, ⌘/)
 - [x] Keyboard shortcuts help modal (`?`)
-- [x] **Sampling presets** — Precise / Balanced / Creative one-click buttons
-- [x] **Command palette** (⌘P) with fuzzy action search
-- [ ] **Fully responsive mobile layout** (hamburger sidebar, touch-friendly)
-- [ ] Customizable accent color (color picker in settings)
+- [x] Sampling presets — Precise / Balanced / Creative one-click buttons
+- [x] Command palette (⌘P) with fuzzy action search
+- [x] Full-screen focus mode — hide all sidebars (⌘⇧F)
+- [~] Fully responsive mobile layout — hamburger sidebar, touch-friendly (PR #14)
+- [ ] 🔥 Customizable accent color (color picker in settings)
 - [ ] Font size and chat density preferences (Compact / Comfortable / Spacious)
 - [ ] Animated page transitions and micro-interactions
-- [x] **Full-screen focus mode** — hide all sidebars, center content (⌘⇧F)
-- [x] Collapsible long messages (auto-collapse messages > ~22 lines)
 - [ ] Custom welcome screen with quick-action card configuration
 - [ ] Inline message diff view for edited messages
 - [ ] Skeleton loading states instead of spinners
@@ -117,13 +132,13 @@
 - [x] Live tool-call visualization (input → result → elapsed time)
 - [x] MCP stdio client (spawn external MCP servers)
 - [x] Tool enable/disable per-session toggle
-- [ ] **Custom tool builder UI** — define name, description, JSON schema, handler URL
+- [ ] 🔥 Custom tool builder UI — define name, description, JSON schema, handler URL
 - [ ] Tool result caching (skip re-runs for identical inputs within a session)
-- [ ] **MCP server marketplace** / discovery browser
+- [ ] MCP server marketplace / discovery browser
 - [ ] Agent memory persistence across sessions (long-term notes store)
 - [ ] Sub-agent spawning (parallel execution of agent tasks)
 - [ ] Browser automation via Playwright MCP
-- [ ] **Shell command tool** (opt-in, with confirmation prompt)
+- [ ] Shell command tool (opt-in, with confirmation prompt)
 - [ ] Agent run history with step-by-step replay
 - [ ] Agent graph visualization (node/edge view of tool call chain)
 
@@ -134,17 +149,17 @@
 - [x] Syntax-highlighted code blocks (14 languages via Prism.js)
 - [x] Artifact rendering (HTML, SVG, JSX, TSX in sandboxed iframe)
 - [x] Prompt templates with `{{variable}}` placeholders
-- [ ] **Live code editing** inside artifact preview (edit + re-render inline)
-- [ ] **File tree sidebar** — browse local filesystem via MCP filesystem server
-- [ ] **Multi-file context** — select files to attach as context to the conversation
-- [ ] **Terminal pane** — run shell commands, see output inline
-- [ ] **Git integration** — show diff, stage, commit, PR review workflow
+- [ ] 🔥 Live code editing inside artifact preview (edit + re-render inline)
+- [ ] 🔥 File tree sidebar — browse local filesystem via MCP filesystem server
+- [ ] 🔥 Multi-file context — select files to attach as context
+- [ ] 🔥 Git integration — show diff, stage, commit, PR review workflow
+- [ ] Terminal pane — run shell commands, see output inline
 - [ ] Code lens — inline AI-powered suggestions in code blocks
 - [ ] Test runner output display
 - [ ] Linter / formatter auto-suggestions on code paste
-- [ ] **Diff viewer** — before/after code comparison with syntax highlight
+- [ ] Diff viewer — before/after code comparison with syntax highlight
 - [ ] Copy code → file save dialog (write directly to disk)
-- [ ] Multi-language REPL (run code in Python, JS, etc. via sandboxed env)
+- [ ] Multi-language REPL (run Python, JS, etc. via sandboxed env)
 
 ---
 
@@ -155,9 +170,9 @@
 - [x] Cosine-similarity vector search
 - [x] Collection management (create, query, delete)
 - [x] SSE upload progress
-- [ ] **Web page crawl** — paste URL, auto-scrape into knowledge base
-- [ ] **GitHub repository indexing** — clone + embed all files
-- [ ] **PDF attachment support** — extract text, embed, attach as context
+- [ ] 🔥 Web page crawl — paste URL, auto-scrape into knowledge base
+- [ ] 🔥 PDF attachment support — extract text, embed, attach as context
+- [ ] GitHub repository indexing — clone + embed all files
 - [ ] Auto-inject most-relevant chunks into every message (toggle)
 - [ ] Chunk preview and manual editing UI
 - [ ] Knowledge base stats (total chunks, sources, last updated)
@@ -174,11 +189,11 @@
 - [x] System prompt presets (save / load)
 - [x] Prompt templates with variable substitution
 - [x] Plan mode (think step-by-step prefix)
-- [x] **Sampling presets: Precise / Balanced / Creative**
-- [ ] Per-model parameter profiles (save temperature + max tokens per model)
+- [x] Sampling presets: Precise / Balanced / Creative
 - [x] Advanced parameters: Top-P, Top-K, Repeat penalty, Frequency penalty
+- [~] Per-model parameter profiles — auto-save & restore per model (PR #15)
+- [ ] 🔥 Structured output mode — force JSON schema response (JSON mode)
 - [ ] Context length override per conversation
-- [ ] **Structured output mode** — force JSON schema response (JSON mode)
 - [ ] Seed control (reproducible outputs)
 - [ ] Stop sequences configuration
 - [ ] System prompt library with community presets
@@ -191,8 +206,8 @@
 - [x] Vision model support (llava, qwen2-vl, llama3.2-vision)
 - [x] Voice input via browser Web Speech API
 - [x] Whisper server integration (local transcription)
-- [ ] **Text-to-speech output** — read responses aloud (TTS synthesis)
-- [ ] **PDF attachment** — extract text, attach as context
+- [ ] 🔥 Text-to-speech output — read responses aloud (TTS synthesis)
+- [ ] PDF attachment — extract text, attach as context
 - [ ] Audio file transcription by drag-and-drop
 - [ ] Video file frame extraction for vision models
 - [ ] Screen capture / screenshot attach (from clipboard)
@@ -205,11 +220,11 @@
 - [x] Generation stats (total tokens, elapsed time)
 - [x] System RAM usage bar
 - [x] Context usage indicator (warns at >75%)
-- [x] **Real-time tokens/sec counter** during generation
-- [ ] **GPU / VRAM usage monitoring** (Ollama VRAM via API)
+- [x] Real-time tokens/sec counter during generation
+- [~] GPU / VRAM usage monitoring — Ollama VRAM via API (PR #13)
+- [~] Cloud API cost estimation — per-response USD cost for OpenAI / Anthropic / Groq (PR #12)
 - [ ] Response latency histogram (per-model statistics panel)
 - [ ] Session token usage totals (prompt + completion)
-- [ ] **Cost estimation** for cloud API providers (per-model pricing table)
 - [ ] Performance dashboard — charts comparing models over time
 - [ ] CPU / GPU temperature display (where available)
 
@@ -219,11 +234,12 @@
 
 - [x] Raw JSON config editor modal
 - [x] Config hot-reload (MCP servers restart on save)
-- [ ] **Proper settings UI with tabs** — General · Providers · Tools · RAG · Audio · Advanced
+- [x] Backup & restore — all settings + conversations as a single JSON
+- [x] API keys tab (OpenAI, Anthropic, Groq, OpenRouter)
+- [ ] 🔥 Proper settings UI with tabs — General · Providers · Tools · RAG · Audio · Advanced
 - [ ] Provider connection test button (ping + model count)
 - [ ] Theme customizer (accent color, font, density)
 - [ ] Keyboard shortcut remapping
-- [x] **Backup & restore** all settings + conversations as a single JSON
 - [ ] Onboarding wizard for first-time setup
 - [ ] Per-workspace configuration profiles
 
@@ -231,7 +247,7 @@
 
 ## 13. Security & Privacy
 
-- [x] Binds to `127.0.0.1` by default
+- [x] Binds to `127.0.0.1` by default (no LAN exposure without opt-in)
 - [x] SSRF protection on `fetch_url`
 - [x] VM sandbox for `run_javascript`
 - [x] CORS locked to localhost
@@ -248,7 +264,7 @@
 - [x] SSE streaming API (`/v1/chat`)
 - [x] OpenAI-compatible passthrough (`/v1/chat/completions`)
 - [x] MCP stdio client
-- [ ] OpenAPI / Swagger spec for all proxy endpoints
+- [ ] 🔥 OpenAPI / Swagger spec for all proxy endpoints
 - [ ] WebSocket API alternative to SSE
 - [ ] Plugin system (load `.js` modules at startup)
 - [ ] CLI batch mode (`echo "prompt" | local-llm-hub --model llama3`)
@@ -261,7 +277,7 @@
 
 - [x] Node.js syntax validation CI (18, 20, 22)
 - [x] JSON config validation in CI
-- [ ] Unit tests for core utilities (RagEngine, ToolRegistry, SSRF guard)
+- [ ] 🔥 Unit tests for core utilities (RagEngine, ToolRegistry, SSRF guard)
 - [ ] Integration tests for HTTP endpoints
 - [ ] End-to-end tests with Playwright
 - [ ] Automated screenshot regression tests
@@ -269,11 +285,13 @@
 
 ---
 
-## Priority Legend
+## Open PRs Index
 
-| Symbol | Meaning |
-|--------|---------|
-| [x] | Done / shipped |
-| [~] | In review — open PR, not yet merged |
-| [ ] | Not started |
-| **Bold** | High priority — next to implement |
+| PR | Title | Status |
+|----|-------|--------|
+| #12 | Cloud API cost estimation | 🟡 Ready for review |
+| #13 | GPU/VRAM monitoring | 🟡 Ready for review |
+| #14 | Fully responsive mobile layout | 🟡 Ready for review |
+| #15 | Per-model parameter profiles | 🟡 Ready for review |
+| #16 | Conversation color labels + filter chips | 🟡 Ready for review |
+| Current | Model Library Browser + PRODUCT_CHECKLIST | 🔵 This PR |
