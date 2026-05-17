@@ -3344,13 +3344,18 @@ function renderModelLibrary(query = '') {
 }
 
 function pullFromLibrary(name, btnEl) {
+  const pullBtn = document.getElementById('mm-pull-btn');
+  if (pullBtn?.disabled) return;
   switchModelManagerTab('installed');
   const input = document.getElementById('mm-pull-input');
   input.value = name;
   input.focus();
+  btnEl.disabled = true;
   btnEl.classList.add('pulling');
   btnEl.textContent = 'Queued';
-  setTimeout(() => pullModel(), 100);
+  setTimeout(() => {
+    pullModel().finally(() => { btnEl.disabled = false; });
+  }, 100);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

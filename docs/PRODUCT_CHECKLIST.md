@@ -3,6 +3,7 @@
 > **Vision:** The best local-first AI workbench — combining **LM Studio**'s model management and hardware awareness with **OpenCode**'s code-first agent workflow, all wrapped in a polished **Linear/Vercel-inspired UI** that feels fast, focused, and professional.
 
 **Legend:**
+
 | Mark | Meaning |
 |------|---------|
 | `[x]` | Done / shipped on `main` |
