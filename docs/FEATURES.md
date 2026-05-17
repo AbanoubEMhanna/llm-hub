@@ -8,6 +8,19 @@
 
 ---
 
+**Open PRs index:**
+
+| PR | Feature | Status |
+|----|---------|--------|
+| [#12](https://github.com/AbanoubEMhanna/llm-hub/pull/12) | Cloud API cost estimation + showToast fix | `[~]` |
+| [#13](https://github.com/AbanoubEMhanna/llm-hub/pull/13) | GPU/VRAM monitoring panel | `[~]` |
+| [#14](https://github.com/AbanoubEMhanna/llm-hub/pull/14) | Fully responsive mobile layout | `[~]` |
+| [#15](https://github.com/AbanoubEMhanna/llm-hub/pull/15) | Per-model parameter profiles | `[~]` |
+| [#16](https://github.com/AbanoubEMhanna/llm-hub/pull/16) | Conversation color labels + sidebar filter chips | `[~]` |
+| [#17](https://github.com/AbanoubEMhanna/llm-hub/pull/17) | Model library browser (Browse Library tab) | `[~]` |
+
+---
+
 ## 1. Core Infrastructure
 
 - [x] Ollama provider integration
@@ -36,7 +49,7 @@
 - [x] Model loading banner with live progress
 - [x] **Model pull / download with live progress bar** (Ollama)
 - [x] **Model delete from disk** (Ollama)
-- [ ] **Model library browser** — search ollama.com/library inline
+- [~] **Model library browser** — Browse Library tab with 30+ curated Ollama models (PR #17)
 - [ ] **GGUF file drag-and-drop import** (load any GGUF into LM Studio)
 - [ ] Model tags and aliasing (give friendly names to models)
 - [ ] Update check — notify when a newer version of a model exists
@@ -62,12 +75,13 @@
 - [x] Auto-title from first message
 - [x] Chat fuzzy search (⌘K)
 - [x] **Conversation title rename** on double-click
+- [~] **Conversation color labels** — tag conversations with color-coded labels + sidebar filter chips (PR #16)
 - [ ] **Conversation folders** / tag-based organization
 - [ ] **Conversation branching** — fork from any message
 - [ ] Import conversations from JSON / ChatGPT export
-- [~] **Share conversation** as a self-contained HTML file *(this PR)*
+- [x] **Share conversation** as a self-contained HTML file (standalone export)
 - [ ] Multi-tab chat (several conversations open side-by-side)
-- [ ] Message reactions (👍 👎 — RLHF-style feedback)
+- [x] Message reactions (👍 👎 — RLHF-style feedback, persisted in localStorage)
 - [ ] Bulk conversation management (select all → delete / export)
 - [ ] Context window timeline visualization (which messages fit in context)
 - [ ] Inline message threading / replies
@@ -96,7 +110,7 @@
 - [x] Keyboard shortcuts help modal (`?`)
 - [x] **Sampling presets** — Precise / Balanced / Creative one-click buttons
 - [x] **Command palette** (⌘P) with fuzzy action search
-- [ ] **Fully responsive mobile layout** (hamburger sidebar, touch-friendly)
+- [~] **Fully responsive mobile layout** — drawer sidebars + touch-friendly UI (PR #14)
 - [ ] Customizable accent color (color picker in settings)
 - [ ] Font size and chat density preferences (Compact / Comfortable / Spacious)
 - [ ] Animated page transitions and micro-interactions
@@ -174,7 +188,7 @@
 - [x] Prompt templates with variable substitution
 - [x] Plan mode (think step-by-step prefix)
 - [x] **Sampling presets: Precise / Balanced / Creative**
-- [ ] Per-model parameter profiles (save temperature + max tokens per model)
+- [~] Per-model parameter profiles — auto-save & restore sampling params per model (PR #15)
 - [x] Advanced parameters: Top-P, Top-K, Repeat penalty, Frequency penalty
 - [ ] Context length override per conversation
 - [ ] **Structured output mode** — force JSON schema response (JSON mode)
@@ -205,10 +219,10 @@
 - [x] System RAM usage bar
 - [x] Context usage indicator (warns at >75%)
 - [x] **Real-time tokens/sec counter** during generation
-- [ ] **GPU / VRAM usage monitoring** (Ollama VRAM via API)
+- [~] **GPU / VRAM usage monitoring** — live sidebar panel for loaded model VRAM (PR #13)
 - [ ] Response latency histogram (per-model statistics panel)
 - [ ] Session token usage totals (prompt + completion)
-- [ ] **Cost estimation** for cloud API providers (per-model pricing table)
+- [~] **Cost estimation** for cloud API providers — per-model pricing table for OpenAI/Anthropic/Groq (PR #12)
 - [ ] Performance dashboard — charts comparing models over time
 - [ ] CPU / GPU temperature display (where available)
 
