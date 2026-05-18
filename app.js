@@ -551,9 +551,20 @@ function newConversation() {
 }
 
 function loadConversation(id) {
+  // Persist system prompt to the conversation we're leaving
+  const prev = currentConv();
+  if (prev) {
+    prev.sysPrompt = document.getElementById('sys-input').value;
+    saveConvs();
+  }
+
   currentConvId = id;
   const conv = currentConv();
   if (!conv) return;
+
+  // Restore this conversation's system prompt (empty string is valid)
+  document.getElementById('sys-input').value = conv.sysPrompt ?? '';
+
   renderMessages(conv.messages);
   renderConvList();
   document.getElementById('stats-bar').style.display = 'none';
@@ -2503,10 +2514,14 @@ function autoResize(el) {
   el.style.height = Math.min(el.scrollHeight, 180) + 'px';
 }
 
-// System prompt triggers token-count update too
+// System prompt — token count + auto-save to current conversation
 document.addEventListener('DOMContentLoaded', () => {
   const sys = document.getElementById('sys-input');
-  if (sys) sys.addEventListener('input', updateInputTokenCount);
+  if (sys) sys.addEventListener('input', () => {
+    updateInputTokenCount();
+    const conv = currentConv();
+    if (conv) { conv.sysPrompt = sys.value; saveConvs(); }
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
