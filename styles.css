@@ -1201,3 +1201,64 @@ input[type=range]::-webkit-slider-thumb {
   color: var(--muted); font-family: var(--mono); font-size: 12px;
 }
 .backup-import-zone:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ═══════════════════ APPEARANCE SETTINGS ═══════════════════ */
+.appearance-section-label {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: .8px; color: var(--muted); font-weight: 600; margin-bottom: 10px;
+}
+
+/* Accent color swatches */
+.accent-swatches {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+}
+.accent-swatch {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer;
+  transition: var(--transition); flex-shrink: 0; position: relative;
+}
+.accent-swatch:hover { transform: scale(1.15); }
+.accent-swatch.active { border-color: var(--text); box-shadow: 0 0 0 2px var(--bg); }
+.accent-swatch.active::after {
+  content: '✓'; position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 12px; font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0,0,0,.4);
+}
+.accent-custom {
+  background: var(--s3); border: 1px dashed var(--border2) !important;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); position: relative; cursor: pointer;
+}
+.accent-custom:hover { color: var(--text); border-color: var(--accent) !important; }
+
+/* Option group (Font Size / Density) */
+.appearance-option-group {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+}
+.appearance-option {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px 8px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--s2); cursor: pointer; transition: var(--transition);
+  font-family: var(--sans);
+}
+.appearance-option:hover { border-color: var(--border2); }
+.appearance-option.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--s2));
+}
+.ao-icon {
+  font-family: var(--sans); font-weight: 700; color: var(--text); margin-bottom: 2px;
+}
+.ao-label { font-size: 12px; font-weight: 600; color: var(--text); }
+.ao-desc { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+
+/* ── Font-size variants applied to chat messages */
+[data-fontsize="compact"] .bubble { font-size: 12.5px !important; }
+[data-fontsize="normal"]  .bubble { font-size: 13.5px !important; }
+[data-fontsize="large"]   .bubble { font-size: 15px   !important; }
+
+/* ── Chat density variants */
+[data-density="compact"]     .msg-wrap { margin-bottom: 10px; }
+[data-density="comfortable"] .msg-wrap { margin-bottom: 24px; }
+[data-density="spacious"]    .msg-wrap { margin-bottom: 44px; }

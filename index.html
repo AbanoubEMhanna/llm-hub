@@ -507,6 +507,7 @@
     <div class="settings-tabs">
       <button class="settings-tab active" id="tab-config" onclick="switchSettingsTab('config')">Config JSON</button>
       <button class="settings-tab" id="tab-apikeys" onclick="switchSettingsTab('apikeys')">API Keys</button>
+      <button class="settings-tab" id="tab-appearance" onclick="switchSettingsTab('appearance')">Appearance</button>
       <button class="settings-tab" id="tab-backup" onclick="switchSettingsTab('backup')">Backup</button>
     </div>
 
@@ -567,6 +568,71 @@
       <button class="btn" onclick="clearAllApiKeys()">Clear All</button>
       <button class="btn" onclick="closeModal('config-modal')">Cancel</button>
       <button class="btn primary" onclick="saveApiKeys()">Save Keys &amp; Refresh Models</button>
+    </div>
+
+    <!-- Tab: Appearance -->
+    <div class="modal-body" id="settings-panel-appearance" style="display:none">
+
+      <div class="appearance-section-label">Accent Color</div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:12px">
+        Sets the primary interactive color — buttons, highlights, links, and sliders.
+      </p>
+      <div class="accent-swatches" id="accent-swatches">
+        <button class="accent-swatch" data-color="#3b82f6" style="background:#3b82f6" title="Blue (default)" onclick="setAccentColor('#3b82f6')"></button>
+        <button class="accent-swatch" data-color="#8b5cf6" style="background:#8b5cf6" title="Purple" onclick="setAccentColor('#8b5cf6')"></button>
+        <button class="accent-swatch" data-color="#22c55e" style="background:#22c55e" title="Green" onclick="setAccentColor('#22c55e')"></button>
+        <button class="accent-swatch" data-color="#f97316" style="background:#f97316" title="Orange" onclick="setAccentColor('#f97316')"></button>
+        <button class="accent-swatch" data-color="#ef4444" style="background:#ef4444" title="Red" onclick="setAccentColor('#ef4444')"></button>
+        <button class="accent-swatch" data-color="#ec4899" style="background:#ec4899" title="Pink" onclick="setAccentColor('#ec4899')"></button>
+        <button class="accent-swatch" data-color="#14b8a6" style="background:#14b8a6" title="Teal" onclick="setAccentColor('#14b8a6')"></button>
+        <label class="accent-swatch accent-custom" title="Custom color">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          <input type="color" id="accent-custom-input" value="#3b82f6" oninput="setAccentColor(this.value)" style="opacity:0;position:absolute;width:0;height:0"/>
+        </label>
+      </div>
+
+      <div class="appearance-section-label" style="margin-top:20px">Font Size</div>
+      <div class="appearance-option-group" id="fontsize-options">
+        <button class="appearance-option" data-val="compact" onclick="setFontSize('compact')">
+          <span class="ao-icon" style="font-size:11px">Aa</span>
+          <span class="ao-label">Compact</span>
+          <span class="ao-desc">12.5px messages</span>
+        </button>
+        <button class="appearance-option active" data-val="normal" onclick="setFontSize('normal')">
+          <span class="ao-icon" style="font-size:13px">Aa</span>
+          <span class="ao-label">Normal</span>
+          <span class="ao-desc">13.5px messages</span>
+        </button>
+        <button class="appearance-option" data-val="large" onclick="setFontSize('large')">
+          <span class="ao-icon" style="font-size:15px">Aa</span>
+          <span class="ao-label">Large</span>
+          <span class="ao-desc">15px messages</span>
+        </button>
+      </div>
+
+      <div class="appearance-section-label" style="margin-top:20px">Chat Density</div>
+      <div class="appearance-option-group" id="density-options">
+        <button class="appearance-option" data-val="compact" onclick="setChatDensity('compact')">
+          <span class="ao-icon">▪▪▪</span>
+          <span class="ao-label">Compact</span>
+          <span class="ao-desc">Tight spacing</span>
+        </button>
+        <button class="appearance-option active" data-val="comfortable" onclick="setChatDensity('comfortable')">
+          <span class="ao-icon">▪ ▪ ▪</span>
+          <span class="ao-label">Comfortable</span>
+          <span class="ao-desc">Default spacing</span>
+        </button>
+        <button class="appearance-option" data-val="spacious" onclick="setChatDensity('spacious')">
+          <span class="ao-icon">▪  ▪  ▪</span>
+          <span class="ao-label">Spacious</span>
+          <span class="ao-desc">Relaxed spacing</span>
+        </button>
+      </div>
+
+    </div>
+    <div class="modal-footer" id="settings-footer-appearance" style="display:none">
+      <button class="btn" onclick="resetAppearance()">Reset to defaults</button>
+      <button class="btn" onclick="closeModal('config-modal')">Close</button>
     </div>
 
     <!-- Tab: Backup / Restore -->
