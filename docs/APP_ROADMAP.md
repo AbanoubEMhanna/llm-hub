@@ -5,12 +5,14 @@
 > **Goal:** Feel like LM Studio + OpenCode, but prettier, faster, and browser-native.
 
 **Legend:**
+
 | Mark | Meaning |
 |------|---------|
 | `[x]` | Done / shipped on `main` |
 | `[~]` | In review — open PR |
 | `[ ]` | Not started |
 | 🔥 | High priority — next to build |
+
 
 ---
 
@@ -68,7 +70,7 @@
 - [x] Chat fuzzy search (⌘K)
 - [x] Conversation title rename (double-click)
 - [x] Chat export — Markdown, JSON, standalone HTML
-- [x] **Per-conversation system prompt** — each chat remembers its own system prompt
+- [~] **Per-conversation system prompt** — each chat remembers its own system prompt (PR `#19`)
 - [~] **Message reactions** 👍 / 👎 — RLHF-style feedback (PR #18)
 - [~] **Conversation color labels** — tag chats by type (PR #16)
 - [ ] 🔥 **Conversation folders** — nested folder organization
@@ -284,7 +286,7 @@
 | Status | Count |
 |--------|-------|
 | `[x]` Done | ~55 |
-| `[~]` In review | 7 (PRs #12–#18) |
+| `[~]` In review | 8 (PRs #12–#19) |
 | `[ ]` Not started | ~65 |
 | 🔥 High priority | ~30 |
 | **Total** | **~120** |
@@ -295,6 +297,7 @@
 
 | PR | Feature | Status |
 |----|---------|--------|
+| #19 | Per-conversation system prompt | Open |
 | #18 | Message reactions 👍/👎 | Open |
 | #17 | Model library browser | Open |
 | #16 | Conversation color labels | Open |

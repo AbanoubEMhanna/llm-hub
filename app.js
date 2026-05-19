@@ -2514,13 +2514,20 @@ function autoResize(el) {
   el.style.height = Math.min(el.scrollHeight, 180) + 'px';
 }
 
+// Debounced localStorage flush — avoids JSON.stringify on every keystroke
+let _saveConvsTimer = null;
+function debouncedSaveConvs() {
+  clearTimeout(_saveConvsTimer);
+  _saveConvsTimer = setTimeout(() => saveConvs(), 500);
+}
+
 // System prompt — token count + auto-save to current conversation
 document.addEventListener('DOMContentLoaded', () => {
   const sys = document.getElementById('sys-input');
   if (sys) sys.addEventListener('input', () => {
     updateInputTokenCount();
     const conv = currentConv();
-    if (conv) { conv.sysPrompt = sys.value; saveConvs(); }
+    if (conv) { conv.sysPrompt = sys.value; debouncedSaveConvs(); }
   });
 });
 
