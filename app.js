@@ -52,6 +52,10 @@ let activeRunTemplateId  = null;
 let searchSelectedIdx    = 0;
 let searchMatches        = [];
 
+// In-conversation search state
+let convSearchMatches    = [];
+let convSearchIdx        = 0;
+
 // Edit state
 let editingMessageIdx    = null;
 
@@ -554,6 +558,7 @@ function loadConversation(id) {
   currentConvId = id;
   const conv = currentConv();
   if (!conv) return;
+  closeConvSearch();
   renderMessages(conv.messages);
   renderConvList();
   document.getElementById('stats-bar').style.display = 'none';
@@ -1445,6 +1450,79 @@ function onSearchKeydown(e) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § IN-CONVERSATION SEARCH (⌘F)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function openConvSearch() {
+  const bar = document.getElementById('conv-search-bar');
+  bar.style.display = 'flex';
+  const inp = document.getElementById('conv-search-input');
+  inp.value = '';
+  document.getElementById('conv-search-count').textContent = '';
+  clearConvSearchHighlights();
+  setTimeout(() => inp.focus(), 30);
+}
+
+function closeConvSearch() {
+  const bar = document.getElementById('conv-search-bar');
+  if (!bar) return;
+  bar.style.display = 'none';
+  clearConvSearchHighlights();
+}
+
+function clearConvSearchHighlights() {
+  document.querySelectorAll('.bubble.conv-search-match, .bubble.conv-search-current').forEach(el => {
+    el.classList.remove('conv-search-match', 'conv-search-current');
+  });
+  convSearchMatches = [];
+  convSearchIdx     = 0;
+}
+
+function onConvSearchInput() {
+  clearConvSearchHighlights();
+  const q       = document.getElementById('conv-search-input').value.trim().toLowerCase();
+  const countEl = document.getElementById('conv-search-count');
+  if (!q) { countEl.textContent = ''; return; }
+
+  document.querySelectorAll('#messages .bubble').forEach(el => {
+    if (el.textContent.toLowerCase().includes(q)) {
+      el.classList.add('conv-search-match');
+      convSearchMatches.push(el);
+    }
+  });
+
+  if (!convSearchMatches.length) { countEl.textContent = 'No matches'; return; }
+
+  convSearchIdx = 0;
+  convSearchMatches[0].classList.add('conv-search-current');
+  convSearchMatches[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  countEl.textContent = `1 / ${convSearchMatches.length}`;
+}
+
+function nextConvMatch() {
+  if (!convSearchMatches.length) return;
+  convSearchMatches[convSearchIdx].classList.remove('conv-search-current');
+  convSearchIdx = (convSearchIdx + 1) % convSearchMatches.length;
+  convSearchMatches[convSearchIdx].classList.add('conv-search-current');
+  convSearchMatches[convSearchIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  document.getElementById('conv-search-count').textContent = `${convSearchIdx + 1} / ${convSearchMatches.length}`;
+}
+
+function prevConvMatch() {
+  if (!convSearchMatches.length) return;
+  convSearchMatches[convSearchIdx].classList.remove('conv-search-current');
+  convSearchIdx = (convSearchIdx - 1 + convSearchMatches.length) % convSearchMatches.length;
+  convSearchMatches[convSearchIdx].classList.add('conv-search-current');
+  convSearchMatches[convSearchIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  document.getElementById('conv-search-count').textContent = `${convSearchIdx + 1} / ${convSearchMatches.length}`;
+}
+
+function onConvSearchKeydown(e) {
+  if (e.key === 'Escape') { closeConvSearch(); e.preventDefault(); return; }
+  if (e.key === 'Enter')  { e.shiftKey ? prevConvMatch() : nextConvMatch(); e.preventDefault(); }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § TEMPLATES
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2331,6 +2409,7 @@ function buildPaletteCommands() {
   return [
     { group: 'Actions',   icon: '✏️',  label: 'New Conversation',         kbd: '⌘J',   action: () => newConversation() },
     { group: 'Actions',   icon: '🔍',  label: 'Search Conversations',      kbd: '⌘K',   action: () => openSearch() },
+    { group: 'Actions',   icon: '🔎',  label: 'Search in Conversation',    kbd: '⌘F',   action: () => openConvSearch() },
     { group: 'Actions',   icon: '⛶',   label: 'Toggle Focus Mode',         kbd: '⌘⇧F', action: () => toggleFocusMode() },
     { group: 'Actions',   icon: '🎨',  label: 'Toggle Theme',                            action: () => toggleTheme() },
     ...(conv ? [
@@ -2443,6 +2522,7 @@ function initHotkeys() {
     if (e.key === 'k' || e.key === 'K') { e.preventDefault(); openSearch(); return; }
     if (e.key === 'j' || e.key === 'J') { e.preventDefault(); newConversation(); return; }
     if ((e.key === 'f' || e.key === 'F') && e.shiftKey) { e.preventDefault(); toggleFocusMode(); return; }
+    if ((e.key === 'f' || e.key === 'F') && !e.shiftKey) { e.preventDefault(); openConvSearch(); return; }
 
     if (e.key === '/') { e.preventDefault(); document.getElementById('tools-toggle').classList.toggle('on'); return; }
 
