@@ -40,7 +40,8 @@
 - [x] **Model delete from disk** (Ollama)
 - [x] Model capability badges (vision, tools, code, long-context)
 - [x] Model family grouping in the dropdown (Llama 3, Qwen, Mistral…)
-- [ ] **Model library browser** — search ollama.com/library inline
+- [~] **Model library browser** — browse & pull 30+ popular Ollama models in-app (PR #17)
+- [ ] **Model library search** — live search against ollama.com/library API
 - [ ] **GGUF file drag-and-drop import** (load any GGUF into LM Studio)
 - [ ] Model tags and aliasing (give friendly names to models)
 - [ ] Update check — notify when a newer version of a model exists

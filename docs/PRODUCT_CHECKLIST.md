@@ -41,7 +41,7 @@
 - [x] Model capability badges (vision, tools, code, long-context)
 - [x] Model family grouping in dropdown (Llama, Qwen, Mistral, GPT…)
 - [~] GPU / VRAM monitoring — live VRAM usage per loaded model (PR #13)
-- [ ] 🔥 **Model library browser** — search ollama.com/library inline, one-click pull
+- [x] 🔥 **Model library browser** — browse and pull popular Ollama models in-app
 - [ ] 🔥 **Hardware-aware model suggestions** — recommend models that fit in free VRAM
 - [ ] 🔥 **Model benchmark runner** — measure tokens/sec, TTFT per model
 - [ ] Favorite / pin models to the top of the selector

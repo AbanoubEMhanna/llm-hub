@@ -34,9 +34,10 @@
 - ✅ Model loading banner with live progress
 - ✅ Model pull / download with live progress bar (Ollama)
 - ✅ Model delete from disk (Ollama)
-- 🔥 **Model library browser** — search ollama.com/library inline
-- 🔥 **Model capability badges** — vision, tools, code, long-context
-- 🔥 **Model family grouping** in the dropdown (Llama 3, Qwen, Mistral…)
+- ✅ **Model library browser** — browse & pull 30+ popular Ollama models in-app
+- 🔥 **Model library search** — live search against ollama.com/library API
+- ✅ **Model capability badges** — vision, tools, code, long-context
+- ✅ **Model family grouping** in the dropdown (Llama 3, Qwen, Mistral…)
 - 🔲 GGUF file drag-and-drop import (load any GGUF into LM Studio)
 - 🔲 Model tags and aliasing (give friendly names to models)
 - 🔲 Update check — notify when a newer version of a model exists
@@ -95,8 +96,9 @@
 - ✅ Keyboard shortcuts (⌘K, ⌘J, ⌘R, ⌘E, ⌘/)
 - ✅ Keyboard shortcuts help modal (`?`)
 - ✅ Sampling presets — Precise / Balanced / Creative one-click buttons
-- 🔥 **Command palette** (⌘P) — fuzzy search across all actions and conversations
-- 🔥 **Fully responsive mobile layout** — hamburger sidebar, touch-friendly
+- ✅ **Command palette** (⌘P) — fuzzy search across all actions and conversations
+- ✅ **Backup & restore** — all settings + conversations as a single JSON
+- 🔥 **Fully responsive mobile layout** — hamburger sidebar, touch-friendly (PR #14 open)
 - ✅ Full-screen focus mode — hide all sidebars, center content (⌘⇧F)
 - ✅ Collapsible long messages — auto-collapse messages > ~22 lines with "Show more / Show less"
 - 🔲 Customizable accent color (color picker in settings)

@@ -711,7 +711,15 @@
       <div class="modal-title">Model Manager</div>
       <button class="icon-btn" onclick="closeModal('model-manager-modal')">×</button>
     </div>
-    <div class="modal-body">
+
+    <!-- Tabs -->
+    <div class="mm-tabs">
+      <button class="mm-tab active" id="mm-tab-installed" onclick="switchModelManagerTab('installed')">Installed</button>
+      <button class="mm-tab" id="mm-tab-library" onclick="switchModelManagerTab('library')">Browse Library</button>
+    </div>
+
+    <!-- Tab: Installed -->
+    <div class="modal-body" id="mm-panel-installed">
 
       <!-- Pull new model -->
       <div class="mm-section">
@@ -740,6 +748,18 @@
       </div>
 
     </div>
+
+    <!-- Tab: Browse Library -->
+    <div class="modal-body" id="mm-panel-library" style="display:none">
+      <div class="mm-library-search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" id="mm-library-search" class="mm-library-search"
+          placeholder="Search models…" oninput="renderModelLibrary(this.value)"/>
+      </div>
+      <div class="mm-library-filters" id="mm-library-filters"></div>
+      <div class="mm-library-grid" id="mm-library-grid"></div>
+    </div>
+
   </div>
 </div>
 
