@@ -12,20 +12,32 @@
 
 ---
 
-## Open PRs Index
+## Merged PRs (all in main)
 
-| PR | Feature |
-|----|---------|
-| [#12](../../pull/12) | Cloud API cost estimation + showToast fix |
-| [#13](../../pull/13) | GPU/VRAM monitoring panel |
-| [#14](../../pull/14) | Fully responsive mobile layout |
-| [#15](../../pull/15) | Per-model parameter profiles (auto-save/restore) |
-| [#16](../../pull/16) | Conversation color labels + sidebar filter chips |
-| [#17](../../pull/17) | Model library browser (30+ curated models) |
-| [#18](../../pull/18) | Message reactions (👍/👎) |
-| [#19](../../pull/19) | Per-conversation system prompt |
-| [#20](../../pull/20) | Appearance settings (accent color, font size, density) |
-| [#21](../../pull/21) | In-conversation message search (⌘F) |
+| PR | Feature | Status |
+|----|---------|--------|
+| [#1](../../pull/1)   | Model Manager (pull/delete Ollama models) | ✅ Merged |
+| [#2](../../pull/2)   | Sampling presets + FEATURES.md roadmap | ✅ Merged |
+| [#3](../../pull/3)   | Enhanced compare mode with dedicated UI | ✅ Merged |
+| [#4](../../pull/4)   | Live tok/s counter + conversation rename | ✅ Merged |
+| [#5](../../pull/5)   | Advanced sampling params, focus mode | ✅ Merged |
+| [#6](../../pull/6)   | Cloud provider support (OpenAI, Anthropic, Groq, OpenRouter) | ✅ Merged |
+| [#7](../../pull/7)   | Collapsible long messages | ✅ Merged |
+| [#8](../../pull/8)   | Model capability badges + family-sorted selector | ✅ Merged |
+| [#9](../../pull/9)   | Command palette (⌘P) | ✅ Merged |
+| [#10](../../pull/10) | Backup & restore (export/import JSON) | ✅ Merged |
+| [#11](../../pull/11) | Export conversation as standalone HTML | ✅ Merged |
+| [#12](../../pull/12) | Cloud API cost estimation + showToast fix | ✅ Merged |
+| [#13](../../pull/13) | GPU/VRAM monitoring panel | ✅ Merged |
+| [#14](../../pull/14) | Fully responsive mobile layout | ✅ Merged |
+| [#15](../../pull/15) | Per-model parameter profiles (auto-save/restore) | ✅ Merged |
+| [#16](../../pull/16) | Conversation color labels + sidebar filter chips | ✅ Merged |
+| [#17](../../pull/17) | Model library browser (30+ curated models) | ✅ Merged |
+| [#18](../../pull/18) | Message reactions (👍/👎) | ✅ Merged |
+| [#19](../../pull/19) | Per-conversation system prompt | ✅ Merged |
+| [#20](../../pull/20) | Appearance settings (accent color, font size, density) | ✅ Merged |
+| [#21](../../pull/21) | In-conversation message search (⌘F) | ✅ Merged |
+| [#22](../../pull/22) | JSON mode toggle (structured output) | ✅ Merged |
 
 ---
 
@@ -42,7 +54,7 @@
 - [x] OpenRouter provider (unified cloud gateway)
 - [x] API key management (localStorage, transmitted via header only)
 - [ ] 🔥 Mistral / Together / Fireworks / Cohere providers
-- [ ] 🔥 Custom provider endpoint configuration from UI
+- [x] Custom provider endpoint configuration from UI (any OpenAI-compatible server)
 - [ ] Provider health monitoring with auto-reconnect
 - [ ] Per-provider timeout and retry settings
 - [ ] `npx local-llm-hub` zero-install launcher
@@ -60,7 +72,7 @@
 - [x] Model delete from disk (Ollama)
 - [x] Model capability badges (vision, tools, code, long-context)
 - [x] Model family grouping in dropdown (Llama 3, Qwen, Mistral…)
-- [~] Model library browser — 30+ curated models, filter by category (#17)
+- [x] Model library browser — 30+ curated models, filter by category
 - [ ] 🔥 Model benchmark runner — tokens/sec speed test
 - [ ] 🔥 Hardware-aware model suggestions — recommend models that fit in VRAM
 - [ ] GGUF file drag-and-drop import (load any GGUF into LM Studio)
@@ -85,10 +97,10 @@
 - [x] Auto-title from first message
 - [x] Conversation title rename (double-click inline)
 - [x] Collapsible long messages (auto-collapse > 22 lines)
-- [~] Message reactions (👍/👎) — persist per message (#18)
-- [~] Per-conversation system prompt (auto-save/restore on switch) (#19)
-- [~] In-conversation message search (⌘F) (#21)
-- [~] Conversation color labels + sidebar filter chips (#16)
+- [x] Message reactions (👍/👎) — persist per message
+- [x] Per-conversation system prompt (auto-save/restore on switch)
+- [x] In-conversation message search (⌘F)
+- [x] Conversation color labels + sidebar filter chips
 - [ ] 🔥 Conversation branching — fork from any message
 - [ ] 🔥 Conversation folders / nested organization
 - [ ] 🔥 Multi-tab chat (several conversations side-by-side)
@@ -124,8 +136,8 @@
 - [x] Sampling presets — Precise / Balanced / Creative
 - [x] Command palette (⌘P) — fuzzy search all actions and conversations
 - [x] Full-screen focus mode — hide all sidebars (⌘⇧F)
-- [~] Fully responsive mobile layout — drawer sidebars, touch-friendly (#14)
-- [~] Appearance settings — accent color, font size, chat density (#20)
+- [x] Fully responsive mobile layout — drawer sidebars, touch-friendly
+- [x] Appearance settings — accent color, font size, chat density
 - [ ] 🔥 Animated page transitions and micro-interactions
 - [ ] 🔥 Skeleton loading states instead of spinners
 - [ ] 🔥 Drag-to-resize sidebars
@@ -211,7 +223,7 @@
 - [x] JSON mode (force structured JSON output)
 - [x] Sampling presets: Precise / Balanced / Creative
 - [x] Advanced parameters — Top-P, Top-K, Repeat penalty, Frequency penalty
-- [~] Per-model parameter profiles — auto-save temperature + max tokens per model (#15)
+- [x] Per-model parameter profiles — auto-save temperature + max tokens per model
 - [ ] 🔥 Structured output with explicit JSON schema editor
 - [ ] System prompt library with community presets
 - [ ] Context length override per conversation
@@ -240,8 +252,8 @@
 - [x] System RAM usage bar
 - [x] Context usage indicator (warns at >75%)
 - [x] Real-time tokens/sec counter during generation
-- [~] GPU / VRAM usage monitoring — Ollama VRAM per loaded model (#13)
-- [~] Cloud API cost estimation — per-message USD cost for OpenAI/Anthropic/Groq (#12)
+- [x] GPU / VRAM usage monitoring — Ollama VRAM per loaded model
+- [x] Cloud API cost estimation — per-message USD cost for OpenAI/Anthropic/Groq
 - [ ] Session cost accumulator (running total per session)
 - [ ] Response latency histogram per model
 - [ ] Performance dashboard — charts comparing models over time
@@ -254,7 +266,7 @@
 - [x] Raw JSON config editor modal
 - [x] Config hot-reload (MCP servers restart on save)
 - [x] Backup & restore — all settings + conversations as JSON
-- [~] Appearance settings tab — accent color, font size, chat density (#20)
+- [x] Appearance settings tab — accent color, font size, chat density
 - [ ] 🔥 Proper settings UI with tabs — General · Providers · Tools · RAG · Audio · Advanced
 - [ ] 🔥 Provider connection test button — ping + model count
 - [ ] Keyboard shortcut remapping
@@ -300,26 +312,10 @@
 
 | Status | Count |
 |--------|-------|
-| `[x]` Done | ~52 |
-| `[~]` In review (open PRs) | ~10 |
-| `[ ]` Not started | ~60 |
+| `[x]` Done | ~64 |
+| `[ ]` Not started | ~58 |
 | **Total** | **~122** |
 
 ---
 
-## Merge Order for Open PRs (conflict-safe)
-
-All open PRs are currently **clean against main** (no git conflicts). However, since they all modify `app.js`, `styles.css`, and `index.html`, they will conflict with each other if merged out of order. Merge in this sequence:
-
-1. **#12** — Cost estimation (smallest surface area: stats bar + pricing table)
-2. **#13** — VRAM monitoring (new HTML block + `updateSystemDisplay` extension)
-3. **#14** — Mobile layout (CSS media queries + new topbar buttons)
-4. **#15** — Per-model params (new `onModelChange` hook, no HTML)
-5. **#16** — Conversation labels (left sidebar + `renderConvList`)
-6. **#17** — Model library browser (Model Manager modal + `OLLAMA_LIBRARY` data)
-7. **#18** — Message reactions (`buildAssistantWrap` + styles)
-8. **#19** — Per-conversation system prompt (`loadConversation` + `sys-input` listener)
-9. **#20** — Appearance settings (`switchSettingsTab` + Settings modal)
-10. **#21** — In-conversation search (`initHotkeys` + `paletteActions` + chat header)
-
-After each merge, rebase the next branch onto the updated main before merging.
+*All 22 PRs merged to main as of 2026-05-21. No open PRs. Next features tracked in [TODO.md](./TODO.md).*

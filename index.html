@@ -545,7 +545,7 @@
     </div>
     <div class="settings-tabs">
       <button class="settings-tab active" id="tab-config" onclick="switchSettingsTab('config')">Config JSON</button>
-      <button class="settings-tab" id="tab-apikeys" onclick="switchSettingsTab('apikeys')">API Keys</button>
+      <button class="settings-tab" id="tab-apikeys" onclick="switchSettingsTab('apikeys')">Providers</button>
       <button class="settings-tab" id="tab-appearance" onclick="switchSettingsTab('appearance')">Appearance</button>
       <button class="settings-tab" id="tab-backup" onclick="switchSettingsTab('backup')">Backup</button>
     </div>
@@ -602,11 +602,24 @@
         </div>
       </div>
       <div id="apikey-status" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
+
+      <!-- Custom OpenAI-compatible servers -->
+      <div class="cp-section-label">Custom OpenAI-Compatible Servers</div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:12px">
+        Connect to any OpenAI-compatible endpoint — vLLM, llama.cpp server, LocalAI, text-generation-webui, Koboldcpp, TabbyAPI, and more.
+      </p>
+      <div class="cp-add-form">
+        <input class="cp-input" id="cp-name-input" type="text" placeholder="Name (e.g. My vLLM Server)" autocomplete="off"/>
+        <input class="cp-input cp-url" id="cp-url-input" type="text" placeholder="Base URL (e.g. http://192.168.1.100:8000)" autocomplete="off"/>
+        <input class="cp-input" id="cp-key-input" type="password" placeholder="API key (optional)" autocomplete="off"/>
+        <button class="btn primary btn-sm" onclick="addCustomProvider()">+ Add</button>
+      </div>
+      <div id="custom-providers-list" style="margin-top:8px"></div>
     </div>
     <div class="modal-footer" id="settings-footer-apikeys" style="display:none">
-      <button class="btn" onclick="clearAllApiKeys()">Clear All</button>
+      <button class="btn" onclick="clearAllApiKeys()">Clear All Keys</button>
       <button class="btn" onclick="closeModal('config-modal')">Cancel</button>
-      <button class="btn primary" onclick="saveApiKeys()">Save Keys &amp; Refresh Models</button>
+      <button class="btn primary" onclick="saveApiKeys()">Save &amp; Refresh Models</button>
     </div>
 
     <!-- Tab: Appearance -->

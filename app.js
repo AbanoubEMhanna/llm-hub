@@ -20,10 +20,19 @@ let userSettings   = JSON.parse(localStorage.getItem('llm-settings')  || '{"them
 function getStoredApiKeys() {
   try { return JSON.parse(localStorage.getItem('llm-api-keys') || '{}'); } catch { return {}; }
 }
+function getCustomProviders() {
+  try { return JSON.parse(localStorage.getItem('llm-custom-providers') || '[]'); } catch { return []; }
+}
+function saveCustomProviders(providers) {
+  localStorage.setItem('llm-custom-providers', JSON.stringify(providers));
+}
 function apiKeyHeader() {
+  const headers = {};
   const keys = getStoredApiKeys();
-  if (!Object.keys(keys).length) return {};
-  return { 'X-Api-Keys': JSON.stringify(keys) };
+  if (Object.keys(keys).length) headers['X-Api-Keys'] = JSON.stringify(keys);
+  const cp = getCustomProviders();
+  if (cp.length) headers['X-Custom-Providers'] = JSON.stringify(cp);
+  return headers;
 }
 
 let currentConvId        = null;
@@ -286,10 +295,11 @@ async function checkRunningModels() {
   }
 }
 
-const MODEL_ID_PREFIX_RE = /^(ollama|lmstudio|openai|anthropic|groq|openrouter)\//;
+const MODEL_ID_PREFIX_RE = /^(ollama|lmstudio|openai|anthropic|groq|openrouter|custom_[^/]+)\//;
 
 function parseModelId(modelId) {
-  const provider = modelId?.split('/')[0] || null;
+  const match    = (modelId || '').match(/^(ollama|lmstudio|openai|anthropic|groq|openrouter|custom_[^/]+)\//);
+  const provider = match ? match[1] : (modelId?.split('/')[0] || null);
   const name     = (modelId || '').replace(MODEL_ID_PREFIX_RE, '');
   return { provider, name };
 }
@@ -303,6 +313,16 @@ const PROVIDER_LABELS = {
   openrouter: '🔴 OpenRouter',
 };
 
+function getProviderLabel(provider) {
+  if (PROVIDER_LABELS[provider]) return PROVIDER_LABELS[provider];
+  if (provider?.startsWith('custom_')) {
+    const id = provider.replace('custom_', '');
+    const cp = getCustomProviders().find(c => c.id === id);
+    return cp ? `⚙️ ${cp.name}` : `⚙️ Custom`;
+  }
+  return provider;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // § MODEL CAPABILITY & FAMILY DETECTION
 // ─────────────────────────────────────────────────────────────────────────────
@@ -315,7 +335,7 @@ const CAP_LABELS = {
 };
 
 function detectModelCapabilities(modelId, meta) {
-  const n = (modelId || '').toLowerCase().replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter)\//, '');
+  const n = (modelId || '').toLowerCase().replace(MODEL_ID_PREFIX_RE, '');
   const caps = [];
   if (/\b(vision|vl|llava|bakllava|pixtral|moondream|cogvlm|internvl|minicpm-v)\b/.test(n) ||
       /qwen[^/]*vl|llama[^/]*vision|mistral[^/]*pixtral/.test(n)) {
@@ -335,7 +355,7 @@ function detectModelCapabilities(modelId, meta) {
 }
 
 function detectModelFamily(modelId) {
-  const n = (modelId || '').toLowerCase().replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter)\//, '');
+  const n = (modelId || '').toLowerCase().replace(MODEL_ID_PREFIX_RE, '');
   if (/llama/.test(n))              return 'Llama';
   if (/qwen/.test(n))               return 'Qwen';
   if (/mistral|mixtral|devstral/.test(n)) return 'Mistral';
@@ -424,7 +444,7 @@ function fillModelSelect(sel) {
   const sorted = ORDER.filter(p => groups[p]).concat(Object.keys(groups).filter(p => !ORDER.includes(p)));
   for (const p of sorted) {
     const og = document.createElement('optgroup');
-    og.label = PROVIDER_LABELS[p] || p;
+    og.label = getProviderLabel(p);
     // Sort within each provider group by detected family name, then alphabetically
     const sortedModels = [...groups[p]].sort((a, b) => {
       const fa = detectModelFamily(a.id), fb = detectModelFamily(b.id);
@@ -433,7 +453,7 @@ function fillModelSelect(sel) {
     for (const m of sortedModels) {
       const o = document.createElement('option');
       o.value = m.id;
-      const name = m.id.replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter)\//, '');
+      const name = m.id.replace(MODEL_ID_PREFIX_RE, '');
       const meta = modelMetadata[m.id] || {};
       const caps = detectModelCapabilities(m.id, meta);
       const parts = [name];
@@ -1921,6 +1941,7 @@ function openApiKeySettings() {
     if (el) el.value = keys[p] || '';
   });
   document.getElementById('apikey-status').textContent = '';
+  renderCustomProvidersList();
   openModal('config-modal');
 }
 
@@ -1933,6 +1954,7 @@ function switchSettingsTab(tab) {
   });
   if (tab === 'backup') renderBackupSummary();
   if (tab === 'appearance') _syncAppearanceUI();
+  if (tab === 'apikeys') renderCustomProvidersList();
 }
 
 function renderBackupSummary() {
@@ -2046,8 +2068,9 @@ async function saveApiKeys() {
   });
   localStorage.setItem('llm-api-keys', JSON.stringify(keys));
   const count = Object.keys(keys).length;
+  const cpCount = getCustomProviders().length;
   document.getElementById('apikey-status').textContent =
-    count ? `Saved ${count} key(s). Refreshing models…` : 'All keys cleared.';
+    (count || cpCount) ? `Saved ${count} key(s), ${cpCount} custom server(s). Refreshing models…` : 'All keys cleared.';
   closeModal('config-modal');
   await Promise.all([checkHealth(), loadModels()]);
   // Clear any selected model that no longer exists after provider change
@@ -2078,6 +2101,53 @@ function clearAllApiKeys() {
     if (el) el.value = '';
   });
   document.getElementById('apikey-status').textContent = 'All keys cleared.';
+}
+
+function renderCustomProvidersList() {
+  const container = document.getElementById('custom-providers-list');
+  if (!container) return;
+  const providers = getCustomProviders();
+  if (!providers.length) {
+    container.innerHTML = '<div class="cp-empty">No custom servers added yet.</div>';
+    return;
+  }
+  container.innerHTML = providers.map(cp => `
+    <div class="cp-row">
+      <div class="cp-info">
+        <span class="cp-name">${escHtml(cp.name)}</span>
+        <span class="cp-url">${escHtml(cp.url)}</span>
+        ${cp.key ? '<span class="cp-badge key-set">key set</span>' : '<span class="cp-badge no-key">no key</span>'}
+      </div>
+      <button class="btn btn-sm" onclick="deleteCustomProvider('${escHtml(cp.id)}')">Remove</button>
+    </div>`).join('');
+}
+
+function addCustomProvider() {
+  const nameEl = document.getElementById('cp-name-input');
+  const urlEl  = document.getElementById('cp-url-input');
+  const keyEl  = document.getElementById('cp-key-input');
+  const name = (nameEl?.value || '').trim();
+  const url  = (urlEl?.value  || '').trim();
+  const key  = (keyEl?.value  || '').trim();
+  if (!name || !url) { toast('Name and URL are required', 'error'); return; }
+  try { new URL(url); } catch { toast('Invalid URL — use http:// or https://', 'error'); return; }
+  const providers = getCustomProviders();
+  const id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID().replace(/-/g, '').slice(0, 12)
+    : Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  providers.push({ id, name, url, key });
+  saveCustomProviders(providers);
+  if (nameEl) nameEl.value = '';
+  if (urlEl)  urlEl.value  = '';
+  if (keyEl)  keyEl.value  = '';
+  renderCustomProvidersList();
+  toast(`Added "${name}" — save keys to load its models`, 'success');
+}
+
+function deleteCustomProvider(id) {
+  saveCustomProviders(getCustomProviders().filter(cp => cp.id !== id));
+  renderCustomProvidersList();
+  toast('Custom server removed', 'success');
 }
 
 async function saveConfig() {
