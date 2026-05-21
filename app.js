@@ -395,10 +395,13 @@ async function loadTools() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function onModelChange() {
+  const prev = selectedModel;
   selectedModel = document.getElementById('model-select').value || null;
+  if (prev) saveModelParams(prev);
   await checkRunningModels();
   updateModelHeader();
   updateModelInfoCard();
+  loadModelParams(selectedModel);
   document.getElementById('send-btn').disabled = !selectedModel || isLoading;
   updateInputTokenCount();
 }
@@ -514,6 +517,54 @@ function applySamplingPreset(name) {
 
   document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('active'));
   document.getElementById(`pchip-${name}`)?.classList.add('active');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § PER-MODEL PARAMETER PROFILES
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MODEL_PARAMS_STORE = 'llm-hub-model-params';
+
+function getModelParamsStore() {
+  try { return JSON.parse(localStorage.getItem(MODEL_PARAMS_STORE) || '{}'); } catch { return {}; }
+}
+
+function readCurrentParams() {
+  return {
+    temp:   parseFloat(document.getElementById('temp-slider')?.value   ?? 0.7),
+    maxTok: parseInt(document.getElementById('max-tokens')?.value      ?? 2048, 10),
+    topP:   parseFloat(document.getElementById('top-p-slider')?.value  ?? 0.9),
+    topK:   parseInt(document.getElementById('top-k-slider')?.value    ?? 40, 10),
+    repeat: parseFloat(document.getElementById('repeat-slider')?.value ?? 1.0),
+    freq:   parseFloat(document.getElementById('freq-slider')?.value   ?? 0.0),
+  };
+}
+
+function saveModelParams(modelId) {
+  if (!modelId) return;
+  const store = getModelParamsStore();
+  store[modelId] = readCurrentParams();
+  localStorage.setItem(MODEL_PARAMS_STORE, JSON.stringify(store));
+}
+
+function loadModelParams(modelId) {
+  if (!modelId) return;
+  const store = getModelParamsStore();
+  const p = store[modelId];
+  if (!p) return;
+
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
+  if (p.temp   !== undefined) { setVal('temp-slider',   p.temp);          setTxt('temp-val',    p.temp.toFixed(2)); }
+  if (p.maxTok !== undefined) { setVal('max-tokens',    p.maxTok); }
+  if (p.topP   !== undefined) { setVal('top-p-slider',  p.topP);          setTxt('top-p-val',   p.topP.toFixed(2)); }
+  if (p.topK   !== undefined) { setVal('top-k-slider',  p.topK);          setTxt('top-k-val',   p.topK); }
+  if (p.repeat !== undefined) { setVal('repeat-slider', p.repeat);        setTxt('repeat-val',  p.repeat.toFixed(2)); }
+  if (p.freq   !== undefined) { setVal('freq-slider',   p.freq);          setTxt('freq-val',    p.freq.toFixed(1)); }
+
+  // Clear preset chip highlights — restored state may not match any preset
+  document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('active'));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

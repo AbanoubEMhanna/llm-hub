@@ -100,7 +100,7 @@
 - [x] Keyboard shortcuts help modal (`?`)
 - [x] **Sampling presets** — Precise / Balanced / Creative one-click buttons
 - [x] **Command palette** (⌘P) with fuzzy action search
-- [ ] **Fully responsive mobile layout** (hamburger sidebar, touch-friendly)
+- [~] **Fully responsive mobile layout** — drawer sidebars, touch-friendly UI (PR #14)
 - [ ] Customizable accent color (color picker in settings)
 - [ ] Font size and chat density preferences (Compact / Comfortable / Spacious)
 - [ ] Animated page transitions and micro-interactions
@@ -177,7 +177,7 @@
 - [x] Plan mode (think step-by-step prefix)
 - [x] **Sampling presets: Precise / Balanced / Creative**
 - [x] Advanced parameters: Top-P, Top-K, Repeat penalty, Frequency penalty
-- [ ] Per-model parameter profiles (save temperature + max tokens per model)
+- [~] **Per-model parameter profiles** — auto-save & restore all sampling params per model (PR #15)
 - [ ] Context length override per conversation
 - [ ] **Structured output mode** — force JSON schema response (JSON mode)
 - [ ] Seed control (reproducible outputs)
@@ -276,11 +276,14 @@
 
 | PR | Feature | Status |
 |----|---------|--------|
-| #8 | Model capability badges + family-sorted selector | 🟡 Review |
-| #9 | Command palette (⌘P) fuzzy action search | 🟡 Review |
-| #10 | Backup & restore (export/import all data as JSON) | 🟡 Review |
-| #11 | Export conversation as standalone HTML | 🟡 Review |
-| #12 | Cloud API cost estimation in stats bar | 🔵 This PR |
+| #8 | Model capability badges + family-sorted selector | Review |
+| #9 | Command palette (⌘P) fuzzy action search | Review |
+| #10 | Backup & restore (export/import all data as JSON) | Review |
+| #11 | Export conversation as standalone HTML | Review |
+| #12 | Cloud API cost estimation + showToast fix | 🟡 Open |
+| #13 | GPU / VRAM live monitoring panel | 🟡 Open |
+| #14 | Fully responsive mobile layout (drawer sidebars) | 🟡 Open |
+| #15 | Per-model parameter profiles (auto-save/restore) | 🟡 Open |
 
 ---
 
