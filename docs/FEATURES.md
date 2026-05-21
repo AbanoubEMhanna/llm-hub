@@ -207,7 +207,7 @@
 - [x] System RAM usage bar
 - [x] Context usage indicator (warns at >75%)
 - [x] **Real-time tokens/sec counter** during generation
-- [~] **GPU / VRAM usage monitoring** (Ollama VRAM via API) *(PR #13)*
+- [~] **GPU / VRAM usage monitoring** — live VRAM bar per loaded model in sidebar (PR #13)
 - [~] **Cloud API cost estimation** — per-response USD cost for OpenAI / Anthropic / Groq (PR #12)
 - [ ] Response latency histogram (per-model statistics panel)
 - [ ] Session token usage totals (prompt + completion)
@@ -298,8 +298,8 @@
 
 ## Open PRs
 
-| PR | Feature | Status |
-|----|---------|--------|
-| [#11](https://github.com/AbanoubEMhanna/llm-hub/pull/11) | Export conversation as standalone HTML | In review |
-| [#12](https://github.com/AbanoubEMhanna/llm-hub/pull/12) | Cloud API cost estimation + showToast fix | In review |
-| [#13](https://github.com/AbanoubEMhanna/llm-hub/pull/13) | GPU/VRAM live monitoring panel | In review |
+| PR | Title | Status |
+|----|-------|--------|
+| #11 | Export conversation as standalone HTML | Open |
+| #12 | Cloud API cost estimation in stats bar | Open |
+| #13 | GPU / VRAM monitoring in sidebar | Open |
