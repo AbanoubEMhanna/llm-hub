@@ -207,7 +207,7 @@
 - [x] System RAM usage bar
 - [x] Context usage indicator (warns at >75%)
 - [x] **Real-time tokens/sec counter** during generation
-- [~] **GPU / VRAM usage monitoring** — live sidebar panel per loaded model (PR #13)
+- [~] **GPU / VRAM usage monitoring** — live VRAM bar per loaded model in sidebar (PR #13)
 - [~] **Cloud API cost estimation** — per-response USD cost for OpenAI / Anthropic / Groq (PR #12)
 - [ ] Response latency histogram (per-model statistics panel)
 - [ ] Session token usage totals (prompt + completion)
@@ -296,3 +296,13 @@
 | [ ] | Not started |
 | [~] | In review (open PR) |
 | **Bold** | High priority — next to implement |
+
+---
+
+## Open PRs
+
+| PR | Title | Status |
+|----|-------|--------|
+| #11 | Export conversation as standalone HTML | Open |
+| #12 | Cloud API cost estimation in stats bar | Open |
+| #13 | GPU / VRAM monitoring in sidebar | Open |

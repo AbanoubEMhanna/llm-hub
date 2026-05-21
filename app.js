@@ -578,6 +578,26 @@ function toggleFocusMode() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § MOBILE SIDEBAR
+// ─────────────────────────────────────────────────────────────────────────────
+
+function toggleMobileSidebar(side) {
+  const sidebar = document.querySelector(side === 'left' ? '.sidebar-left' : '.sidebar-right');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (!sidebar) return;
+  const other = document.querySelector(side === 'left' ? '.sidebar-right' : '.sidebar-left');
+  if (other) other.classList.remove('mobile-open');
+  const opening = sidebar.classList.toggle('mobile-open');
+  overlay.classList.toggle('active', opening);
+}
+
+function closeMobileSidebars() {
+  document.querySelectorAll('.sidebar-left, .sidebar-right').forEach(el => el.classList.remove('mobile-open'));
+  const overlay = document.getElementById('sidebar-overlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § ATTACHMENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -669,6 +689,7 @@ function loadConversation(id) {
   renderConvList();
   document.getElementById('stats-bar').style.display = 'none';
   updateInputTokenCount();
+  closeMobileSidebars();
 }
 
 function deleteConversation(id, e) {
@@ -2970,6 +2991,30 @@ function updateSystemDisplay() {
   if (fillEl) {
     fillEl.style.width = m.usage_pct + '%';
     fillEl.className = 'sys-mem-fill' + (m.usage_pct > 90 ? ' danger' : m.usage_pct > 75 ? ' warn' : '');
+  }
+
+  // GPU VRAM — show only when models are actually loaded in GPU memory
+  const vramSection = document.getElementById('sys-vram-section');
+  const vramText    = document.getElementById('sys-vram-text');
+  const vramModels  = document.getElementById('sys-vram-models');
+  const gpuModels   = runningModelsDetailed.filter(r => r.vram > 0);
+  if (vramSection) {
+    if (gpuModels.length > 0) {
+      vramSection.style.display = 'block';
+      const totalVram = gpuModels.reduce((sum, r) => sum + r.vram, 0);
+      if (vramText) vramText.textContent = formatMM(totalVram);
+      if (vramModels) {
+        vramModels.innerHTML = gpuModels.map(r => {
+          const shortName = r.name.replace(/:latest$/, '');
+          return `<div class="sys-vram-row">
+            <span class="sys-vram-name" title="${r.name}">${shortName}</span>
+            <span class="sys-vram-size">${r.vram_label}</span>
+          </div>`;
+        }).join('');
+      }
+    } else {
+      vramSection.style.display = 'none';
+    }
   }
 }
 
