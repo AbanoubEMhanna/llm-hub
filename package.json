@@ -9,11 +9,22 @@
   },
   "scripts": {
     "start": "node proxy.js",
-    "check": "node --check proxy.js && echo 'proxy.js: syntax OK'"
+    "check": "node --check proxy.js && echo 'proxy.js: syntax OK'",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
   },
+  "packageManager": "pnpm@9.12.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "keywords": [
     "llm",
     "ollama",
@@ -39,5 +50,8 @@
   },
   "homepage": "https://github.com/abanoubEMhanna/local-llm-hub#readme",
   "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.6.3"
+  }
 }

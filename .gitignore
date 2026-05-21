@@ -19,9 +19,7 @@ desktop.ini
 
 # Node (if user ever installs something)
 node_modules/
-package-lock.json
 yarn.lock
-pnpm-lock.yaml
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -41,6 +39,14 @@ dist/
 build/
 tmp/
 .cache/
+.turbo/
+*.tsbuildinfo
+
+# Phase 2+ data
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
 
 # Personal / testing scratchpads
 scratch/
