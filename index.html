@@ -57,6 +57,9 @@
     <button class="topbar-btn" onclick="togglePlanMode()" title="Plan mode — think before responding" id="plan-btn">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
     </button>
+    <button class="topbar-btn" onclick="toggleJsonMode()" title="JSON mode — force structured JSON output" id="json-btn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+    </button>
     <button class="topbar-btn" onclick="toggleCompareMode()" title="Compare models" id="compare-btn">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
     </button>
@@ -171,6 +174,11 @@
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
         <span>Plan Mode — model will think step-by-step before responding</span>
         <button onclick="togglePlanMode()" title="Turn off">×</button>
+      </div>
+      <div class="json-indicator" id="json-indicator">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+        <span>JSON Mode — response will be valid JSON</span>
+        <button onclick="toggleJsonMode()" title="Turn off">×</button>
       </div>
       <div class="voice-status" id="voice-status">
         <div class="voice-dot"></div>

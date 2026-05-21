@@ -763,14 +763,17 @@ async function streamAssistantReply(conv) {
   };
 
   try {
+    const chatBody = {
+      model: selectedModel, messages: apiMsgs,
+      temperature: temp, max_tokens: maxTok, use_tools: useTools,
+      top_p: topP, top_k: topK, repeat_penalty: repeatPen, frequency_penalty: freqPen,
+    };
+    if (jsonMode) chatBody.response_format = { type: 'json_object' };
+
     const res = await fetch(`${PROXY}/v1/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...apiKeyHeader() },
-      body: JSON.stringify({
-        model: selectedModel, messages: apiMsgs,
-        temperature: temp, max_tokens: maxTok, use_tools: useTools,
-        top_p: topP, top_k: topK, repeat_penalty: repeatPen, frequency_penalty: freqPen,
-      }),
+      body: JSON.stringify(chatBody),
       signal: activeAbortController.signal,
     });
 
@@ -2207,15 +2210,18 @@ async function sendCompare() {
     let textDiv = null;
 
     try {
+      const compareBody = {
+        model, messages: apiMsgs,
+        temperature: parseFloat(document.getElementById('temp-slider').value),
+        max_tokens: parseInt(document.getElementById('max-tokens').value) || 2048,
+        use_tools: false,
+      };
+      if (jsonMode) compareBody.response_format = { type: 'json_object' };
+
       const res = await fetch(`${PROXY}/v1/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...apiKeyHeader() },
-        body: JSON.stringify({
-          model, messages: apiMsgs,
-          temperature: parseFloat(document.getElementById('temp-slider').value),
-          max_tokens: parseInt(document.getElementById('max-tokens').value) || 2048,
-          use_tools: false,
-        }),
+        body: JSON.stringify(compareBody),
         signal: controller.signal,
       });
       const reader  = res.body.getReader();
@@ -2508,6 +2514,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const sys = document.getElementById('sys-input');
   if (sys) sys.addEventListener('input', updateInputTokenCount);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § JSON MODE
+// ─────────────────────────────────────────────────────────────────────────────
+
+let jsonMode = false;
+
+function toggleJsonMode() {
+  jsonMode = !jsonMode;
+  document.getElementById('json-btn').classList.toggle('active', jsonMode);
+  document.getElementById('json-indicator').classList.toggle('active', jsonMode);
+  toast(jsonMode ? 'JSON mode ON — response will be valid JSON' : 'JSON mode OFF', 'success');
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § PLAN MODE
