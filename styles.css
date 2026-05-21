@@ -1209,3 +1209,113 @@ input[type=range]::-webkit-slider-thumb {
   color: var(--muted); font-family: var(--mono); font-size: 12px;
 }
 .backup-import-zone:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ═══════════════════ MOBILE RESPONSIVE ═══════════════════ */
+
+/* Hamburger buttons — hidden on desktop */
+.mobile-menu-btn { display: none !important; }
+
+/* Sidebar overlay backdrop */
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0; z-index: 499;
+  background: rgba(0,0,0,.55); backdrop-filter: blur(2px);
+  transition: opacity var(--transition);
+}
+.sidebar-overlay.active { display: block; }
+
+@media (max-width: 768px) {
+  /* Show hamburger buttons */
+  .mobile-menu-btn { display: flex !important; }
+
+  /* Collapse status dots to just indicators — hide labels */
+  .status-dot span { display: none; }
+  .status-dots { gap: 6px; }
+
+  /* Hide topbar search bar (use ⌘K shortcut) */
+  .topbar-search { display: none; }
+
+  /* Topbar right: hide most buttons to save space */
+  #plan-btn, #compare-btn, #focus-btn,
+  #model-manager-btn { display: none; }
+
+  /* Left sidebar — full-height drawer */
+  .sidebar-left {
+    position: fixed;
+    left: 0; top: 48px; bottom: 0; z-index: 500;
+    width: 280px;
+    transform: translateX(-100%);
+    transition: transform 220ms cubic-bezier(.4,0,.2,1);
+    box-shadow: var(--shadow-lg);
+  }
+  .sidebar-left.mobile-open { transform: translateX(0); }
+
+  /* Right sidebar — full-height drawer from right */
+  .sidebar-right {
+    position: fixed;
+    right: 0; top: 48px; bottom: 0; z-index: 500;
+    width: 288px;
+    transform: translateX(100%);
+    transition: transform 220ms cubic-bezier(.4,0,.2,1);
+    box-shadow: var(--shadow-lg);
+  }
+  .sidebar-right.mobile-open { transform: translateX(0); }
+
+  /* Chat area takes full width */
+  .chat-area { min-width: 0; width: 100%; }
+
+  /* Touch-friendly message actions */
+  .msg-actions { opacity: 1; }
+
+  /* Compact topbar */
+  .topbar { padding: 0 8px; gap: 4px; }
+  .topbar-left { gap: 6px; }
+  .topbar-right { gap: 2px; }
+
+  /* Chat header export → compact */
+  .ghost-btn { padding: 4px 8px; font-size: 11px; }
+
+  /* Stats bar wraps on mobile */
+  .stats-bar {
+    flex-wrap: wrap; gap: 4px 12px;
+    padding: 6px 12px;
+  }
+
+  /* Input area more compact */
+  .input-hints { display: none; }
+
+  /* Compare: stack panes vertically */
+  .compare-panes { flex-direction: column; }
+  .compare-divider { width: 100%; height: 1px; flex-shrink: 0; }
+  .compare-pane { min-height: 200px; }
+
+  /* Modals: full-screen on small screens */
+  .modal-overlay { padding-top: 0; align-items: flex-end; }
+  .modal, .modal-wide, .modal-search, .modal-palette {
+    max-width: 100%;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    max-height: 90vh;
+  }
+
+  /* API key form: single column */
+  .api-key-row { grid-template-columns: 1fr; }
+
+  /* Backup stats: 2×2 grid */
+  .backup-summary { grid-template-columns: repeat(2, 1fr); }
+
+  /* Welcome grid: 2 columns */
+  .welcome-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* System resources sidebar section */
+  .sidebar-system { padding: 10px 12px; }
+}
+
+@media (max-width: 480px) {
+  /* Very small phones: single welcome card column */
+  .welcome-grid { grid-template-columns: 1fr; }
+
+  /* Even more compact topbar */
+  .logo-text { display: none; }
+
+  /* Sidebar full-width on very small screens */
+  .sidebar-left, .sidebar-right { width: 100%; }
+}

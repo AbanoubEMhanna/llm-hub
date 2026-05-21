@@ -33,6 +33,9 @@
 <!-- ═══════════════ TOP BAR ═══════════════ -->
 <div class="topbar">
   <div class="topbar-left">
+    <button class="topbar-btn mobile-menu-btn" id="sidebar-left-btn" onclick="toggleMobileSidebar('left')" title="Conversations" aria-label="Toggle chat list">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
     <div class="logo">
       <div class="logo-icon">⚡</div>
       <span class="logo-text">LLM Hub</span>
@@ -74,8 +77,14 @@
     </button>
     <div class="topbar-divider"></div>
     <button class="topbar-btn" onclick="toggleTheme()" title="Toggle theme" id="theme-btn">🌙</button>
+    <button class="topbar-btn mobile-menu-btn" id="sidebar-right-btn" onclick="toggleMobileSidebar('right')" title="Settings &amp; Model" aria-label="Toggle settings panel">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </button>
   </div>
 </div>
+
+<!-- Mobile sidebar overlay -->
+<div id="sidebar-overlay" class="sidebar-overlay" onclick="closeMobileSidebars()"></div>
 
 <!-- ═══════════════ MAIN LAYOUT ═══════════════ -->
 <div class="layout">

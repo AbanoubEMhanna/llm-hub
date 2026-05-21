@@ -527,6 +527,26 @@ function toggleFocusMode() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § MOBILE SIDEBAR
+// ─────────────────────────────────────────────────────────────────────────────
+
+function toggleMobileSidebar(side) {
+  const sidebar = document.querySelector(side === 'left' ? '.sidebar-left' : '.sidebar-right');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (!sidebar) return;
+  const other = document.querySelector(side === 'left' ? '.sidebar-right' : '.sidebar-left');
+  if (other) other.classList.remove('mobile-open');
+  const opening = sidebar.classList.toggle('mobile-open');
+  overlay.classList.toggle('active', opening);
+}
+
+function closeMobileSidebars() {
+  document.querySelectorAll('.sidebar-left, .sidebar-right').forEach(el => el.classList.remove('mobile-open'));
+  const overlay = document.getElementById('sidebar-overlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § ATTACHMENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -618,6 +638,7 @@ function loadConversation(id) {
   renderConvList();
   document.getElementById('stats-bar').style.display = 'none';
   updateInputTokenCount();
+  closeMobileSidebars();
 }
 
 function deleteConversation(id, e) {
