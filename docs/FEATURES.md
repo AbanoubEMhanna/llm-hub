@@ -67,6 +67,7 @@
 - [x] Chat fuzzy search (⌘K)
 - [x] **Conversation title rename** on double-click
 - [x] Collapsible long messages (auto-collapse > ~22 lines)
+- [~] **Conversation color labels** — Work / Code / Research / Ideas / Personal, with sidebar filter (PR #16)
 - [ ] **Conversation folders** / tag-based organization
 - [ ] **Conversation branching** — fork from any message
 - [ ] Import conversations from JSON / ChatGPT export
@@ -101,7 +102,7 @@
 - [x] Keyboard shortcuts help modal (`?`)
 - [x] **Sampling presets** — Precise / Balanced / Creative one-click buttons
 - [x] **Command palette** (⌘P) with fuzzy action search
-- [ ] **Fully responsive mobile layout** (hamburger sidebar, touch-friendly)
+- [~] **Fully responsive mobile layout** — drawer sidebars, touch-friendly UI (PR #14)
 - [ ] Customizable accent color (color picker in settings)
 - [ ] Font size and chat density preferences (Compact / Comfortable / Spacious)
 - [ ] Animated page transitions and micro-interactions
@@ -178,7 +179,7 @@
 - [x] Plan mode (think step-by-step prefix)
 - [x] **Sampling presets: Precise / Balanced / Creative**
 - [x] Advanced parameters: Top-P, Top-K, Repeat penalty, Frequency penalty
-- [ ] Per-model parameter profiles (save temperature + max tokens per model)
+- [~] **Per-model parameter profiles** — auto-save & restore all sampling params per model (PR #15)
 - [ ] Context length override per conversation
 - [ ] **Structured output mode** — force JSON schema response (JSON mode)
 - [ ] Seed control (reproducible outputs)
@@ -208,8 +209,8 @@
 - [x] System RAM usage bar
 - [x] Context usage indicator (warns at >75%)
 - [x] **Real-time tokens/sec counter** during generation
+- [~] **GPU / VRAM usage monitoring** — live VRAM bar per loaded model in sidebar (PR #13)
 - [~] **Cloud API cost estimation** — per-response USD cost for OpenAI / Anthropic / Groq (PR #12)
-- [ ] **GPU / VRAM usage monitoring** (Ollama VRAM via API)
 - [ ] Response latency histogram (per-model statistics panel)
 - [ ] Session token usage totals (prompt + completion)
 - [ ] **Session cost accumulator** — running total across all messages
@@ -277,11 +278,14 @@
 
 | PR | Feature | Status |
 |----|---------|--------|
-| #8 | Model capability badges + family-sorted selector | 🟡 Review |
-| #9 | Command palette (⌘P) fuzzy action search | 🟡 Review |
-| #10 | Backup & restore (export/import all data as JSON) | 🟡 Review |
-| #11 | Export conversation as standalone HTML | 🟡 Review |
-| #12 | Cloud API cost estimation in stats bar | 🔵 This PR |
+| #8 | Model capability badges + family-sorted selector | Review |
+| #9 | Command palette (⌘P) fuzzy action search | Review |
+| #10 | Backup & restore (export/import all data as JSON) | Review |
+| #11 | Export conversation as standalone HTML | Review |
+| #12 | Cloud API cost estimation + showToast fix | 🟡 Open |
+| #13 | GPU / VRAM live monitoring panel | 🟡 Open |
+| #14 | Fully responsive mobile layout (drawer sidebars) | 🟡 Open |
+| #15 | Per-model parameter profiles (auto-save/restore) | 🟡 Open |
 
 ---
 
@@ -294,3 +298,13 @@
 | [ ] | Not started |
 | [~] | In review (open PR) |
 | **Bold** | High priority — next to implement |
+
+---
+
+## Open PRs
+
+| PR | Title | Status |
+|----|-------|--------|
+| #11 | Export conversation as standalone HTML | Open |
+| #12 | Cloud API cost estimation in stats bar | Open |
+| #13 | GPU / VRAM monitoring in sidebar | Open |

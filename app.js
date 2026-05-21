@@ -35,6 +35,7 @@ let availableRagCollections = [];
 let isLoading            = false;
 let activeAbortController = null;
 let attachments          = [];                   // [{ dataUrl, name }]
+let activeConvFilter     = null;                 // active label filter for conv list
 
 // Compare mode
 let compareMode          = false;
@@ -58,6 +59,77 @@ let editingMessageIdx    = null;
 // ─────────────────────────────────────────────────────────────────────────────
 // § DEFAULTS
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § CONVERSATION LABELS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CONV_LABELS = {
+  work:     { color: '#3b82f6', name: 'Work' },
+  code:     { color: '#22c55e', name: 'Code' },
+  research: { color: '#a78bfa', name: 'Research' },
+  ideas:    { color: '#f97316', name: 'Ideas' },
+  personal: { color: '#ec4899', name: 'Personal' },
+};
+
+function setConvLabel(id, label, e) {
+  e?.stopPropagation();
+  const conv = conversations.find(c => c.id === id);
+  if (!conv) return;
+  conv.label = conv.label === label ? null : label;
+  saveConvs();
+  renderConvList();
+  document.getElementById('label-picker')?.remove();
+}
+
+function openLabelPicker(id, e) {
+  e.stopPropagation();
+  document.getElementById('label-picker')?.remove();
+  const conv = conversations.find(c => c.id === id);
+  if (!conv) return;
+
+  const picker = document.createElement('div');
+  picker.id = 'label-picker';
+  picker.className = 'label-picker';
+  picker.innerHTML = `
+    <div class="label-picker-title">Label</div>
+    ${Object.entries(CONV_LABELS).map(([key, lbl]) => `
+      <button class="label-picker-opt ${conv.label === key ? 'active' : ''}"
+              onclick="setConvLabel('${id}','${key}',event)"
+              style="--lc:${lbl.color}">
+        <span class="label-dot" style="background:${lbl.color}"></span>${lbl.name}
+      </button>`).join('')}
+    ${conv.label ? `<button class="label-picker-clear" onclick="setConvLabel('${id}',null,event)">Clear</button>` : ''}
+  `;
+
+  const rect = e.currentTarget.getBoundingClientRect();
+  picker.style.top  = rect.bottom + 4 + 'px';
+  picker.style.left = rect.left + 'px';
+  document.body.appendChild(picker);
+
+  const dismiss = (ev) => {
+    if (!picker.contains(ev.target)) { picker.remove(); document.removeEventListener('click', dismiss, true); }
+  };
+  setTimeout(() => document.addEventListener('click', dismiss, true), 0);
+}
+
+function toggleLabelFilter(label) {
+  activeConvFilter = activeConvFilter === label ? null : label;
+  renderConvFilter();
+  renderConvList();
+}
+
+function renderConvFilter() {
+  const area = document.getElementById('conv-filter-area');
+  if (!area) return;
+  area.innerHTML = Object.entries(CONV_LABELS).map(([key, lbl]) => `
+    <button class="conv-filter-chip ${activeConvFilter === key ? 'active' : ''}"
+            onclick="toggleLabelFilter('${key}')"
+            style="--lc:${lbl.color}"
+            title="Filter: ${lbl.name}">
+      <span class="label-dot-sm" style="background:${lbl.color}"></span>${lbl.name}
+    </button>`).join('');
+}
 
 const BUILT_IN_PRESETS = {
   'Code Assistant':  'You are an expert senior software engineer. Help with code, explain trade-offs clearly, and write clean, production-ready solutions. Prefer correctness and clarity over cleverness.',
@@ -130,6 +202,7 @@ async function init() {
   initDragDrop();
   initHotkeys();
   initVoice();
+  renderConvFilter();
   renderConvList();
   if (!conversations.length) newConversation();
   else loadConversation(conversations[0].id);
@@ -395,10 +468,13 @@ async function loadTools() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function onModelChange() {
+  const prev = selectedModel;
   selectedModel = document.getElementById('model-select').value || null;
+  if (prev) saveModelParams(prev);
   await checkRunningModels();
   updateModelHeader();
   updateModelInfoCard();
+  loadModelParams(selectedModel);
   document.getElementById('send-btn').disabled = !selectedModel || isLoading;
   updateInputTokenCount();
 }
@@ -517,6 +593,54 @@ function applySamplingPreset(name) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § PER-MODEL PARAMETER PROFILES
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MODEL_PARAMS_STORE = 'llm-hub-model-params';
+
+function getModelParamsStore() {
+  try { return JSON.parse(localStorage.getItem(MODEL_PARAMS_STORE) || '{}'); } catch { return {}; }
+}
+
+function readCurrentParams() {
+  return {
+    temp:   parseFloat(document.getElementById('temp-slider')?.value   ?? 0.7),
+    maxTok: parseInt(document.getElementById('max-tokens')?.value      ?? 2048, 10),
+    topP:   parseFloat(document.getElementById('top-p-slider')?.value  ?? 0.9),
+    topK:   parseInt(document.getElementById('top-k-slider')?.value    ?? 40, 10),
+    repeat: parseFloat(document.getElementById('repeat-slider')?.value ?? 1.0),
+    freq:   parseFloat(document.getElementById('freq-slider')?.value   ?? 0.0),
+  };
+}
+
+function saveModelParams(modelId) {
+  if (!modelId) return;
+  const store = getModelParamsStore();
+  store[modelId] = readCurrentParams();
+  localStorage.setItem(MODEL_PARAMS_STORE, JSON.stringify(store));
+}
+
+function loadModelParams(modelId) {
+  if (!modelId) return;
+  const store = getModelParamsStore();
+  const p = store[modelId];
+  if (!p) return;
+
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
+  if (p.temp   !== undefined) { setVal('temp-slider',   p.temp);          setTxt('temp-val',    p.temp.toFixed(2)); }
+  if (p.maxTok !== undefined) { setVal('max-tokens',    p.maxTok); }
+  if (p.topP   !== undefined) { setVal('top-p-slider',  p.topP);          setTxt('top-p-val',   p.topP.toFixed(2)); }
+  if (p.topK   !== undefined) { setVal('top-k-slider',  p.topK);          setTxt('top-k-val',   p.topK); }
+  if (p.repeat !== undefined) { setVal('repeat-slider', p.repeat);        setTxt('repeat-val',  p.repeat.toFixed(2)); }
+  if (p.freq   !== undefined) { setVal('freq-slider',   p.freq);          setTxt('freq-val',    p.freq.toFixed(1)); }
+
+  // Clear preset chip highlights — restored state may not match any preset
+  document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('active'));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § FOCUS MODE
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -524,6 +648,26 @@ function toggleFocusMode() {
   const active = document.body.classList.toggle('focus-mode');
   const btn = document.getElementById('focus-btn');
   if (btn) btn.classList.toggle('active', active);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § MOBILE SIDEBAR
+// ─────────────────────────────────────────────────────────────────────────────
+
+function toggleMobileSidebar(side) {
+  const sidebar = document.querySelector(side === 'left' ? '.sidebar-left' : '.sidebar-right');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (!sidebar) return;
+  const other = document.querySelector(side === 'left' ? '.sidebar-right' : '.sidebar-left');
+  if (other) other.classList.remove('mobile-open');
+  const opening = sidebar.classList.toggle('mobile-open');
+  overlay.classList.toggle('active', opening);
+}
+
+function closeMobileSidebars() {
+  document.querySelectorAll('.sidebar-left, .sidebar-right').forEach(el => el.classList.remove('mobile-open'));
+  const overlay = document.getElementById('sidebar-overlay');
+  if (overlay) overlay.classList.remove('active');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -618,6 +762,7 @@ function loadConversation(id) {
   renderConvList();
   document.getElementById('stats-bar').style.display = 'none';
   updateInputTokenCount();
+  closeMobileSidebars();
 }
 
 function deleteConversation(id, e) {
@@ -643,20 +788,31 @@ function togglePin(id, e) {
 
 function renderConvList() {
   const list = document.getElementById('conv-list');
-  const sorted = [...conversations].sort((a, b) => {
+  let sorted = [...conversations].sort((a, b) => {
     if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
     return b.ts - a.ts;
   });
-  list.innerHTML = sorted.map(c => `
+  if (activeConvFilter) sorted = sorted.filter(c => c.label === activeConvFilter);
+
+  list.innerHTML = sorted.map(c => {
+    const lbl = c.label ? CONV_LABELS[c.label] : null;
+    const labelDot = lbl
+      ? `<span class="conv-label-dot" style="background:${lbl.color}" title="${lbl.name}"></span>`
+      : '';
+    return `
     <div class="conv-item ${c.id === currentConvId ? 'active' : ''} ${c.pinned ? 'pinned' : ''}" data-id="${c.id}"
          onclick="loadConversation('${c.id}')">
-      <div class="conv-title" ondblclick="startRenameConv('${c.id}',event)" title="Double-click to rename">${escHtml(c.title)}</div>
+      <div class="conv-title" ondblclick="startRenameConv('${c.id}',event)" title="Double-click to rename">
+        ${labelDot}${escHtml(c.title)}
+      </div>
       <div class="conv-meta">${c.messages.length} msgs · ${timeAgo(c.ts)}</div>
       <div class="conv-actions">
+        <button onclick="openLabelPicker('${c.id}',event)" title="Label" class="${c.label ? 'labeled' : ''}">🏷</button>
         <button onclick="togglePin('${c.id}',event)" title="${c.pinned ? 'Unpin' : 'Pin'}">${c.pinned ? '📌' : '📍'}</button>
         <button class="danger" onclick="deleteConversation('${c.id}',event)" title="Delete">×</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function timeAgo(ts) {
@@ -2919,6 +3075,30 @@ function updateSystemDisplay() {
   if (fillEl) {
     fillEl.style.width = m.usage_pct + '%';
     fillEl.className = 'sys-mem-fill' + (m.usage_pct > 90 ? ' danger' : m.usage_pct > 75 ? ' warn' : '');
+  }
+
+  // GPU VRAM — show only when models are actually loaded in GPU memory
+  const vramSection = document.getElementById('sys-vram-section');
+  const vramText    = document.getElementById('sys-vram-text');
+  const vramModels  = document.getElementById('sys-vram-models');
+  const gpuModels   = runningModelsDetailed.filter(r => r.vram > 0);
+  if (vramSection) {
+    if (gpuModels.length > 0) {
+      vramSection.style.display = 'block';
+      const totalVram = gpuModels.reduce((sum, r) => sum + r.vram, 0);
+      if (vramText) vramText.textContent = formatMM(totalVram);
+      if (vramModels) {
+        vramModels.innerHTML = gpuModels.map(r => {
+          const shortName = r.name.replace(/:latest$/, '');
+          return `<div class="sys-vram-row">
+            <span class="sys-vram-name" title="${r.name}">${shortName}</span>
+            <span class="sys-vram-size">${r.vram_label}</span>
+          </div>`;
+        }).join('');
+      }
+    } else {
+      vramSection.style.display = 'none';
+    }
   }
 }
 
