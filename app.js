@@ -1144,6 +1144,18 @@ function deleteMessage(idx) {
   renderMessages(conv.messages);
 }
 
+function rateMessage(idx, rating) {
+  const conv = currentConv();
+  if (!conv || !conv.messages[idx]) return;
+  const msg = conv.messages[idx];
+  msg.reaction = msg.reaction === rating ? null : rating;
+  saveConvs();
+  const wrap = document.querySelector(`.msg-wrap[data-msg-idx="${idx}"]`);
+  if (!wrap) return;
+  wrap.querySelector('.reaction-up')?.classList.toggle('active', msg.reaction === 'up');
+  wrap.querySelector('.reaction-dn')?.classList.toggle('active', msg.reaction === 'down');
+}
+
 function openEditMessage(idx) {
   const conv = currentConv();
   if (!conv) return;
@@ -1286,7 +1298,11 @@ function appendUserBubble(idx, text, imgs = []) {
 function buildAssistantWrap(idx, content, stopped = false) {
   const wrap = document.createElement('div');
   wrap.className = 'msg-wrap';
+  if (idx >= 0) wrap.dataset.msgIdx = idx;
   const name = parseModelId(selectedModel).name || '';
+
+  const conv = currentConv();
+  const reaction = idx >= 0 ? (conv?.messages[idx]?.reaction || null) : null;
 
   // Parse plan blocks from content
   const parsed = parsePlanFromText(content || '');
@@ -1299,6 +1315,8 @@ function buildAssistantWrap(idx, content, stopped = false) {
     </div>
     <div class="msg-meta"><span>${escHtml(name)}</span></div>
     ${idx >= 0 ? `<div class="msg-actions">
+      <button class="reaction-btn reaction-up${reaction === 'up' ? ' active' : ''}" onclick="rateMessage(${idx},'up')" title="Good response">👍</button>
+      <button class="reaction-btn reaction-dn${reaction === 'down' ? ' active' : ''}" onclick="rateMessage(${idx},'down')" title="Bad response">👎</button>
       <button onclick="regenerateMessage(${idx})" title="Regenerate (⌘R)">🔄 Regenerate</button>
       <button onclick="continueMessage(${idx})" title="Continue">▶ Continue</button>
       <button onclick="copyMessage(${idx})" title="Copy">📋 Copy</button>

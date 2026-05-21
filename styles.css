@@ -527,6 +527,12 @@ input[type=range]::-webkit-slider-thumb {
 .msg-actions button:hover { color: var(--text); border-color: var(--border); background: var(--s2); }
 .msg-actions button.danger:hover { color: var(--red); border-color: color-mix(in srgb, var(--red) 30%, transparent); }
 
+/* Reaction buttons (👍 / 👎) — always slightly visible so users notice them */
+.msg-actions .reaction-btn { opacity: .6; }
+.msg-actions .reaction-btn.active { opacity: 1; border-color: var(--border); background: var(--s2); }
+.msg-actions .reaction-up.active { color: var(--green) !important; border-color: color-mix(in srgb, var(--green) 40%, var(--border)) !important; background: color-mix(in srgb, var(--green) 8%, transparent) !important; }
+.msg-actions .reaction-dn.active { color: var(--red) !important; border-color: color-mix(in srgb, var(--red) 40%, var(--border)) !important; background: color-mix(in srgb, var(--red) 8%, transparent) !important; }
+
 .bubble-images { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
 .bubble-img { max-width: 200px; max-height: 180px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; }
 

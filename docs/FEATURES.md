@@ -10,6 +10,19 @@
 
 ---
 
+**Open PRs index:**
+
+| PR | Feature | Status |
+|----|---------|--------|
+| [#12](https://github.com/AbanoubEMhanna/llm-hub/pull/12) | Cloud API cost estimation + showToast fix | `[~]` |
+| [#13](https://github.com/AbanoubEMhanna/llm-hub/pull/13) | GPU/VRAM monitoring panel | `[~]` |
+| [#14](https://github.com/AbanoubEMhanna/llm-hub/pull/14) | Fully responsive mobile layout | `[~]` |
+| [#15](https://github.com/AbanoubEMhanna/llm-hub/pull/15) | Per-model parameter profiles | `[~]` |
+| [#16](https://github.com/AbanoubEMhanna/llm-hub/pull/16) | Conversation color labels + sidebar filter chips | `[~]` |
+| [#17](https://github.com/AbanoubEMhanna/llm-hub/pull/17) | Model library browser (Browse Library tab) | `[~]` |
+
+---
+
 ## 1. Core Infrastructure
 
 - [x] Ollama provider integration
@@ -40,7 +53,7 @@
 - [x] **Model delete from disk** (Ollama)
 - [x] Model capability badges (vision, tools, code, long-context)
 - [x] Model family grouping in the dropdown (Llama 3, Qwen, Mistral…)
-- [~] **Model library browser** — browse & pull 30+ popular Ollama models in-app (PR #17)
+- [x] **Model library browser** — browse & pull 30+ popular Ollama models in-app
 - [ ] **Model library search** — live search against ollama.com/library API
 - [ ] **GGUF file drag-and-drop import** (load any GGUF into LM Studio)
 - [ ] Model tags and aliasing (give friendly names to models)
@@ -67,13 +80,13 @@
 - [x] Chat fuzzy search (⌘K)
 - [x] **Conversation title rename** on double-click
 - [x] Collapsible long messages (auto-collapse > ~22 lines)
-- [~] **Conversation color labels** — Work / Code / Research / Ideas / Personal, with sidebar filter (PR #16)
+- [x] **Conversation color labels** — Work / Code / Research / Ideas / Personal, with sidebar filter
 - [ ] **Conversation folders** / tag-based organization
 - [ ] **Conversation branching** — fork from any message
 - [ ] Import conversations from JSON / ChatGPT export
 - [x] **Share conversation** as a self-contained HTML file
 - [ ] Multi-tab chat (several conversations open side-by-side)
-- [ ] Message reactions (👍 👎 — RLHF-style feedback)
+- [~] Message reactions (👍 👎 — RLHF-style feedback, persisted in localStorage) (PR #18)
 - [ ] Bulk conversation management (select all → delete / export)
 - [ ] Context window timeline visualization (which messages fit in context)
 - [ ] Inline message threading / replies
@@ -102,7 +115,7 @@
 - [x] Keyboard shortcuts help modal (`?`)
 - [x] **Sampling presets** — Precise / Balanced / Creative one-click buttons
 - [x] **Command palette** (⌘P) with fuzzy action search
-- [~] **Fully responsive mobile layout** — drawer sidebars, touch-friendly UI (PR #14)
+- [x] **Fully responsive mobile layout** — drawer sidebars, touch-friendly UI
 - [ ] Customizable accent color (color picker in settings)
 - [ ] Font size and chat density preferences (Compact / Comfortable / Spacious)
 - [ ] Animated page transitions and micro-interactions
@@ -179,7 +192,7 @@
 - [x] Plan mode (think step-by-step prefix)
 - [x] **Sampling presets: Precise / Balanced / Creative**
 - [x] Advanced parameters: Top-P, Top-K, Repeat penalty, Frequency penalty
-- [~] **Per-model parameter profiles** — auto-save & restore all sampling params per model (PR #15)
+- [x] **Per-model parameter profiles** — auto-save & restore all sampling params per model
 - [ ] Context length override per conversation
 - [ ] **Structured output mode** — force JSON schema response (JSON mode)
 - [ ] Seed control (reproducible outputs)
@@ -209,7 +222,7 @@
 - [x] System RAM usage bar
 - [x] Context usage indicator (warns at >75%)
 - [x] **Real-time tokens/sec counter** during generation
-- [~] **GPU / VRAM usage monitoring** — live VRAM bar per loaded model in sidebar (PR #13)
+- [x] **GPU / VRAM usage monitoring** — live VRAM bar per loaded model in sidebar
 - [~] **Cloud API cost estimation** — per-response USD cost for OpenAI / Anthropic / Groq (PR #12)
 - [ ] Response latency histogram (per-model statistics panel)
 - [ ] Session token usage totals (prompt + completion)
