@@ -6,6 +6,8 @@
 
 **Legend:** `[x]` Done · `[ ]` Not started · `[~]` In review (open PR) · **Bold** = High priority — next to implement
 
+**Legend:** `[x]` Done · `[ ]` Not started · `[~]` In review (open PR) · **Bold** = High priority — next to implement
+
 ---
 
 **Open PRs index:**
@@ -50,14 +52,14 @@
 - [x] **Model pull / download with live progress bar** (Ollama)
 - [x] **Model delete from disk** (Ollama)
 - [~] **Model library browser** — Browse Library tab with 30+ curated Ollama models (PR #17)
+- [x] Model capability badges (vision, tools, code, long-context)
+- [x] Model family grouping in the dropdown (Llama 3, Qwen, Mistral…)
 - [ ] **GGUF file drag-and-drop import** (load any GGUF into LM Studio)
 - [ ] Model tags and aliasing (give friendly names to models)
 - [ ] Update check — notify when a newer version of a model exists
 - [ ] Favorite / pin models to top of selector
 - [ ] **Model benchmark runner** — tokens/sec speed test per model
 - [ ] Recommended model suggestions based on task type
-- [x] Model capability badges (vision, tools, code, long-context)
-- [x] Model family grouping in the dropdown (Llama 3, Qwen, Mistral…)
 - [ ] **Hardware-aware model suggestions** — recommend models that fit in available VRAM
 
 ---
@@ -68,6 +70,7 @@
 - [x] Stop generation mid-stream
 - [x] Persistent chat history (localStorage)
 - [x] Chat export — Markdown and JSON
+- [~] **Chat export — standalone HTML** (fully offline, dark/light theme) (PR #11)
 - [x] Message edit & regenerate
 - [x] Message copy
 - [x] Continue generation
@@ -75,13 +78,14 @@
 - [x] Auto-title from first message
 - [x] Chat fuzzy search (⌘K)
 - [x] **Conversation title rename** on double-click
+- [x] Collapsible long messages (auto-collapse > ~22 lines)
 - [~] **Conversation color labels** — tag conversations with color-coded labels + sidebar filter chips (PR #16)
 - [ ] **Conversation folders** / tag-based organization
 - [ ] **Conversation branching** — fork from any message
 - [ ] Import conversations from JSON / ChatGPT export
-- [x] **Share conversation** as a self-contained HTML file (standalone export)
+- [x] **Share conversation** as a self-contained HTML file
 - [ ] Multi-tab chat (several conversations open side-by-side)
-- [x] Message reactions (👍 👎 — RLHF-style feedback, persisted in localStorage)
+- [~] Message reactions (👍 👎 — RLHF-style feedback, persisted in localStorage) (PR #18)
 - [ ] Bulk conversation management (select all → delete / export)
 - [ ] Context window timeline visualization (which messages fit in context)
 - [ ] Inline message threading / replies
@@ -114,8 +118,6 @@
 - [ ] Customizable accent color (color picker in settings)
 - [ ] Font size and chat density preferences (Compact / Comfortable / Spacious)
 - [ ] Animated page transitions and micro-interactions
-- [x] **Full-screen focus mode** — hide all sidebars, center content (⌘⇧F)
-- [x] Collapsible long messages (auto-collapse messages > ~22 lines)
 - [ ] Custom welcome screen with quick-action card configuration
 - [ ] Inline message diff view for edited messages
 - [ ] Skeleton loading states instead of spinners
@@ -188,8 +190,8 @@
 - [x] Prompt templates with variable substitution
 - [x] Plan mode (think step-by-step prefix)
 - [x] **Sampling presets: Precise / Balanced / Creative**
-- [~] Per-model parameter profiles — auto-save & restore sampling params per model (PR #15)
 - [x] Advanced parameters: Top-P, Top-K, Repeat penalty, Frequency penalty
+- [~] Per-model parameter profiles — auto-save & restore sampling params per model (PR #15)
 - [ ] Context length override per conversation
 - [ ] **Structured output mode** — force JSON schema response (JSON mode)
 - [ ] Seed control (reproducible outputs)
@@ -220,9 +222,10 @@
 - [x] Context usage indicator (warns at >75%)
 - [x] **Real-time tokens/sec counter** during generation
 - [~] **GPU / VRAM usage monitoring** — live sidebar panel for loaded model VRAM (PR #13)
+- [~] **Cloud API cost estimation** — per-response USD cost for OpenAI / Anthropic / Groq (PR #12)
 - [ ] Response latency histogram (per-model statistics panel)
 - [ ] Session token usage totals (prompt + completion)
-- [~] **Cost estimation** for cloud API providers — per-model pricing table for OpenAI/Anthropic/Groq (PR #12)
+- [ ] **Session cost accumulator** — running total across all messages
 - [ ] Performance dashboard — charts comparing models over time
 - [ ] CPU / GPU temperature display (where available)
 
@@ -232,6 +235,7 @@
 
 - [x] Raw JSON config editor modal
 - [x] Config hot-reload (MCP servers restart on save)
+- [~] **Backup & restore** all settings + conversations as a single JSON (PR #10)
 - [ ] **Proper settings UI with tabs** — General · Providers · Tools · RAG · Audio · Advanced
 - [ ] Provider connection test button (ping + model count)
 - [ ] Theme customizer (accent color, font, density)
@@ -282,6 +286,18 @@
 
 ---
 
+## Open PRs
+
+| PR | Feature | Status |
+|----|---------|--------|
+| #8 | Model capability badges + family-sorted selector | 🟡 Review |
+| #9 | Command palette (⌘P) fuzzy action search | 🟡 Review |
+| #10 | Backup & restore (export/import all data as JSON) | 🟡 Review |
+| #11 | Export conversation as standalone HTML | 🟡 Review |
+| #12 | Cloud API cost estimation in stats bar | 🔵 This PR |
+
+---
+
 ## Priority Legend
 
 | Symbol | Meaning |
@@ -289,4 +305,5 @@
 | [x] | Done / shipped |
 | [~] | In review — open PR, not yet merged |
 | [ ] | Not started |
+| [~] | In review (open PR) |
 | **Bold** | High priority — next to implement |
