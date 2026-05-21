@@ -1146,6 +1146,23 @@ input[type=range]::-webkit-slider-thumb {
 }
 .plan-indicator button:hover { color: var(--text); }
 
+/* JSON mode indicator on input */
+.json-indicator {
+  display: none; align-items: center; gap: 6px;
+  padding: 4px 10px; margin-bottom: 6px;
+  background: color-mix(in srgb, var(--green) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--green) 20%, var(--border));
+  border-radius: 6px; font-family: var(--mono); font-size: 11px; color: var(--green);
+}
+.json-indicator.active { display: flex; }
+.json-indicator svg { flex-shrink: 0; }
+.json-indicator span { flex: 1; }
+.json-indicator button {
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; font-size: 12px; padding: 0 2px;
+}
+.json-indicator button:hover { color: var(--text); }
+
 /* ═══════════════════ VOICE INPUT ═══════════════════ */
 .attach-btn.recording {
   color: var(--red) !important;

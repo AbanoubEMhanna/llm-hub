@@ -1,30 +1,31 @@
-# LLM Hub — App Features & TODO Checklist
+# LLM Hub — Master Feature Checklist
 
-> **Vision:** Build the best local-first AI workbench — combining **LM Studio's** model management and hardware awareness with **OpenCode's** code-first agent workflow, all wrapped in a polished **Linear/Vercel-inspired UI** that feels fast, focused, and professional.
+> **Vision:** The best local-first AI workbench — **LM Studio** model management & hardware awareness + **OpenCode** code-first agent workflow, wrapped in a **modern Linear/Vercel-inspired UI** that feels fast, focused, and professional.
 >
-> **Target:** Feel like LM Studio + OpenCode, but prettier and faster.
+> **Goal:** Feel like LM Studio + OpenCode, but prettier, faster, and more powerful.
 
 **Legend:**
-- `[x]` Done / shipped to `main`
-- `[~]` In review — open PR, not yet merged
+- `[x]` Done & merged to main
+- `[~]` In review (open PR)
 - `[ ]` Not started
-- 🔥 High priority — implement next
+- 🔥 High priority — next to implement
 
 ---
 
 ## Open PRs Index
 
-| PR | Title | Status |
-|----|-------|--------|
-| #12 | Cloud API cost estimation + showToast fix | `[~]` |
-| #13 | GPU/VRAM monitoring — live sidebar panel | `[~]` |
-| #14 | Fully responsive mobile layout | `[~]` |
-| #15 | Per-model parameter profiles | `[~]` |
-| #16 | Conversation color labels + sidebar filter chips | `[~]` |
-| #17 | Model library browser (Browse Library tab) | `[~]` |
-| #18 | Message reactions (👍/👎) | `[~]` |
-| #19 | Per-conversation system prompt | `[~]` |
-| #20 | Appearance settings tab (accent, font, density) | `[~]` |
+| PR | Feature |
+|----|---------|
+| [#12](../../pull/12) | Cloud API cost estimation + showToast fix |
+| [#13](../../pull/13) | GPU/VRAM monitoring panel |
+| [#14](../../pull/14) | Fully responsive mobile layout |
+| [#15](../../pull/15) | Per-model parameter profiles (auto-save/restore) |
+| [#16](../../pull/16) | Conversation color labels + sidebar filter chips |
+| [#17](../../pull/17) | Model library browser (30+ curated models) |
+| [#18](../../pull/18) | Message reactions (👍/👎) |
+| [#19](../../pull/19) | Per-conversation system prompt |
+| [#20](../../pull/20) | Appearance settings (accent color, font size, density) |
+| [#21](../../pull/21) | In-conversation message search (⌘F) |
 
 ---
 
@@ -36,16 +37,16 @@
 - [x] OpenAI-compatible `/v1/chat/completions` passthrough
 - [x] Proxy binds to `127.0.0.1` by default (secure by default)
 - [x] OpenAI provider (cloud, with API key)
-- [x] Anthropic Claude provider (cloud, with API key — format conversion included)
+- [x] Anthropic Claude provider (cloud, with API key)
 - [x] Groq provider (ultra-fast inference)
 - [x] OpenRouter provider (unified cloud gateway)
-- [x] API key management (localStorage, transmitted via header — never on disk)
+- [x] API key management (localStorage, transmitted via header only)
 - [ ] 🔥 Mistral / Together / Fireworks / Cohere providers
 - [ ] 🔥 Custom provider endpoint configuration from UI
 - [ ] Provider health monitoring with auto-reconnect
 - [ ] Per-provider timeout and retry settings
 - [ ] `npx local-llm-hub` zero-install launcher
-- [ ] Docker image with Ollama bundled
+- [ ] WebSocket API alternative to SSE
 
 ---
 
@@ -58,14 +59,14 @@
 - [x] Model pull / download with live progress bar (Ollama)
 - [x] Model delete from disk (Ollama)
 - [x] Model capability badges (vision, tools, code, long-context)
-- [x] Model family grouping in the dropdown (Llama 3, Qwen, Mistral…)
-- [~] Model library browser — browse 30+ curated models with filter chips (PR #17)
-- [ ] 🔥 GGUF file drag-and-drop import (load any GGUF into LM Studio)
-- [ ] 🔥 Hardware-aware model suggestions — recommend models that fit in available VRAM
-- [ ] 🔥 Model benchmark runner — tokens/sec speed test per model
-- [ ] Model tags and aliasing (give friendly names to models)
-- [ ] Update check — notify when a newer version of a model exists
+- [x] Model family grouping in dropdown (Llama 3, Qwen, Mistral…)
+- [~] Model library browser — 30+ curated models, filter by category (#17)
+- [ ] 🔥 Model benchmark runner — tokens/sec speed test
+- [ ] 🔥 Hardware-aware model suggestions — recommend models that fit in VRAM
+- [ ] GGUF file drag-and-drop import (load any GGUF into LM Studio)
+- [ ] Model tags and aliasing (give friendly names)
 - [ ] Favorite / pin models to top of selector
+- [ ] Update check — notify when a newer model version exists
 - [ ] Recommended model suggestions based on task type
 
 ---
@@ -75,25 +76,27 @@
 - [x] Token streaming via SSE
 - [x] Stop generation mid-stream
 - [x] Persistent chat history (localStorage)
-- [x] Chat export — Markdown, JSON, standalone HTML
+- [x] Chat export — Markdown and JSON
+- [x] Export conversation as standalone HTML
 - [x] Message edit & regenerate
 - [x] Message copy
 - [x] Continue generation
 - [x] Conversation pinning
 - [x] Auto-title from first message
-- [x] Chat fuzzy search across all conversations (⌘K)
-- [x] Conversation title rename on double-click
-- [x] Collapsible long messages (auto-collapse > ~22 lines)
-- [~] Message reactions 👍/👎 with localStorage persistence (PR #18)
-- [~] Conversation color labels + sidebar filter chips (PR #16)
-- [~] Per-conversation system prompt (PR #19)
-- [x] In-conversation message search (⌘F) — search within current conversation
+- [x] Conversation title rename (double-click inline)
+- [x] Collapsible long messages (auto-collapse > 22 lines)
+- [~] Message reactions (👍/👎) — persist per message (#18)
+- [~] Per-conversation system prompt (auto-save/restore on switch) (#19)
+- [~] In-conversation message search (⌘F) (#21)
+- [~] Conversation color labels + sidebar filter chips (#16)
 - [ ] 🔥 Conversation branching — fork from any message
-- [ ] 🔥 Import conversations from JSON / ChatGPT export
-- [ ] 🔥 Bulk conversation management (select all → delete / export)
-- [ ] Multi-tab chat (several conversations open side-by-side)
-- [ ] Context window timeline visualization (which messages fit in context)
+- [ ] 🔥 Conversation folders / nested organization
+- [ ] 🔥 Multi-tab chat (several conversations side-by-side)
+- [ ] Import conversations from JSON / ChatGPT export
+- [ ] Bulk conversation management (select all → delete / export)
+- [ ] Context window timeline visualization (which messages fit)
 - [ ] Inline message threading / replies
+- [ ] Message timestamps toggle
 
 ---
 
@@ -102,11 +105,11 @@
 - [x] Side-by-side split-screen comparison
 - [x] Parallel streaming to two models simultaneously
 - [x] Per-pane latency and token stats
-- [ ] 🔥 Response quality grading (thumbs up/down per pane)
+- [ ] 🔥 Response quality grading — thumbs up/down per pane
 - [ ] 🔥 Diff view between two model responses
 - [ ] Save comparison as a formatted report
 - [ ] A/B test mode (random model selection, reveal after both respond)
-- [ ] Multi-model tournament (bracket-style comparison)
+- [ ] Multi-model tournament (bracket-style)
 - [ ] Latency histogram per model
 
 ---
@@ -116,22 +119,35 @@
 - [x] Dark and light themes
 - [x] Linear/Vercel-inspired design tokens (Inter + JetBrains Mono)
 - [x] Collapsible right-sidebar accordion panels
-- [x] Keyboard shortcuts (⌘P, ⌘K, ⌘J, ⌘R, ⌘E, ⌘F, ⌘/)
+- [x] Keyboard shortcuts (⌘K, ⌘J, ⌘R, ⌘E, ⌘/)
 - [x] Keyboard shortcuts help modal (`?`)
-- [x] Sampling presets — Precise / Balanced / Creative one-click buttons
-- [x] Command palette (⌘P) with fuzzy action search
-- [x] Full-screen focus mode — hide all sidebars, center content (⌘⇧F)
-- [~] Fully responsive mobile layout — hamburger sidebar, touch-friendly (PR #14)
-- [~] Appearance settings: customizable accent color, font size, chat density (PR #20)
+- [x] Sampling presets — Precise / Balanced / Creative
+- [x] Command palette (⌘P) — fuzzy search all actions and conversations
+- [x] Full-screen focus mode — hide all sidebars (⌘⇧F)
+- [~] Fully responsive mobile layout — drawer sidebars, touch-friendly (#14)
+- [~] Appearance settings — accent color, font size, chat density (#20)
 - [ ] 🔥 Animated page transitions and micro-interactions
+- [ ] 🔥 Skeleton loading states instead of spinners
 - [ ] 🔥 Drag-to-resize sidebars
-- [ ] Custom welcome screen with quick-action card configuration
-- [ ] Inline message diff view for edited messages
-- [ ] Skeleton loading states instead of spinners
+- [ ] Custom welcome screen with quick-action cards
+- [ ] Inline message diff view for edits
+- [ ] Keyboard shortcut remapping
 
 ---
 
-## 6. AI Agent & Tools
+## 6. Generation Modes
+
+- [x] Plan mode — model thinks step-by-step in `<plan>` tags before responding
+- [x] JSON mode — forces `response_format: json_object` for structured output
+- [ ] 🔥 Structured output with JSON schema — enforce specific JSON structure
+- [ ] 🔥 Grammar-constrained generation (GBNF / regex)
+- [ ] Seed control — reproducible outputs
+- [ ] Stop sequences configuration
+- [ ] Context length override per conversation
+
+---
+
+## 7. AI Agent & Tools
 
 - [x] Autonomous agent loop (up to 8 tool-call rounds)
 - [x] Built-in tools: `datetime`, `calculator`, `web_search`, `fetch_url`, `run_javascript`, `rag_search`
@@ -139,37 +155,35 @@
 - [x] MCP stdio client (spawn external MCP servers)
 - [x] Tool enable/disable per-session toggle
 - [ ] 🔥 Custom tool builder UI — define name, description, JSON schema, handler URL
-- [ ] 🔥 Shell command tool (opt-in, with confirmation prompt per execution)
-- [ ] 🔥 Agent run history — step-by-step replay of past agent sessions
-- [ ] Tool result caching (skip re-runs for identical inputs within a session)
+- [ ] 🔥 Shell command tool — opt-in, with confirmation prompt
+- [ ] 🔥 Agent run history — step-by-step replay of past sessions
+- [ ] Tool result caching (skip re-runs for identical inputs)
 - [ ] MCP server marketplace / discovery browser
-- [ ] Agent memory persistence across sessions (long-term notes store)
-- [ ] Sub-agent spawning (parallel execution of agent tasks)
+- [ ] Agent memory persistence across sessions
+- [ ] Sub-agent spawning (parallel execution)
 - [ ] Browser automation via Playwright MCP
 - [ ] Agent graph visualization (node/edge view of tool call chain)
 
 ---
 
-## 7. Code Features *(OpenCode-inspired)*
+## 8. Code Features *(OpenCode-inspired)*
 
 - [x] Syntax-highlighted code blocks (14 languages via Prism.js)
 - [x] Artifact rendering (HTML, SVG, JSX, TSX in sandboxed iframe)
 - [x] Prompt templates with `{{variable}}` placeholders
 - [ ] 🔥 Live code editing inside artifact preview (edit + re-render inline)
 - [ ] 🔥 File tree sidebar — browse local filesystem via MCP filesystem server
-- [ ] 🔥 Multi-file context — select files to attach as context to the conversation
-- [ ] 🔥 Diff viewer — before/after code comparison with syntax highlight
+- [ ] 🔥 Multi-file context — select files to attach as context
 - [ ] 🔥 Git integration — show diff, stage, commit, PR review workflow
+- [ ] 🔥 Diff viewer — before/after code comparison with syntax highlighting
 - [ ] Terminal pane — run shell commands, see output inline
-- [ ] Code lens — inline AI-powered suggestions in code blocks
-- [ ] Test runner output display
-- [ ] Linter / formatter auto-suggestions on code paste
 - [ ] Copy code → file save dialog (write directly to disk)
-- [ ] Multi-language REPL (run code in Python, JS, etc. via sandboxed env)
+- [ ] Multi-language REPL (run Python, JS, etc. in sandboxed environment)
+- [ ] Linter / formatter auto-suggestions on code paste
 
 ---
 
-## 8. RAG / Knowledge Base
+## 9. RAG / Knowledge Base
 
 - [x] File upload and chunking (`.txt`, `.md`, `.json`, code files)
 - [x] Ollama embedding (`nomic-embed-text` by default)
@@ -182,82 +196,80 @@
 - [ ] Auto-inject most-relevant chunks into every message (toggle)
 - [ ] Chunk preview and manual editing UI
 - [ ] Knowledge base stats (total chunks, sources, last updated)
-- [ ] Re-embedding on embedding model change
 - [ ] Hybrid search (keyword + vector BM25)
-- [ ] Multi-collection query (search across all collections at once)
+- [ ] Multi-collection query (search across all at once)
 
 ---
 
-## 9. Parameters & Presets
+## 10. Parameters & Presets
 
 - [x] Temperature slider
 - [x] Max tokens input
 - [x] System prompt presets (save / load)
 - [x] Prompt templates with variable substitution
 - [x] Plan mode (think step-by-step prefix)
+- [x] JSON mode (force structured JSON output)
 - [x] Sampling presets: Precise / Balanced / Creative
-- [x] Advanced parameters: Top-P, Top-K, Repeat penalty, Frequency penalty
-- [~] Per-model parameter profiles — auto-save & restore sampling params per model (PR #15)
-- [ ] 🔥 Structured output mode — force JSON schema response (JSON mode)
-- [ ] Context length override per conversation
-- [ ] Seed control (reproducible outputs)
-- [ ] Stop sequences configuration
+- [x] Advanced parameters — Top-P, Top-K, Repeat penalty, Frequency penalty
+- [~] Per-model parameter profiles — auto-save temperature + max tokens per model (#15)
+- [ ] 🔥 Structured output with explicit JSON schema editor
 - [ ] System prompt library with community presets
+- [ ] Context length override per conversation
+- [ ] Stop sequences configuration
 
 ---
 
-## 10. Voice & Multimodal
+## 11. Voice & Multimodal
 
 - [x] Image attachments (paste, drag-and-drop, file picker)
 - [x] Vision model support (llava, qwen2-vl, llama3.2-vision)
 - [x] Voice input via browser Web Speech API
 - [x] Whisper server integration (local transcription)
-- [ ] 🔥 Text-to-speech output — read responses aloud (TTS synthesis)
-- [ ] 🔥 PDF attachment — extract text, attach as context
+- [ ] 🔥 Text-to-speech output — read responses aloud
+- [ ] 🔥 PDF attachment — extract text and attach as context
 - [ ] Audio file transcription by drag-and-drop
 - [ ] Video file frame extraction for vision models
-- [ ] Screen capture / screenshot attach (from clipboard)
+- [ ] Screen capture / screenshot attach
 
 ---
 
-## 11. Performance & Hardware Stats *(LM Studio-inspired)*
+## 12. Performance & Hardware Stats *(LM Studio-inspired)*
 
 - [x] Input token counter (live estimate while typing)
 - [x] Generation stats (total tokens, elapsed time)
 - [x] System RAM usage bar
 - [x] Context usage indicator (warns at >75%)
 - [x] Real-time tokens/sec counter during generation
-- [~] GPU/VRAM usage monitoring — live sidebar panel (PR #13)
-- [~] Cloud API cost estimation — per-model pricing table in stats bar (PR #12)
-- [ ] 🔥 Response latency histogram (per-model statistics panel)
-- [ ] Session token usage totals (prompt + completion)
+- [~] GPU / VRAM usage monitoring — Ollama VRAM per loaded model (#13)
+- [~] Cloud API cost estimation — per-message USD cost for OpenAI/Anthropic/Groq (#12)
+- [ ] Session cost accumulator (running total per session)
+- [ ] Response latency histogram per model
 - [ ] Performance dashboard — charts comparing models over time
 - [ ] CPU / GPU temperature display (where available)
 
 ---
 
-## 12. Settings UI
+## 13. Settings UI
 
 - [x] Raw JSON config editor modal
 - [x] Config hot-reload (MCP servers restart on save)
-- [x] API key management UI (per-provider keys)
-- [x] Backup & restore — all settings + conversations as a single JSON
-- [~] Appearance settings tab: accent color, font size, chat density (PR #20)
+- [x] Backup & restore — all settings + conversations as JSON
+- [~] Appearance settings tab — accent color, font size, chat density (#20)
 - [ ] 🔥 Proper settings UI with tabs — General · Providers · Tools · RAG · Audio · Advanced
-- [ ] 🔥 Provider connection test button (ping + model count)
+- [ ] 🔥 Provider connection test button — ping + model count
 - [ ] Keyboard shortcut remapping
 - [ ] Onboarding wizard for first-time setup
 - [ ] Per-workspace configuration profiles
 
 ---
 
-## 13. Security & Privacy
+## 14. Security & Privacy
 
 - [x] Binds to `127.0.0.1` by default (no LAN exposure without opt-in)
 - [x] SSRF protection on `fetch_url`
 - [x] VM sandbox for `run_javascript`
 - [x] CORS locked to localhost
-- [ ] Per-session API key (never persisted to disk)
+- [ ] 🔥 Per-session API key (never persisted to disk)
 - [ ] Request / response logging toggle (opt-in, stored locally)
 - [ ] Prompt injection warning detection
 - [ ] Conversation data encryption at rest
@@ -265,28 +277,22 @@
 
 ---
 
-## 14. Developer & Integration
+## 15. Developer & Integration
 
 - [x] SSE streaming API (`/v1/chat`)
 - [x] OpenAI-compatible passthrough (`/v1/chat/completions`)
 - [x] MCP stdio client
-- [ ] 🔥 OpenAPI / Swagger spec for all proxy endpoints
-- [ ] WebSocket API alternative to SSE
-- [ ] Plugin system (load `.js` modules at startup)
-- [ ] CLI batch mode (`echo "prompt" | local-llm-hub --model llama3`)
-- [ ] VS Code extension (send selected code to LLM Hub)
-
----
-
-## 15. Quality & Testing
-
-- [x] Node.js syntax validation CI (Node 18, 20, 22)
+- [x] Node.js syntax validation CI (v18, v20, v22)
 - [x] JSON config validation in CI
-- [ ] 🔥 Unit tests for core utilities (RagEngine, ToolRegistry, SSRF guard)
+- [ ] 🔥 OpenAPI / Swagger spec for all proxy endpoints
+- [ ] 🔥 Unit tests — RagEngine, ToolRegistry, SSRF guard
 - [ ] 🔥 Integration tests for HTTP endpoints
 - [ ] End-to-end tests with Playwright
-- [ ] Automated screenshot regression tests
-- [ ] Performance benchmark suite (tokens/sec baseline)
+- [ ] Docker image with Ollama bundled
+- [ ] `npx local-llm-hub` zero-install launcher
+- [ ] VS Code extension (send selected code to LLM Hub)
+- [ ] Plugin system (load `.js` modules at startup)
+- [ ] CLI batch mode (`echo "prompt" | llm-hub --model llama3`)
 
 ---
 
@@ -295,17 +301,25 @@
 | Status | Count |
 |--------|-------|
 | `[x]` Done | ~52 |
-| `[~]` In review (open PRs) | 10 |
+| `[~]` In review (open PRs) | ~10 |
 | `[ ]` Not started | ~60 |
-| **Total features** | **~122** |
+| **Total** | **~122** |
 
 ---
 
-## Priority Legend
+## Merge Order for Open PRs (conflict-safe)
 
-| Symbol | Meaning |
-|--------|---------|
-| `[x]` | Done / shipped |
-| `[~]` | In review — open PR |
-| `[ ]` | Not started |
-| 🔥 | High priority — implement next |
+All open PRs are currently **clean against main** (no git conflicts). However, since they all modify `app.js`, `styles.css`, and `index.html`, they will conflict with each other if merged out of order. Merge in this sequence:
+
+1. **#12** — Cost estimation (smallest surface area: stats bar + pricing table)
+2. **#13** — VRAM monitoring (new HTML block + `updateSystemDisplay` extension)
+3. **#14** — Mobile layout (CSS media queries + new topbar buttons)
+4. **#15** — Per-model params (new `onModelChange` hook, no HTML)
+5. **#16** — Conversation labels (left sidebar + `renderConvList`)
+6. **#17** — Model library browser (Model Manager modal + `OLLAMA_LIBRARY` data)
+7. **#18** — Message reactions (`buildAssistantWrap` + styles)
+8. **#19** — Per-conversation system prompt (`loadConversation` + `sys-input` listener)
+9. **#20** — Appearance settings (`switchSettingsTab` + Settings modal)
+10. **#21** — In-conversation search (`initHotkeys` + `paletteActions` + chat header)
+
+After each merge, rebase the next branch onto the updated main before merging.
