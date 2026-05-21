@@ -35,6 +35,7 @@ let availableRagCollections = [];
 let isLoading            = false;
 let activeAbortController = null;
 let attachments          = [];                   // [{ dataUrl, name }]
+let activeConvFilter     = null;                 // active label filter for conv list
 
 // Compare mode
 let compareMode          = false;
@@ -58,6 +59,77 @@ let editingMessageIdx    = null;
 // ─────────────────────────────────────────────────────────────────────────────
 // § DEFAULTS
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § CONVERSATION LABELS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CONV_LABELS = {
+  work:     { color: '#3b82f6', name: 'Work' },
+  code:     { color: '#22c55e', name: 'Code' },
+  research: { color: '#a78bfa', name: 'Research' },
+  ideas:    { color: '#f97316', name: 'Ideas' },
+  personal: { color: '#ec4899', name: 'Personal' },
+};
+
+function setConvLabel(id, label, e) {
+  e?.stopPropagation();
+  const conv = conversations.find(c => c.id === id);
+  if (!conv) return;
+  conv.label = conv.label === label ? null : label;
+  saveConvs();
+  renderConvList();
+  document.getElementById('label-picker')?.remove();
+}
+
+function openLabelPicker(id, e) {
+  e.stopPropagation();
+  document.getElementById('label-picker')?.remove();
+  const conv = conversations.find(c => c.id === id);
+  if (!conv) return;
+
+  const picker = document.createElement('div');
+  picker.id = 'label-picker';
+  picker.className = 'label-picker';
+  picker.innerHTML = `
+    <div class="label-picker-title">Label</div>
+    ${Object.entries(CONV_LABELS).map(([key, lbl]) => `
+      <button class="label-picker-opt ${conv.label === key ? 'active' : ''}"
+              onclick="setConvLabel('${id}','${key}',event)"
+              style="--lc:${lbl.color}">
+        <span class="label-dot" style="background:${lbl.color}"></span>${lbl.name}
+      </button>`).join('')}
+    ${conv.label ? `<button class="label-picker-clear" onclick="setConvLabel('${id}',null,event)">Clear</button>` : ''}
+  `;
+
+  const rect = e.currentTarget.getBoundingClientRect();
+  picker.style.top  = rect.bottom + 4 + 'px';
+  picker.style.left = rect.left + 'px';
+  document.body.appendChild(picker);
+
+  const dismiss = (ev) => {
+    if (!picker.contains(ev.target)) { picker.remove(); document.removeEventListener('click', dismiss, true); }
+  };
+  setTimeout(() => document.addEventListener('click', dismiss, true), 0);
+}
+
+function toggleLabelFilter(label) {
+  activeConvFilter = activeConvFilter === label ? null : label;
+  renderConvFilter();
+  renderConvList();
+}
+
+function renderConvFilter() {
+  const area = document.getElementById('conv-filter-area');
+  if (!area) return;
+  area.innerHTML = Object.entries(CONV_LABELS).map(([key, lbl]) => `
+    <button class="conv-filter-chip ${activeConvFilter === key ? 'active' : ''}"
+            onclick="toggleLabelFilter('${key}')"
+            style="--lc:${lbl.color}"
+            title="Filter: ${lbl.name}">
+      <span class="label-dot-sm" style="background:${lbl.color}"></span>${lbl.name}
+    </button>`).join('');
+}
 
 const BUILT_IN_PRESETS = {
   'Code Assistant':  'You are an expert senior software engineer. Help with code, explain trade-offs clearly, and write clean, production-ready solutions. Prefer correctness and clarity over cleverness.',
@@ -130,6 +202,7 @@ async function init() {
   initDragDrop();
   initHotkeys();
   initVoice();
+  renderConvFilter();
   renderConvList();
   if (!conversations.length) newConversation();
   else loadConversation(conversations[0].id);
@@ -395,10 +468,13 @@ async function loadTools() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function onModelChange() {
+  const prev = selectedModel;
   selectedModel = document.getElementById('model-select').value || null;
+  if (prev) saveModelParams(prev);
   await checkRunningModels();
   updateModelHeader();
   updateModelInfoCard();
+  loadModelParams(selectedModel);
   document.getElementById('send-btn').disabled = !selectedModel || isLoading;
   updateInputTokenCount();
 }
@@ -517,6 +593,54 @@ function applySamplingPreset(name) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § PER-MODEL PARAMETER PROFILES
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MODEL_PARAMS_STORE = 'llm-hub-model-params';
+
+function getModelParamsStore() {
+  try { return JSON.parse(localStorage.getItem(MODEL_PARAMS_STORE) || '{}'); } catch { return {}; }
+}
+
+function readCurrentParams() {
+  return {
+    temp:   parseFloat(document.getElementById('temp-slider')?.value   ?? 0.7),
+    maxTok: parseInt(document.getElementById('max-tokens')?.value      ?? 2048, 10),
+    topP:   parseFloat(document.getElementById('top-p-slider')?.value  ?? 0.9),
+    topK:   parseInt(document.getElementById('top-k-slider')?.value    ?? 40, 10),
+    repeat: parseFloat(document.getElementById('repeat-slider')?.value ?? 1.0),
+    freq:   parseFloat(document.getElementById('freq-slider')?.value   ?? 0.0),
+  };
+}
+
+function saveModelParams(modelId) {
+  if (!modelId) return;
+  const store = getModelParamsStore();
+  store[modelId] = readCurrentParams();
+  localStorage.setItem(MODEL_PARAMS_STORE, JSON.stringify(store));
+}
+
+function loadModelParams(modelId) {
+  if (!modelId) return;
+  const store = getModelParamsStore();
+  const p = store[modelId];
+  if (!p) return;
+
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
+  if (p.temp   !== undefined) { setVal('temp-slider',   p.temp);          setTxt('temp-val',    p.temp.toFixed(2)); }
+  if (p.maxTok !== undefined) { setVal('max-tokens',    p.maxTok); }
+  if (p.topP   !== undefined) { setVal('top-p-slider',  p.topP);          setTxt('top-p-val',   p.topP.toFixed(2)); }
+  if (p.topK   !== undefined) { setVal('top-k-slider',  p.topK);          setTxt('top-k-val',   p.topK); }
+  if (p.repeat !== undefined) { setVal('repeat-slider', p.repeat);        setTxt('repeat-val',  p.repeat.toFixed(2)); }
+  if (p.freq   !== undefined) { setVal('freq-slider',   p.freq);          setTxt('freq-val',    p.freq.toFixed(1)); }
+
+  // Clear preset chip highlights — restored state may not match any preset
+  document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('active'));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § FOCUS MODE
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -524,6 +648,26 @@ function toggleFocusMode() {
   const active = document.body.classList.toggle('focus-mode');
   const btn = document.getElementById('focus-btn');
   if (btn) btn.classList.toggle('active', active);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § MOBILE SIDEBAR
+// ─────────────────────────────────────────────────────────────────────────────
+
+function toggleMobileSidebar(side) {
+  const sidebar = document.querySelector(side === 'left' ? '.sidebar-left' : '.sidebar-right');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (!sidebar) return;
+  const other = document.querySelector(side === 'left' ? '.sidebar-right' : '.sidebar-left');
+  if (other) other.classList.remove('mobile-open');
+  const opening = sidebar.classList.toggle('mobile-open');
+  overlay.classList.toggle('active', opening);
+}
+
+function closeMobileSidebars() {
+  document.querySelectorAll('.sidebar-left, .sidebar-right').forEach(el => el.classList.remove('mobile-open'));
+  const overlay = document.getElementById('sidebar-overlay');
+  if (overlay) overlay.classList.remove('active');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -618,6 +762,7 @@ function loadConversation(id) {
   renderConvList();
   document.getElementById('stats-bar').style.display = 'none';
   updateInputTokenCount();
+  closeMobileSidebars();
 }
 
 function deleteConversation(id, e) {
@@ -643,20 +788,31 @@ function togglePin(id, e) {
 
 function renderConvList() {
   const list = document.getElementById('conv-list');
-  const sorted = [...conversations].sort((a, b) => {
+  let sorted = [...conversations].sort((a, b) => {
     if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
     return b.ts - a.ts;
   });
-  list.innerHTML = sorted.map(c => `
+  if (activeConvFilter) sorted = sorted.filter(c => c.label === activeConvFilter);
+
+  list.innerHTML = sorted.map(c => {
+    const lbl = c.label ? CONV_LABELS[c.label] : null;
+    const labelDot = lbl
+      ? `<span class="conv-label-dot" style="background:${lbl.color}" title="${lbl.name}"></span>`
+      : '';
+    return `
     <div class="conv-item ${c.id === currentConvId ? 'active' : ''} ${c.pinned ? 'pinned' : ''}" data-id="${c.id}"
          onclick="loadConversation('${c.id}')">
-      <div class="conv-title" ondblclick="startRenameConv('${c.id}',event)" title="Double-click to rename">${escHtml(c.title)}</div>
+      <div class="conv-title" ondblclick="startRenameConv('${c.id}',event)" title="Double-click to rename">
+        ${labelDot}${escHtml(c.title)}
+      </div>
       <div class="conv-meta">${c.messages.length} msgs · ${timeAgo(c.ts)}</div>
       <div class="conv-actions">
+        <button onclick="openLabelPicker('${c.id}',event)" title="Label" class="${c.label ? 'labeled' : ''}">🏷</button>
         <button onclick="togglePin('${c.id}',event)" title="${c.pinned ? 'Unpin' : 'Pin'}">${c.pinned ? '📌' : '📍'}</button>
         <button class="danger" onclick="deleteConversation('${c.id}',event)" title="Delete">×</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function timeAgo(ts) {
@@ -2938,6 +3094,30 @@ function updateSystemDisplay() {
     fillEl.style.width = m.usage_pct + '%';
     fillEl.className = 'sys-mem-fill' + (m.usage_pct > 90 ? ' danger' : m.usage_pct > 75 ? ' warn' : '');
   }
+
+  // GPU VRAM — show only when models are actually loaded in GPU memory
+  const vramSection = document.getElementById('sys-vram-section');
+  const vramText    = document.getElementById('sys-vram-text');
+  const vramModels  = document.getElementById('sys-vram-models');
+  const gpuModels   = runningModelsDetailed.filter(r => r.vram > 0);
+  if (vramSection) {
+    if (gpuModels.length > 0) {
+      vramSection.style.display = 'block';
+      const totalVram = gpuModels.reduce((sum, r) => sum + r.vram, 0);
+      if (vramText) vramText.textContent = formatMM(totalVram);
+      if (vramModels) {
+        vramModels.innerHTML = gpuModels.map(r => {
+          const shortName = r.name.replace(/:latest$/, '');
+          return `<div class="sys-vram-row">
+            <span class="sys-vram-name" title="${r.name}">${shortName}</span>
+            <span class="sys-vram-size">${r.vram_label}</span>
+          </div>`;
+        }).join('');
+      }
+    } else {
+      vramSection.style.display = 'none';
+    }
+  }
 }
 
 function updateModelInfoCard() {
@@ -3324,6 +3504,131 @@ function formatMM(bytes) {
   if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
   if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
   return (bytes / 1073741824).toFixed(2) + ' GB';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § MODEL LIBRARY BROWSER
+// ─────────────────────────────────────────────────────────────────────────────
+
+const OLLAMA_LIBRARY = [
+  // ── Meta Llama ──────────────────────────────────────────────────────────────
+  { name: 'llama3.3',         org: 'Meta',      icon: '🦙', size: '43 GB',  tags: ['large'],           desc: 'Llama 3.3 70B — Meta\'s latest flagship for reasoning and instruction following.' },
+  { name: 'llama3.2',         org: 'Meta',      icon: '🦙', size: '2 GB',   tags: ['fast'],            desc: 'Llama 3.2 3B — fast, capable small model good for everyday tasks.' },
+  { name: 'llama3.2:1b',      org: 'Meta',      icon: '🦙', size: '1.3 GB', tags: ['fast'],            desc: 'Llama 3.2 1B — ultra-light, runs on anything.' },
+  { name: 'llama3.2-vision',  org: 'Meta',      icon: '🦙', size: '8 GB',   tags: ['vision'],          desc: 'Llama 3.2 11B Vision — multimodal model for image understanding.' },
+  { name: 'llama3.1',         org: 'Meta',      icon: '🦙', size: '5 GB',   tags: [],                  desc: 'Llama 3.1 8B — solid all-rounder with 128K context.' },
+  { name: 'llama3.1:70b',     org: 'Meta',      icon: '🦙', size: '40 GB',  tags: ['large'],           desc: 'Llama 3.1 70B — high-quality reasoning and instruction following.' },
+  // ── Qwen ────────────────────────────────────────────────────────────────────
+  { name: 'qwen2.5',          org: 'Alibaba',   icon: '🟣', size: '5 GB',   tags: [],                  desc: 'Qwen 2.5 7B — strong multilingual and coding performance.' },
+  { name: 'qwen2.5:14b',      org: 'Alibaba',   icon: '🟣', size: '9 GB',   tags: [],                  desc: 'Qwen 2.5 14B — excellent balance of quality and speed.' },
+  { name: 'qwen2.5:32b',      org: 'Alibaba',   icon: '🟣', size: '19 GB',  tags: ['large'],           desc: 'Qwen 2.5 32B — powerful, near-frontier quality.' },
+  { name: 'qwen2.5-coder',    org: 'Alibaba',   icon: '🟣', size: '5 GB',   tags: ['code'],            desc: 'Qwen 2.5 Coder 7B — specialized for code generation and review.' },
+  { name: 'qwen2.5-coder:14b',org: 'Alibaba',   icon: '🟣', size: '9 GB',   tags: ['code'],            desc: 'Qwen 2.5 Coder 14B — excellent code model rivaling GPT-4 on benchmarks.' },
+  { name: 'qwq',              org: 'Alibaba',   icon: '🟣', size: '20 GB',  tags: ['large'],           desc: 'QwQ 32B — reasoning-focused model with strong math and logic.' },
+  // ── Mistral / Mixtral ───────────────────────────────────────────────────────
+  { name: 'mistral',          org: 'Mistral AI',icon: '💠', size: '4 GB',   tags: ['fast'],            desc: 'Mistral 7B — blazing fast, concise, great for instruction following.' },
+  { name: 'mistral-small',    org: 'Mistral AI',icon: '💠', size: '14 GB',  tags: [],                  desc: 'Mistral Small 3 — strong all-rounder at an efficient size.' },
+  { name: 'mixtral',          org: 'Mistral AI',icon: '💠', size: '26 GB',  tags: ['large'],           desc: 'Mixtral 8×7B MoE — sparse expert model with excellent quality.' },
+  // ── DeepSeek ────────────────────────────────────────────────────────────────
+  { name: 'deepseek-r1',      org: 'DeepSeek',  icon: '🔷', size: '5 GB',   tags: ['fast'],            desc: 'DeepSeek-R1 7B — chain-of-thought reasoning, open-source frontier.' },
+  { name: 'deepseek-r1:14b',  org: 'DeepSeek',  icon: '🔷', size: '9 GB',   tags: [],                  desc: 'DeepSeek-R1 14B — strong math and coding with extended thinking.' },
+  { name: 'deepseek-r1:32b',  org: 'DeepSeek',  icon: '🔷', size: '19 GB',  tags: ['large'],           desc: 'DeepSeek-R1 32B — near-GPT-4 reasoning quality.' },
+  { name: 'deepseek-coder-v2',org: 'DeepSeek',  icon: '🔷', size: '9 GB',   tags: ['code'],            desc: 'DeepSeek Coder v2 16B — top-tier code model, outperforms GPT-4o on code.' },
+  // ── Microsoft Phi ───────────────────────────────────────────────────────────
+  { name: 'phi4',             org: 'Microsoft', icon: '🔵', size: '8 GB',   tags: ['fast'],            desc: 'Phi-4 14B — punches well above its weight on reasoning tasks.' },
+  { name: 'phi4-mini',        org: 'Microsoft', icon: '🔵', size: '2.5 GB', tags: ['fast'],            desc: 'Phi-4 Mini 3.8B — ultra-efficient, great for constrained environments.' },
+  { name: 'phi3.5',           org: 'Microsoft', icon: '🔵', size: '2.2 GB', tags: ['fast'],            desc: 'Phi-3.5 Mini — fast and smart small model from Microsoft.' },
+  // ── Google Gemma ────────────────────────────────────────────────────────────
+  { name: 'gemma3',           org: 'Google',    icon: '🟤', size: '5 GB',   tags: ['vision'],          desc: 'Gemma 3 9B — multimodal, strong reasoning, Google\'s open model.' },
+  { name: 'gemma3:27b',       org: 'Google',    icon: '🟤', size: '17 GB',  tags: ['vision', 'large'], desc: 'Gemma 3 27B — Google\'s largest open model with vision capabilities.' },
+  { name: 'gemma2',           org: 'Google',    icon: '🟤', size: '5 GB',   tags: [],                  desc: 'Gemma 2 9B — efficient, high-quality model from Google.' },
+  // ── Code-specialized ────────────────────────────────────────────────────────
+  { name: 'codellama',        org: 'Meta',      icon: '💻', size: '4 GB',   tags: ['code'],            desc: 'Code Llama 7B — purpose-built for code generation and debugging.' },
+  { name: 'codellama:34b',    org: 'Meta',      icon: '💻', size: '19 GB',  tags: ['code', 'large'],   desc: 'Code Llama 34B — powerful coding assistant.' },
+  { name: 'starcoder2',       org: 'HuggingFace',icon:'💻', size: '9 GB',   tags: ['code'],            desc: 'StarCoder2 15B — trained on 600+ languages, great for open-source code.' },
+  // ── Embeddings ──────────────────────────────────────────────────────────────
+  { name: 'nomic-embed-text', org: 'Nomic',     icon: '📐', size: '274 MB', tags: ['embed'],           desc: 'Nomic Embed Text v1.5 — fast, local embedding model for RAG.' },
+  { name: 'mxbai-embed-large',org: 'MixedBread',icon: '📐', size: '670 MB', tags: ['embed'],           desc: 'MixedBread Large — high-quality English embedding model.' },
+  // ── Vision ──────────────────────────────────────────────────────────────────
+  { name: 'llava',            org: 'LLaVA',     icon: '👁',  size: '4 GB',   tags: ['vision'],          desc: 'LLaVA 1.6 7B — image understanding and visual Q&A.' },
+  { name: 'moondream',        org: 'Moondream', icon: '👁',  size: '1.7 GB', tags: ['vision', 'fast'],  desc: 'Moondream 2 — tiny but capable vision-language model.' },
+];
+
+const MM_LIB_CATEGORIES = ['All', 'fast', 'code', 'vision', 'large', 'embed'];
+let   mmLibActiveFilter  = 'All';
+
+function switchModelManagerTab(tab) {
+  document.getElementById('mm-panel-installed').style.display = tab === 'installed' ? '' : 'none';
+  document.getElementById('mm-panel-library').style.display   = tab === 'library'   ? '' : 'none';
+  document.getElementById('mm-tab-installed').classList.toggle('active', tab === 'installed');
+  document.getElementById('mm-tab-library').classList.toggle('active', tab === 'library');
+  if (tab === 'library') {
+    renderLibraryFilters();
+    renderModelLibrary('');
+  }
+}
+
+function renderLibraryFilters() {
+  const el = document.getElementById('mm-library-filters');
+  el.innerHTML = MM_LIB_CATEGORIES.map(cat =>
+    `<button class="mm-filter-chip${mmLibActiveFilter === cat ? ' active' : ''}"
+       onclick="mmSetFilter('${cat}')">${cat === 'All' ? 'All models' : cat}</button>`
+  ).join('');
+}
+
+function mmSetFilter(cat) {
+  mmLibActiveFilter = cat;
+  renderLibraryFilters();
+  renderModelLibrary(document.getElementById('mm-library-search').value || '');
+}
+
+function renderModelLibrary(query = '') {
+  const q = query.toLowerCase().trim();
+  const filtered = OLLAMA_LIBRARY.filter(m => {
+    const matchesFilter = mmLibActiveFilter === 'All' || m.tags.includes(mmLibActiveFilter);
+    const matchesQuery  = !q || m.name.includes(q) || m.org.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q);
+    return matchesFilter && matchesQuery;
+  });
+
+  const grid = document.getElementById('mm-library-grid');
+  if (!filtered.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:12px">No models match your search.</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(m => {
+    const tags = m.tags.map(t => `<span class="mm-lib-tag ${t}">${t}</span>`).join('');
+    return `<div class="mm-lib-card">
+      <div class="mm-lib-card-header">
+        <div class="mm-lib-icon" style="background:var(--s3)">${m.icon}</div>
+        <div class="mm-lib-name-wrap">
+          <div class="mm-lib-name">${m.name}</div>
+          <div class="mm-lib-org">${m.org}</div>
+        </div>
+      </div>
+      <div class="mm-lib-desc">${m.desc}</div>
+      <div class="mm-lib-footer">
+        <div class="mm-lib-tags">${tags}</div>
+        <span class="mm-lib-size">${m.size}</span>
+        <button class="mm-lib-pull-btn" onclick="pullFromLibrary('${m.name}', this)" title="Pull ${m.name}">↓ Pull</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function pullFromLibrary(name, btnEl) {
+  const pullBtn = document.getElementById('mm-pull-btn');
+  if (pullBtn?.disabled) return;
+  switchModelManagerTab('installed');
+  const input = document.getElementById('mm-pull-input');
+  input.value = name;
+  input.focus();
+  btnEl.disabled = true;
+  btnEl.classList.add('pulling');
+  btnEl.textContent = 'Queued';
+  setTimeout(() => {
+    pullModel().finally(() => { btnEl.disabled = false; });
+  }, 100);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
