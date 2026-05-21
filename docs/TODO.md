@@ -34,9 +34,10 @@
 - ✅ Model loading banner with live progress
 - ✅ Model pull / download with live progress bar (Ollama)
 - ✅ Model delete from disk (Ollama)
-- 🔥 **Model library browser** — search ollama.com/library inline
-- 🔥 **Model capability badges** — vision, tools, code, long-context
-- 🔥 **Model family grouping** in the dropdown (Llama 3, Qwen, Mistral…)
+- ✅ **Model library browser** — browse & pull 30+ popular Ollama models in-app
+- 🔥 **Model library search** — live search against ollama.com/library API
+- ✅ **Model capability badges** — vision, tools, code, long-context
+- ✅ **Model family grouping** in the dropdown (Llama 3, Qwen, Mistral…)
 - 🔲 GGUF file drag-and-drop import (load any GGUF into LM Studio)
 - 🔲 Model tags and aliasing (give friendly names to models)
 - 🔲 Update check — notify when a newer version of a model exists
@@ -63,7 +64,7 @@
 - 🔥 **Conversation folders** / tag-based organization
 - 🔥 **Conversation branching** — fork from any message
 - 🔲 Import conversations from JSON / ChatGPT export
-- 🔥 **Share conversation** — export as self-contained HTML file
+- ✅ **Share conversation** — export as self-contained HTML file (PR #11)
 - 🔲 Multi-tab chat (several conversations open side-by-side)
 - 🔲 Message reactions (👍 👎 — RLHF-style feedback)
 - 🔲 Bulk conversation management (select all → delete / export)
@@ -95,8 +96,9 @@
 - ✅ Keyboard shortcuts (⌘K, ⌘J, ⌘R, ⌘E, ⌘/)
 - ✅ Keyboard shortcuts help modal (`?`)
 - ✅ Sampling presets — Precise / Balanced / Creative one-click buttons
-- 🔥 **Command palette** (⌘P) — fuzzy search across all actions and conversations
-- 🔥 **Fully responsive mobile layout** — hamburger sidebar, touch-friendly
+- ✅ **Command palette** (⌘P) — fuzzy search across all actions and conversations
+- ✅ **Backup & restore** — all settings + conversations as a single JSON
+- 🔥 **Fully responsive mobile layout** — hamburger sidebar, touch-friendly (PR #14 open)
 - ✅ Full-screen focus mode — hide all sidebars, center content (⌘⇧F)
 - ✅ Collapsible long messages — auto-collapse messages > ~22 lines with "Show more / Show less"
 - 🔲 Customizable accent color (color picker in settings)
@@ -205,10 +207,10 @@
 - ✅ System RAM usage bar
 - ✅ Context usage indicator (warns at >75%)
 - ✅ Real-time tokens/sec counter — live speed display during generation
-- 🔥 **GPU / VRAM usage monitoring** — Ollama VRAM via API
+- ✅ **GPU / VRAM usage monitoring** — live VRAM bar per loaded model in sidebar (PR #13)
 - 🔲 Response latency histogram (per-model statistics panel)
 - 🔲 Session token usage totals (prompt + completion)
-- 🔲 Cost estimation for cloud API providers (per-model pricing table)
+- ✅ Cost estimation for cloud API providers — per-response USD cost (PR #12)
 - 🔲 Performance dashboard — charts comparing models over time
 - 🔲 CPU / GPU temperature display (where available)
 
@@ -272,7 +274,7 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ Done | ~49 |
-| 🔥 High priority | ~31 |
+| ✅ Done | ~52 |
+| 🔥 High priority | ~28 |
 | 🔲 Backlog | ~30 |
 | **Total** | **~110** |
