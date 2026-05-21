@@ -66,6 +66,7 @@
 - [x] Chat fuzzy search (⌘K)
 - [x] **Conversation title rename** on double-click
 - [x] Collapsible long messages (auto-collapse > ~22 lines)
+- [~] **Conversation color labels** — Work / Code / Research / Ideas / Personal, with sidebar filter (PR #16)
 - [ ] **Conversation folders** / tag-based organization
 - [ ] **Conversation branching** — fork from any message
 - [ ] Import conversations from JSON / ChatGPT export
