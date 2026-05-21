@@ -193,6 +193,7 @@ function defaultTemplates() {
 
 async function init() {
   applyTheme(userSettings.theme || 'dark');
+  applyAppearance();
   await checkHealth();
   await loadModels();
   await loadTools();
@@ -1843,13 +1844,14 @@ function openApiKeySettings() {
 }
 
 function switchSettingsTab(tab) {
-  ['config', 'apikeys', 'backup'].forEach(t => {
+  ['config', 'apikeys', 'appearance', 'backup'].forEach(t => {
     document.getElementById(`settings-panel-${t}`).style.display = t === tab ? '' : 'none';
     document.getElementById(`settings-footer-${t}`).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById(`tab-${t}`);
     if (btn) btn.classList.toggle('active', t === tab);
   });
   if (tab === 'backup') renderBackupSummary();
+  if (tab === 'appearance') _syncAppearanceUI();
 }
 
 function renderBackupSummary() {
@@ -2566,6 +2568,90 @@ function toggleTheme() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § APPEARANCE — accent color, font size, chat density
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ACCENT_DEFAULTS = { accent: '#3b82f6', accent2: '#2563eb' };
+
+function _darkenHex(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, ((n >> 16) & 0xff) - 30);
+  const g = Math.max(0, ((n >> 8)  & 0xff) - 30);
+  const b = Math.max(0, (n & 0xff) - 30);
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+function applyAppearance() {
+  const { accentColor, fontSize = 'normal', density = 'comfortable' } = userSettings;
+  const root = document.documentElement;
+
+  if (accentColor) {
+    root.style.setProperty('--accent',  accentColor);
+    root.style.setProperty('--accent2', _darkenHex(accentColor));
+  } else {
+    root.style.removeProperty('--accent');
+    root.style.removeProperty('--accent2');
+  }
+
+  root.setAttribute('data-fontsize', fontSize);
+  root.setAttribute('data-density',  density);
+}
+
+function setAccentColor(color) {
+  userSettings.accentColor = color;
+  localStorage.setItem('llm-settings', JSON.stringify(userSettings));
+  applyAppearance();
+  _syncAppearanceUI();
+}
+
+function setFontSize(size) {
+  userSettings.fontSize = size;
+  localStorage.setItem('llm-settings', JSON.stringify(userSettings));
+  applyAppearance();
+  _syncAppearanceUI();
+}
+
+function setChatDensity(density) {
+  userSettings.density = density;
+  localStorage.setItem('llm-settings', JSON.stringify(userSettings));
+  applyAppearance();
+  _syncAppearanceUI();
+}
+
+function resetAppearance() {
+  delete userSettings.accentColor;
+  delete userSettings.fontSize;
+  delete userSettings.density;
+  localStorage.setItem('llm-settings', JSON.stringify(userSettings));
+  applyAppearance();
+  _syncAppearanceUI();
+  toast('Appearance reset to defaults');
+}
+
+function _syncAppearanceUI() {
+  const { accentColor, fontSize = 'normal', density = 'comfortable' } = userSettings;
+
+  document.querySelectorAll('.accent-swatch[data-color]').forEach(el => {
+    el.classList.toggle('active', el.dataset.color === accentColor);
+  });
+  const customInput = document.getElementById('accent-custom-input');
+  if (customInput && accentColor) customInput.value = accentColor;
+
+  document.querySelectorAll('#fontsize-options .appearance-option').forEach(el => {
+    el.classList.toggle('active', el.dataset.val === fontSize);
+  });
+  document.querySelectorAll('#density-options .appearance-option').forEach(el => {
+    el.classList.toggle('active', el.dataset.val === density);
+  });
+}
+
+function openAppearanceSettings() {
+  switchSettingsTab('appearance');
+  _syncAppearanceUI();
+  openModal('config-modal');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § MODALS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2600,6 +2686,7 @@ function buildPaletteCommands() {
     { group: 'Models',    icon: '🔄',  label: 'Reload Models',                           action: () => loadModels() },
     { group: 'Settings',  icon: '⚙️',  label: 'Open Settings',                           action: () => openConfigEditor() },
     { group: 'Settings',  icon: '🔑',  label: 'API Keys',                                action: () => openApiKeySettings() },
+    { group: 'Settings',  icon: '🎨',  label: 'Appearance — accent color, font, density', action: () => openAppearanceSettings() },
     { group: 'Tools',     icon: '🔧',  label: 'Toggle Agent Tools',        kbd: '⌘/',   action: () => document.getElementById('tools-toggle').click() },
     { group: 'Tools',     icon: '📄',  label: 'Prompt Templates',                        action: () => openTemplates() },
     { group: 'Tools',     icon: '📚',  label: 'Add to Knowledge Base',                   action: () => openRagUpload() },
