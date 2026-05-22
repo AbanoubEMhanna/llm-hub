@@ -895,6 +895,16 @@ function getApiKeys(req) {
 }
 
 const modelRegistry = new Map();
+const customProviderConfigs = new Map(); // providerKey -> { id, name, url, key }
+
+function getCustomProviders(req) {
+  try {
+    const h = req.headers['x-custom-providers'];
+    if (!h) return [];
+    const parsed = JSON.parse(h);
+    return Array.isArray(parsed) ? parsed.filter(cp => cp.id && cp.url) : [];
+  } catch { return []; }
+}
 
 function resolveProvider(m) {
   if (m?.startsWith('ollama/'))     return 'ollama';
@@ -903,12 +913,15 @@ function resolveProvider(m) {
   if (m?.startsWith('anthropic/'))  return 'anthropic';
   if (m?.startsWith('groq/'))       return 'groq';
   if (m?.startsWith('openrouter/')) return 'openrouter';
+  const customMatch = m?.match(/^(custom_[^/]+)\//);
+  if (customMatch && customProviderConfigs.has(customMatch[1])) return customMatch[1];
   return modelRegistry.get(m) || null;
 }
-function stripPrefix(m) { return m?.replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter)\//, '') || m; }
+function stripPrefix(m) { return m?.replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter|custom_[^/]+)\//, '') || m; }
 
-async function fetchAllModels(apiKeys = {}) {
+async function fetchAllModels(apiKeys = {}, customProviders = []) {
   modelRegistry.clear();
+  customProviderConfigs.clear();
   const all = [];
 
   // === STEP 1: Fetch model lists from local + cloud providers IN PARALLEL ===
@@ -982,7 +995,36 @@ async function fetchAllModels(apiKeys = {}) {
     }
   });
 
-  // === STEP 3: Enrich Ollama models with metadata (in background, non-blocking) ===
+  // === STEP 3: Custom OpenAI-compatible provider models ===
+  for (const cp of customProviders) {
+    if (!cp.id || !cp.url) continue;
+    const providerKey = `custom_${cp.id}`;
+    customProviderConfigs.set(providerKey, cp);
+    try {
+      const parsedUrl = new URL(cp.url);
+      const isHttps = parsedUrl.protocol === 'https:';
+      const cpHeaders = cp.key ? { Authorization: `Bearer ${cp.key}` } : {};
+      const cpPort = parsedUrl.port ? parseInt(parsedUrl.port) : (isHttps ? 443 : 80);
+      const result = isHttps
+        ? await httpsGet(parsedUrl.hostname, '/v1/models', cpHeaders, 8000)
+        : await httpGet(parsedUrl.hostname, cpPort, '/v1/models', 8000);
+      if (result.ok && result.data?.data) {
+        for (const m of result.data.data) {
+          const id = `${providerKey}/${m.id}`;
+          modelRegistry.set(id, providerKey);
+          all.push({ id, object: 'model', owned_by: providerKey, created: m.created || Date.now(),
+            provider_name: cp.name, context_length: m.context_length || null });
+        }
+        console.log(`[Models] Custom(${cp.name}): ${result.data.data.length} model(s)`);
+      } else {
+        console.warn(`[Models] Custom(${cp.name}): offline or no models`);
+      }
+    } catch (e) {
+      console.warn(`[Models] Custom(${cp.name}): ${e.message}`);
+    }
+  }
+
+  // === STEP 4: Enrich Ollama models with metadata (in background, non-blocking) ===
   // This runs AFTER both model lists are already returned to the UI
   if (ol.ok && ol.data?.models) {
     const enrichPromises = all.filter(m => m.owned_by === 'ollama').map(async (m) => {
@@ -1132,22 +1174,125 @@ function streamProvider(host, port, pathStr, body, { onChunk, onDone, onError, s
   return req;
 }
 
+function streamCustom(baseUrl, body, extraHeaders, { onChunk, onDone, onError, signal }) {
+  let parsedUrl;
+  try { parsedUrl = new URL(baseUrl); } catch { onError('Invalid custom provider URL: ' + baseUrl); return; }
+  const isHttps = parsedUrl.protocol === 'https:';
+  const transport = isHttps ? https : http;
+  const port = parsedUrl.port ? parseInt(parsedUrl.port) : (isHttps ? 443 : 80);
+  const data = JSON.stringify({ ...body, stream: true });
+  const req = transport.request(
+    { hostname: parsedUrl.hostname, port, path: '/v1/chat/completions', method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data), ...extraHeaders } },
+    (res) => {
+      if (res.statusCode >= 400) {
+        let buf = '';
+        res.on('data', c => buf += c);
+        res.on('end', () => onError(`HTTP ${res.statusCode}: ${buf.slice(0, 200)}`));
+        return;
+      }
+      let buffer = '';
+      res.on('data', (chunk) => {
+        if (signal?.aborted) { try { req.destroy(); } catch {} return; }
+        buffer += chunk.toString();
+        let idx;
+        while ((idx = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, idx).trim();
+          buffer = buffer.slice(idx + 1);
+          if (!line.startsWith('data:')) continue;
+          const payload = line.slice(5).trim();
+          if (!payload || payload === '[DONE]') continue;
+          try { onChunk(JSON.parse(payload)); } catch {}
+        }
+      });
+      res.on('end',   () => onDone());
+      res.on('error', (e) => onError(e.message));
+    }
+  );
+  req.on('error', (e) => onError(e.message));
+  if (signal) signal.onAbort = () => { try { req.destroy(); } catch {} };
+  req.write(data);
+  req.end();
+  return req;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // § AGENT LOOP
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, useTools, apiKeys = {}, emit, signal }) {
+async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, useTools, apiKeys = {}, customProviders = [], emit, signal }) {
   const provider = resolveProvider(model);
   if (!provider) { emit('error', { message: `Model "${model}" not found` }); return; }
 
-  const isCloud     = provider in CLOUD_PROVIDERS;
-  const cfg         = isCloud ? CLOUD_PROVIDERS[provider] : CONFIG.providers[provider];
+  const isCustom    = provider?.startsWith('custom_');
+  const isCloud     = !isCustom && (provider in CLOUD_PROVIDERS);
+  const cfg         = isCloud ? CLOUD_PROVIDERS[provider] : (!isCustom ? CONFIG.providers[provider] : null);
   const actualModel = stripPrefix(model);
   const tools       = useTools ? registry.getOpenAITools() : [];
   let   history     = [...messages];
   const MAX_ROUNDS  = 8;
   const t0          = Date.now();
   const usage       = { prompt_tokens: 0, completion_tokens: 0 };
+
+  if (isCustom) {
+    const cpConfig = customProviderConfigs.get(provider);
+    if (!cpConfig) { emit('error', { message: `Custom provider "${provider}" not found. Re-open Settings to reload.` }); return; }
+    const cpHeaders = cpConfig.key ? { Authorization: `Bearer ${cpConfig.key}` } : {};
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      if (signal?.aborted) return;
+      const body = { model: actualModel, messages: history, temperature: temperature ?? 0.7, max_tokens: max_tokens ?? 2048 };
+      if (top_p !== undefined) body.top_p = top_p;
+      if (top_k !== undefined) body.top_k = top_k;
+      if (repeat_penalty !== undefined) body.repeat_penalty = repeat_penalty;
+      if (frequency_penalty !== undefined) body.frequency_penalty = frequency_penalty;
+      if (tools.length > 0) body.tools = tools;
+      const roundResult = await new Promise((resolve) => {
+        let content = '';
+        const toolCalls = [];
+        streamCustom(cpConfig.url, body, cpHeaders, {
+          signal,
+          onChunk(chunk) {
+            const delta = chunk.choices?.[0]?.delta || {};
+            if (typeof delta.content === 'string' && delta.content.length) { content += delta.content; emit('text_delta', { delta: delta.content }); }
+            if (Array.isArray(delta.tool_calls)) {
+              for (const tc of delta.tool_calls) {
+                const i = tc.index ?? 0;
+                if (!toolCalls[i]) toolCalls[i] = { id: '', type: 'function', function: { name: '', arguments: '' } };
+                if (tc.id) toolCalls[i].id = tc.id;
+                if (tc.function?.name) toolCalls[i].function.name += tc.function.name;
+                if (tc.function?.arguments) toolCalls[i].function.arguments += tc.function.arguments;
+              }
+            }
+            if (chunk.usage) { usage.prompt_tokens += chunk.usage.prompt_tokens || 0; usage.completion_tokens += chunk.usage.completion_tokens || 0; }
+          },
+          onDone()  { resolve({ ok: true, content, toolCalls: toolCalls.filter(tc => tc?.function?.name) }); },
+          onError(e){ resolve({ ok: false, error: e }); },
+        });
+      });
+      if (signal?.aborted) return;
+      if (!roundResult.ok) { emit('error', { message: roundResult.error }); return; }
+      if (roundResult.toolCalls.length > 0) {
+        history.push({ role: 'assistant', content: roundResult.content || null, tool_calls: roundResult.toolCalls });
+        for (const tc of roundResult.toolCalls) {
+          if (signal?.aborted) return;
+          const toolName = tc.function.name;
+          let toolArgs = {};
+          try { toolArgs = JSON.parse(tc.function.arguments || '{}'); } catch {}
+          emit('tool_call', { id: tc.id, name: toolName, args: toolArgs });
+          let toolResult;
+          try { toolResult = await registry.execute(toolName, toolArgs); } catch (e) { toolResult = JSON.stringify({ error: e.message }); }
+          emit('tool_result', { id: tc.id, name: toolName, result: toolResult });
+          history.push({ role: 'tool', tool_call_id: tc.id, content: toolResult });
+        }
+        continue;
+      }
+      history.push({ role: 'assistant', content: roundResult.content });
+      emit('done', { model: actualModel, provider, elapsed: Date.now() - t0, ...usage });
+      return;
+    }
+    emit('done', { model: actualModel, provider, elapsed: Date.now() - t0, ...usage });
+    return;
+  }
 
   if (isCloud) {
     const apiKey = apiKeys[cfg.keyProp];
@@ -1355,6 +1500,7 @@ const server = http.createServer(async (req, res) => {
     // ── HEALTH
     if (req.method === 'GET' && url.pathname === '/health') {
       const apiKeys = getApiKeys(req);
+      const customProviders = getCustomProviders(req);
       const cloudChecks = {};
       for (const [name, cfg] of Object.entries(CLOUD_PROVIDERS)) {
         const key = apiKeys[cfg.keyProp];
@@ -1374,12 +1520,28 @@ const server = http.createServer(async (req, res) => {
       for (const name of Object.keys(CLOUD_PROVIDERS)) {
         if (!(name in cloudStatuses)) cloudStatuses[name] = apiKeys[CLOUD_PROVIDERS[name].keyProp] ? 'offline' : 'no-key';
       }
+      // Custom provider health checks
+      const customStatuses = {};
+      for (const cp of customProviders) {
+        if (!cp.id || !cp.url) continue;
+        try {
+          const parsedUrl = new URL(cp.url);
+          const isHttps = parsedUrl.protocol === 'https:';
+          const cpHeaders = cp.key ? { Authorization: `Bearer ${cp.key}` } : {};
+          const cpPort = parsedUrl.port ? parseInt(parsedUrl.port) : (isHttps ? 443 : 80);
+          const r = isHttps
+            ? await httpsGet(parsedUrl.hostname, '/v1/models', cpHeaders, 4000)
+            : await httpGet(parsedUrl.hostname, cpPort, '/v1/models', 4000);
+          customStatuses[`custom_${cp.id}`] = r.ok ? 'online' : 'offline';
+        } catch { customStatuses[`custom_${cp.id}`] = 'offline'; }
+      }
       sendJSON(res, 200, {
         proxy: 'running', version: '3.1', port: PORT,
         providers: {
           ollama:   ol.status === 'fulfilled' && ol.value.ok ? 'online' : 'offline',
           lmstudio: lm.status === 'fulfilled' && lm.value.ok ? 'online' : 'offline',
           ...cloudStatuses,
+          ...customStatuses,
         },
         tools: registry.getStatus(),
         rag:   { enabled: CONFIG.rag?.enabled, collections: rag.listCollections().length },
@@ -1390,7 +1552,8 @@ const server = http.createServer(async (req, res) => {
     // ── MODELS
     if (req.method === 'GET' && url.pathname === '/v1/models') {
       const apiKeys = getApiKeys(req);
-      sendJSON(res, 200, { object: 'list', data: await fetchAllModels(apiKeys) }); return;
+      const customProviders = getCustomProviders(req);
+      sendJSON(res, 200, { object: 'list', data: await fetchAllModels(apiKeys, customProviders) }); return;
     }
 
     // ── TOOLS
@@ -1415,10 +1578,11 @@ const server = http.createServer(async (req, res) => {
     // ── CHAT (SSE)
     if (req.method === 'POST' && url.pathname === '/v1/chat') {
       const apiKeys = getApiKeys(req);
+      const customProviders = getCustomProviders(req);
       const body = await readBody(req);
       const { model, messages, temperature, max_tokens, use_tools = true, top_p, top_k, repeat_penalty, frequency_penalty } = body;
       if (!model || !messages) { sendJSON(res, 400, { error: 'model and messages required' }); return; }
-      if (!resolveProvider(model)) await fetchAllModels(apiKeys);
+      if (!resolveProvider(model)) await fetchAllModels(apiKeys, customProviders);
 
       setCORS(res);
       res.writeHead(200, {
@@ -1434,7 +1598,7 @@ const server = http.createServer(async (req, res) => {
         try { res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`); } catch {}
       };
       console.log(`[Chat] ${model} | provider:${resolveProvider(model)} | tools:${use_tools} | msgs:${messages.length}`);
-      await runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, useTools: use_tools, apiKeys, emit, signal });
+      await runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, useTools: use_tools, apiKeys, customProviders, emit, signal });
       try { res.end(); } catch {}
       return;
     }
@@ -1442,15 +1606,35 @@ const server = http.createServer(async (req, res) => {
     // ── PASSTHROUGH (non-streaming OpenAI-compatible passthrough)
     if (req.method === 'POST' && url.pathname === '/v1/chat/completions') {
       const apiKeys = getApiKeys(req);
+      const customProviders = getCustomProviders(req);
       const body = await readBody(req);
       const { model } = body;
-      if (!resolveProvider(model)) await fetchAllModels(apiKeys);
+      if (!resolveProvider(model)) await fetchAllModels(apiKeys, customProviders);
       const provider = resolveProvider(model);
       if (!provider) { sendJSON(res, 404, { error: { message: `Model "${model}" not found` } }); return; }
 
       // Strip stream:true — passthrough is non-streaming. Streaming clients should use /v1/chat.
       const { stream: _stream, ...rest } = body;
       const upstreamBody = { ...rest, model: stripPrefix(model) };
+
+      if (provider?.startsWith('custom_')) {
+        const cpConfig = customProviderConfigs.get(provider);
+        if (!cpConfig) { sendJSON(res, 404, { error: { message: `Custom provider "${provider}" not found` } }); return; }
+        const cpHeaders = { 'Content-Type': 'application/json', ...(cpConfig.key ? { Authorization: `Bearer ${cpConfig.key}` } : {}) };
+        try {
+          const parsedUrl = new URL(cpConfig.url);
+          const isHttps = parsedUrl.protocol === 'https:';
+          const cpPort = parsedUrl.port ? parseInt(parsedUrl.port) : (isHttps ? 443 : 80);
+          let result;
+          if (isHttps) {
+            result = await httpsPost(parsedUrl.hostname, '/v1/chat/completions', upstreamBody, cpHeaders);
+          } else {
+            result = await httpPost(parsedUrl.hostname, cpPort, '/v1/chat/completions', upstreamBody);
+          }
+          sendJSON(res, result.status, result.data);
+        } catch (e) { sendJSON(res, 502, { error: { message: e.message } }); }
+        return;
+      }
 
       if (provider in CLOUD_PROVIDERS) {
         const cfg = CLOUD_PROVIDERS[provider];
