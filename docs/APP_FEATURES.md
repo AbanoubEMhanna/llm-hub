@@ -38,6 +38,8 @@
 | [#20](../../pull/20) | Appearance settings (accent color, font size, density) | ✅ Merged |
 | [#21](../../pull/21) | In-conversation message search (⌘F) | ✅ Merged |
 | [#22](../../pull/22) | JSON mode toggle (structured output) | ✅ Merged |
+| [#23](../../pull/23) | Custom OpenAI-compatible provider endpoint + docs sync | ✅ Merged |
+| [#24](../../pull/24) | Skeleton loading states + provider connection test button | 🔀 Open |
 
 ---
 
@@ -139,7 +141,7 @@
 - [x] Fully responsive mobile layout — drawer sidebars, touch-friendly
 - [x] Appearance settings — accent color, font size, chat density
 - [ ] 🔥 Animated page transitions and micro-interactions
-- [ ] 🔥 Skeleton loading states instead of spinners
+- [x] Skeleton loading states — shimmer skeleton for model selector + staggered conversation list entry
 - [ ] 🔥 Drag-to-resize sidebars
 - [ ] Custom welcome screen with quick-action cards
 - [ ] Inline message diff view for edits
@@ -268,7 +270,7 @@
 - [x] Backup & restore — all settings + conversations as JSON
 - [x] Appearance settings tab — accent color, font size, chat density
 - [ ] 🔥 Proper settings UI with tabs — General · Providers · Tools · RAG · Audio · Advanced
-- [ ] 🔥 Provider connection test button — ping + model count
+- [x] Provider connection test button — per-provider ping in Settings → Providers
 - [ ] Keyboard shortcut remapping
 - [ ] Onboarding wizard for first-time setup
 - [ ] Per-workspace configuration profiles
@@ -312,10 +314,10 @@
 
 | Status | Count |
 |--------|-------|
-| `[x]` Done | ~64 |
-| `[ ]` Not started | ~58 |
+| `[x]` Done | ~66 |
+| `[ ]` Not started | ~56 |
 | **Total** | **~122** |
 
 ---
 
-*All 22 PRs merged to main as of 2026-05-21. No open PRs. Next features tracked in [TODO.md](./TODO.md).*
+*PR #23 merged 2026-05-22 (custom provider endpoint). PR #24 open: skeleton loading + provider test button.*

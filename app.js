@@ -823,6 +823,8 @@ function togglePin(id, e) {
   renderConvList();
 }
 
+let _convListFirstRender = true;
+
 function renderConvList() {
   const list = document.getElementById('conv-list');
   let sorted = [...conversations].sort((a, b) => {
@@ -831,13 +833,18 @@ function renderConvList() {
   });
   if (activeConvFilter) sorted = sorted.filter(c => c.label === activeConvFilter);
 
-  list.innerHTML = sorted.map(c => {
+  const stagger = _convListFirstRender;
+  _convListFirstRender = false;
+
+  list.innerHTML = sorted.map((c, i) => {
     const lbl = c.label ? CONV_LABELS[c.label] : null;
     const labelDot = lbl
       ? `<span class="conv-label-dot" style="background:${lbl.color}" title="${lbl.name}"></span>`
       : '';
+    const enterCls   = stagger ? ' conv-item-enter' : '';
+    const staggerStyle = stagger ? ` style="--stagger-i:${Math.min(i, 8) * 35}ms"` : '';
     return `
-    <div class="conv-item ${c.id === currentConvId ? 'active' : ''} ${c.pinned ? 'pinned' : ''}" data-id="${c.id}"
+    <div class="conv-item${enterCls} ${c.id === currentConvId ? 'active' : ''} ${c.pinned ? 'pinned' : ''}" data-id="${c.id}"${staggerStyle}
          onclick="loadConversation('${c.id}')">
       <div class="conv-title" ondblclick="startRenameConv('${c.id}',event)" title="Double-click to rename">
         ${labelDot}${escHtml(c.title)}
@@ -2099,8 +2106,49 @@ function clearAllApiKeys() {
   ['openai', 'anthropic', 'groq', 'openrouter'].forEach(p => {
     const el = document.getElementById(`key-${p}`);
     if (el) el.value = '';
+    const st = document.getElementById(`test-status-${p}`);
+    if (st) { st.textContent = ''; st.className = 'provider-test-status'; }
   });
   document.getElementById('apikey-status').textContent = 'All keys cleared.';
+}
+
+async function testProvider(provider) {
+  const statusEl = document.getElementById(`test-status-${provider}`);
+  const btnEl    = document.getElementById(`test-${provider}`);
+  if (!statusEl || !btnEl) return;
+
+  const key = (document.getElementById(`key-${provider}`)?.value || '').trim();
+  if (!key) {
+    statusEl.textContent = 'no key';
+    statusEl.className   = 'provider-test-status offline';
+    return;
+  }
+
+  btnEl.disabled       = true;
+  statusEl.textContent = 'testing…';
+  statusEl.className   = 'provider-test-status checking';
+
+  try {
+    const tempKeys = { ...getStoredApiKeys(), [provider]: key };
+    const res = await fetch(`${PROXY}/health`, {
+      headers: { 'X-Api-Keys': JSON.stringify(tempKeys) },
+      signal: AbortSignal.timeout(10000),
+    });
+    const data = await res.json();
+    const status = data.providers?.[provider];
+    if (status === 'online') {
+      statusEl.textContent = '✓ online';
+      statusEl.className   = 'provider-test-status online';
+    } else {
+      statusEl.textContent = '✗ offline';
+      statusEl.className   = 'provider-test-status offline';
+    }
+  } catch {
+    statusEl.textContent = '✗ unreachable';
+    statusEl.className   = 'provider-test-status offline';
+  } finally {
+    btnEl.disabled = false;
+  }
 }
 
 function renderCustomProvidersList() {

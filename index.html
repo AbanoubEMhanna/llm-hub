@@ -298,7 +298,13 @@
         <svg class="panel-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <div class="panel-content">
-        <div id="model-loading" class="loading-row"><div class="spinner"></div> Loading models…</div>
+        <div id="model-loading">
+          <div class="model-select-skeleton"></div>
+          <div class="model-select-skeleton-sub">
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line"></div>
+          </div>
+        </div>
         <select class="model-select" id="model-select" style="display:none" onchange="onModelChange()">
           <option value="">— select model —</option>
         </select>
@@ -575,6 +581,8 @@
           </label>
           <input class="api-key-input" id="key-openai" type="password" placeholder="sk-…" autocomplete="off"/>
           <button class="btn btn-sm" onclick="toggleKeyVisibility('key-openai', this)">Show</button>
+          <button class="btn btn-sm provider-test-btn" id="test-openai" onclick="testProvider('openai')" title="Ping OpenAI with the current key">Test</button>
+          <span class="provider-test-status" id="test-status-openai"></span>
         </div>
         <div class="api-key-row">
           <label class="api-key-label">
@@ -583,6 +591,8 @@
           </label>
           <input class="api-key-input" id="key-anthropic" type="password" placeholder="sk-ant-…" autocomplete="off"/>
           <button class="btn btn-sm" onclick="toggleKeyVisibility('key-anthropic', this)">Show</button>
+          <button class="btn btn-sm provider-test-btn" id="test-anthropic" onclick="testProvider('anthropic')" title="Ping Anthropic with the current key">Test</button>
+          <span class="provider-test-status" id="test-status-anthropic"></span>
         </div>
         <div class="api-key-row">
           <label class="api-key-label">
@@ -591,6 +601,8 @@
           </label>
           <input class="api-key-input" id="key-groq" type="password" placeholder="gsk_…" autocomplete="off"/>
           <button class="btn btn-sm" onclick="toggleKeyVisibility('key-groq', this)">Show</button>
+          <button class="btn btn-sm provider-test-btn" id="test-groq" onclick="testProvider('groq')" title="Ping Groq with the current key">Test</button>
+          <span class="provider-test-status" id="test-status-groq"></span>
         </div>
         <div class="api-key-row">
           <label class="api-key-label">
@@ -599,6 +611,8 @@
           </label>
           <input class="api-key-input" id="key-openrouter" type="password" placeholder="sk-or-…" autocomplete="off"/>
           <button class="btn btn-sm" onclick="toggleKeyVisibility('key-openrouter', this)">Show</button>
+          <button class="btn btn-sm provider-test-btn" id="test-openrouter" onclick="testProvider('openrouter')" title="Ping OpenRouter with the current key">Test</button>
+          <span class="provider-test-status" id="test-status-openrouter"></span>
         </div>
       </div>
       <div id="apikey-status" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
