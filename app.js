@@ -3910,7 +3910,73 @@ function pullFromLibrary(name, btnEl) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § SIDEBAR RESIZE
+// ─────────────────────────────────────────────────────────────────────────────
+
+function initSidebarResize() {
+  const MIN_W = { left: 160, right: 200 };
+  const MAX_W = { left: 420, right: 480 };
+  const STORAGE_KEY = { left: 'llm_sidebar_left_w', right: 'llm_sidebar_right_w' };
+
+  function applyWidth(side, px) {
+    const el = document.querySelector(side === 'left' ? '.sidebar-left' : '.sidebar-right');
+    if (!el) return;
+    const clamped = Math.max(MIN_W[side], Math.min(MAX_W[side], px));
+    el.style.width = `${clamped}px`;
+    try { localStorage.setItem(STORAGE_KEY[side], clamped); } catch (_) {}
+  }
+
+  function restoreWidths() {
+    ['left', 'right'].forEach(side => {
+      const saved = parseInt(localStorage.getItem(STORAGE_KEY[side]), 10);
+      if (saved) applyWidth(side, saved);
+    });
+  }
+
+  function attachHandle(handleId, side) {
+    const handle = document.getElementById(handleId);
+    if (!handle) return;
+    let startX = 0, startW = 0;
+
+    handle.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const sidebarEl = document.querySelector(side === 'left' ? '.sidebar-left' : '.sidebar-right');
+      if (!sidebarEl) return;
+      startX = e.clientX;
+      startW = sidebarEl.offsetWidth;
+      handle.classList.add('dragging');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', e => {
+      if (!handle.classList.contains('dragging')) return;
+      const delta = side === 'left' ? e.clientX - startX : startX - e.clientX;
+      applyWidth(side, startW + delta);
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!handle.classList.contains('dragging')) return;
+      handle.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    });
+
+    // Double-click to reset to default
+    handle.addEventListener('dblclick', () => {
+      const defaults = { left: 220, right: 260 };
+      applyWidth(side, defaults[side]);
+    });
+  }
+
+  restoreWidths();
+  attachHandle('resize-left', 'left');
+  attachHandle('resize-right', 'right');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § BOOT
 // ─────────────────────────────────────────────────────────────────────────────
 
 init();
+initSidebarResize();
