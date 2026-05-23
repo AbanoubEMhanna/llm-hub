@@ -2130,10 +2130,17 @@ async function testProvider(provider) {
 
   try {
     const tempKeys = { ...getStoredApiKeys(), [provider]: key };
-    const res = await fetch(`${PROXY}/health`, {
-      headers: { 'X-Api-Keys': JSON.stringify(tempKeys) },
-      signal: AbortSignal.timeout(10000),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    let res;
+    try {
+      res = await fetch(`${PROXY}/health`, {
+        headers: { 'X-Api-Keys': JSON.stringify(tempKeys) },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
     const data = await res.json();
     const status = data.providers?.[provider];
     if (status === 'online') {

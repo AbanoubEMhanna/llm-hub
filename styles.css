@@ -1616,21 +1616,21 @@ input[type=range]::-webkit-slider-thumb {
 }
 
 /* ═══════════════════ SKELETON LOADING ═══════════════════ */
-@keyframes shimmer {
+@keyframes shimmer-bg-move {
   0%   { background-position: -200% 0; }
   100% { background-position:  200% 0; }
 }
 .skeleton-block {
   background: linear-gradient(90deg, var(--s2) 25%, var(--s3) 50%, var(--s2) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s ease infinite;
+  animation: shimmer-bg-move 1.5s ease infinite;
   border-radius: 4px;
 }
 .skeleton-line {
   height: 9px; border-radius: 4px;
   background: linear-gradient(90deg, var(--s2) 25%, var(--s3) 50%, var(--s2) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s ease infinite;
+  animation: shimmer-bg-move 1.5s ease infinite;
 }
 
 /* Model selector skeleton */
@@ -1638,7 +1638,7 @@ input[type=range]::-webkit-slider-thumb {
   height: 32px; width: 100%; border-radius: 6px; border: 1px solid var(--border);
   background: linear-gradient(90deg, var(--s2) 25%, var(--s3) 50%, var(--s2) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s ease infinite;
+  animation: shimmer-bg-move 1.5s ease infinite;
   margin-bottom: 6px;
 }
 .model-select-skeleton-sub {
@@ -1648,13 +1648,27 @@ input[type=range]::-webkit-slider-thumb {
 .model-select-skeleton-sub .skeleton-line:last-child  { flex: 0 0 30%; animation-delay: .2s; }
 
 /* Conversation list stagger entry */
-@keyframes convFadeIn {
+@keyframes conv-fade-in {
   from { opacity: 0; transform: translateX(-6px); }
   to   { opacity: 1; transform: none; }
 }
 .conv-item-enter {
-  animation: convFadeIn .22s ease both;
+  animation: conv-fade-in .22s ease both;
   animation-delay: var(--stagger-i, 0ms);
+}
+
+/* Accessibility: disable animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-block,
+  .skeleton-line,
+  .model-select-skeleton,
+  .model-select-skeleton-sub .skeleton-line:first-child,
+  .model-select-skeleton-sub .skeleton-line:last-child,
+  .conv-item-enter {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* ═══════════════════ PROVIDER TEST BUTTON ═══════════════════ */

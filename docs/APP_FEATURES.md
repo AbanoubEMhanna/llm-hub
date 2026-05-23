@@ -12,6 +12,14 @@
 
 ---
 
+## Open PRs (in review)
+
+| PR | Feature | Status |
+|----|---------|--------|
+| [#24](../../pull/24) | Skeleton loading states + provider connection test button | 🔀 Open |
+
+---
+
 ## Merged PRs (all in main)
 
 | PR | Feature | Status |
@@ -39,7 +47,6 @@
 | [#21](../../pull/21) | In-conversation message search (⌘F) | ✅ Merged |
 | [#22](../../pull/22) | JSON mode toggle (structured output) | ✅ Merged |
 | [#23](../../pull/23) | Custom OpenAI-compatible provider endpoint + docs sync | ✅ Merged |
-| [#24](../../pull/24) | Skeleton loading states + provider connection test button | 🔀 Open |
 
 ---
 
