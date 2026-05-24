@@ -201,6 +201,14 @@ body {
 /* ═══════════════════ LAYOUT ═══════════════════ */
 .layout { display: flex; flex: 1; overflow: hidden; }
 
+/* ── Sidebar resize handles ── */
+.sidebar-resize-handle {
+  width: 4px; flex-shrink: 0; cursor: col-resize;
+  background: transparent; transition: background .15s; position: relative; z-index: 10;
+}
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle.dragging { background: var(--accent); }
+
 /* ── Left sidebar ── */
 .sidebar-left {
   width: 220px; border-right: 1px solid var(--border);
@@ -1519,6 +1527,9 @@ input[type=range]::-webkit-slider-thumb {
 .sidebar-overlay.active { display: block; }
 
 @media (max-width: 768px) {
+  /* Hide resize handles — sidebars are fixed drawers on mobile */
+  .sidebar-resize-handle { display: none; }
+
   /* Show hamburger buttons */
   .mobile-menu-btn { display: flex !important; }
 

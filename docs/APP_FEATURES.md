@@ -149,7 +149,7 @@
 - [x] Appearance settings — accent color, font size, chat density
 - [ ] 🔥 Animated page transitions and micro-interactions
 - [x] Skeleton loading states — shimmer skeleton for model selector + staggered conversation list entry
-- [ ] 🔥 Drag-to-resize sidebars
+- [~] 🔥 Drag-to-resize sidebars (4px handle, persisted, dblclick to reset)
 - [ ] Custom welcome screen with quick-action cards
 - [ ] Inline message diff view for edits
 - [ ] Keyboard shortcut remapping
