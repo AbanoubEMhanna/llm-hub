@@ -163,25 +163,43 @@
 
     <div class="messages" id="messages">
       <div class="welcome" id="empty-state">
-        <div class="welcome-icon">⚡</div>
-        <h2 class="welcome-title">Local LLM Hub</h2>
-        <p class="welcome-sub">Chat with your local models. Everything runs on your machine.</p>
+        <div class="welcome-logo">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <h2 class="welcome-title">LLM Hub</h2>
+        <p class="welcome-sub">Your local AI workspace — chat privately with models running on your machine. No cloud, no limits.</p>
         <div class="welcome-grid">
           <button class="welcome-card" onclick="useWelcomePrompt('Explain how async/await works in JavaScript with a practical example')">
             <span class="wc-icon">💡</span>
-            <span class="wc-text">Explain a concept</span>
+            <span class="wc-label">Explain a concept</span>
+            <span class="wc-desc">Break down any topic clearly</span>
           </button>
           <button class="welcome-card" onclick="useWelcomePrompt('Write a Python script that reads a CSV file and generates a summary report with statistics')">
             <span class="wc-icon">🔧</span>
-            <span class="wc-text">Write some code</span>
+            <span class="wc-label">Write some code</span>
+            <span class="wc-desc">Generate clean, working code</span>
           </button>
           <button class="welcome-card" onclick="useWelcomePrompt('Review this code for bugs, security issues, and suggest improvements')">
             <span class="wc-icon">🔍</span>
-            <span class="wc-text">Review my code</span>
+            <span class="wc-label">Review my code</span>
+            <span class="wc-desc">Spot bugs and improvements</span>
           </button>
           <button class="welcome-card" onclick="useWelcomePrompt('Help me brainstorm ideas for a weekend side project using local AI models')">
             <span class="wc-icon">🧠</span>
-            <span class="wc-text">Brainstorm ideas</span>
+            <span class="wc-label">Brainstorm ideas</span>
+            <span class="wc-desc">Explore possibilities together</span>
+          </button>
+          <button class="welcome-card" onclick="useWelcomePrompt('Translate the following text to Arabic, preserving tone and nuance:')">
+            <span class="wc-icon">🌐</span>
+            <span class="wc-label">Translate text</span>
+            <span class="wc-desc">Arabic ↔ English and more</span>
+          </button>
+          <button class="welcome-card" onclick="useWelcomePrompt('Summarize the following into concise bullet points:')">
+            <span class="wc-icon">📝</span>
+            <span class="wc-label">Summarize</span>
+            <span class="wc-desc">Extract key points fast</span>
           </button>
         </div>
       </div>

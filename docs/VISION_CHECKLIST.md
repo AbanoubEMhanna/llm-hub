@@ -96,8 +96,8 @@
 - [x] Keyboard shortcuts modal (`?`)
 - [x] Skeleton loading states (shimmer for model selector + stagger for conversation list)
 - [~] 🔥 Drag-to-resize sidebars (mouse drag, persisted to localStorage)
-- [ ] 🔥 Animated page transitions and micro-interactions
-- [ ] Custom welcome screen with quick-action cards
+- [~] 🔥 Animated page transitions and micro-interactions
+- [~] Custom welcome screen with quick-action cards
 - [ ] Drag-and-drop conversation reordering
 
 ### Appearance Settings
