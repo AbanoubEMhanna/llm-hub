@@ -500,6 +500,7 @@ async function onModelChange() {
   updateModelHeader();
   updateModelInfoCard();
   loadModelParams(selectedModel);
+  updateParamProfileBadge();
   document.getElementById('send-btn').disabled = !selectedModel || isLoading;
   updateInputTokenCount();
 }
@@ -591,6 +592,7 @@ const SAMPLING_PROFILES = {
   balanced: { temp: 0.7, topP: 0.9,  topK: 40,  repeat: 1.0, freq: 0.0 },
   creative: { temp: 1.2, topP: 0.95, topK: 80,  repeat: 0.9, freq: 0.1 },
 };
+const DEFAULT_PARAMS = { ...SAMPLING_PROFILES.balanced, maxTok: 2048 };
 
 function applySamplingPreset(name) {
   const p = SAMPLING_PROFILES[name];
@@ -629,13 +631,32 @@ function getModelParamsStore() {
 
 function readCurrentParams() {
   return {
-    temp:   parseFloat(document.getElementById('temp-slider')?.value   ?? 0.7),
-    maxTok: parseInt(document.getElementById('max-tokens')?.value      ?? 2048, 10),
-    topP:   parseFloat(document.getElementById('top-p-slider')?.value  ?? 0.9),
-    topK:   parseInt(document.getElementById('top-k-slider')?.value    ?? 40, 10),
-    repeat: parseFloat(document.getElementById('repeat-slider')?.value ?? 1.0),
-    freq:   parseFloat(document.getElementById('freq-slider')?.value   ?? 0.0),
+    temp:   parseFloat(document.getElementById('temp-slider')?.value   ?? DEFAULT_PARAMS.temp),
+    maxTok: parseInt(document.getElementById('max-tokens')?.value      ?? DEFAULT_PARAMS.maxTok, 10),
+    topP:   parseFloat(document.getElementById('top-p-slider')?.value  ?? DEFAULT_PARAMS.topP),
+    topK:   parseInt(document.getElementById('top-k-slider')?.value    ?? DEFAULT_PARAMS.topK, 10),
+    repeat: parseFloat(document.getElementById('repeat-slider')?.value ?? DEFAULT_PARAMS.repeat),
+    freq:   parseFloat(document.getElementById('freq-slider')?.value   ?? DEFAULT_PARAMS.freq),
   };
+}
+
+function applyParams(p) {
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
+  if (p.temp   !== undefined) { setVal('temp-slider',   p.temp);   setTxt('temp-val',   p.temp.toFixed(2)); }
+  if (p.maxTok !== undefined)   setVal('max-tokens',    p.maxTok);
+  if (p.topP   !== undefined) { setVal('top-p-slider',  p.topP);   setTxt('top-p-val',  p.topP.toFixed(2)); }
+  if (p.topK   !== undefined) { setVal('top-k-slider',  p.topK);   setTxt('top-k-val',  p.topK); }
+  if (p.repeat !== undefined) { setVal('repeat-slider', p.repeat); setTxt('repeat-val', p.repeat.toFixed(2)); }
+  if (p.freq   !== undefined) { setVal('freq-slider',   p.freq);   setTxt('freq-val',   p.freq.toFixed(1)); }
+
+  document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('active'));
+  const match = Object.entries(SAMPLING_PROFILES).find(([, v]) =>
+    p.temp !== undefined && Math.abs(v.temp - p.temp) < 0.01 &&
+    p.topP !== undefined && Math.abs(v.topP - p.topP) < 0.01
+  );
+  if (match) document.getElementById(`pchip-${match[0]}`)?.classList.add('active');
 }
 
 function saveModelParams(modelId) {
@@ -650,19 +671,29 @@ function loadModelParams(modelId) {
   const store = getModelParamsStore();
   const p = store[modelId];
   if (!p) return;
+  applyParams(p);
+}
 
-  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-  const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+function updateParamProfileBadge() {
+  const bar = document.getElementById('param-profile-bar');
+  const lbl = document.getElementById('param-profile-label');
+  if (!bar) return;
+  const hasProfile = !!(selectedModel && getModelParamsStore()[selectedModel]);
+  bar.style.display = hasProfile ? 'flex' : 'none';
+  if (hasProfile && lbl) {
+    const { name } = parseModelId(selectedModel);
+    lbl.textContent = `Saved for ${name}`;
+  }
+}
 
-  if (p.temp   !== undefined) { setVal('temp-slider',   p.temp);          setTxt('temp-val',    p.temp.toFixed(2)); }
-  if (p.maxTok !== undefined) { setVal('max-tokens',    p.maxTok); }
-  if (p.topP   !== undefined) { setVal('top-p-slider',  p.topP);          setTxt('top-p-val',   p.topP.toFixed(2)); }
-  if (p.topK   !== undefined) { setVal('top-k-slider',  p.topK);          setTxt('top-k-val',   p.topK); }
-  if (p.repeat !== undefined) { setVal('repeat-slider', p.repeat);        setTxt('repeat-val',  p.repeat.toFixed(2)); }
-  if (p.freq   !== undefined) { setVal('freq-slider',   p.freq);          setTxt('freq-val',    p.freq.toFixed(1)); }
-
-  // Clear preset chip highlights — restored state may not match any preset
-  document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('active'));
+function resetModelParams() {
+  if (!selectedModel) return;
+  const store = getModelParamsStore();
+  delete store[selectedModel];
+  localStorage.setItem(MODEL_PARAMS_STORE, JSON.stringify(store));
+  applyParams(DEFAULT_PARAMS);
+  updateParamProfileBadge();
+  toast('Parameter profile cleared', 'info');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
