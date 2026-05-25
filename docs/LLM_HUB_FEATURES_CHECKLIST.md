@@ -19,7 +19,7 @@
 - ✅ Model library browser — browse & pull 30+ popular Ollama models in-app
 - 🔥 🔲 Model benchmark runner — tokens/sec speed test, compare models side-by-side
 - 🔥 🔲 Hardware-aware model suggestions — recommend models that fit available VRAM
-- 🔥 🔲 Per-model parameter profiles — auto-save/load temperature, max tokens, system prompt per model
+- ✅ Per-model parameter profiles — auto-save/load temperature, max tokens, system prompt per model
 - 🔲 GGUF file drag-and-drop import (load any GGUF directly into LM Studio)
 - 🔲 Favorite / pin models to the top of the selector
 - 🔲 Model tags and friendly aliases
@@ -178,7 +178,7 @@
 - ✅ Skeleton loading states (shimmer for model selector + conversation list)
 - 🔥 🔲 Fully responsive mobile layout — hamburger nav, touch-friendly input
 - 🔥 🔲 Settings UI with tabs — General · Providers · Tools · RAG · Audio · Advanced
-- 🔥 🔲 Per-model parameter profiles — save and auto-load settings per model
+- ✅ Per-model parameter profiles — save and auto-load settings per model
 - 🔲 Customizable accent color (color picker in settings)
 - 🔲 Font size and chat density preferences (Compact / Comfortable / Spacious)
 - 🔲 Inline message diff view for edited messages
@@ -211,7 +211,7 @@
 - ✅ System prompt presets (save / load named presets)
 - ✅ Prompt templates with `{{variable}}` substitution
 - ✅ Advanced parameters — Top-P, Top-K, Repeat penalty, Frequency penalty
-- 🔥 🔲 Per-model parameter profiles — save temperature + max tokens + system prompt per model
+- ✅ Per-model parameter profiles — save temperature + max tokens + system prompt per model
 - 🔥 🔲 Structured output mode — force JSON schema response with schema editor
 - 🔲 Context length override per conversation
 - 🔲 Seed control (reproducible outputs)
@@ -263,7 +263,7 @@
 
 | Category | Done | High Priority | Backlog | Total |
 |----------|------|---------------|---------|-------|
-| Model Management | 8 | 3 | 4 | 15 |
+| Model Management | 9 | 2 | 4 | 15 |
 | Providers | 8 | 1 | 3 | 12 |
 | Chat Interface | 12 | 2 | 7 | 21 |
 | Code / OpenCode | 3 | 4 | 6 | 13 |
@@ -271,13 +271,13 @@
 | RAG / Knowledge | 5 | 2 | 7 | 14 |
 | Voice & Multimodal | 4 | 2 | 3 | 9 |
 | Model Comparison | 3 | 2 | 3 | 8 |
-| Modern UI | 16 | 3 | 5 | 24 |
+| Modern UI | 17 | 2 | 5 | 24 |
 | Hardware Stats | 7 | 0 | 4 | 11 |
-| Parameters | 6 | 2 | 4 | 12 |
+| Parameters | 7 | 1 | 4 | 12 |
 | Security | 4 | 0 | 4 | 8 |
 | Developer | 3 | 1 | 5 | 9 |
 | Quality | 2 | 2 | 3 | 7 |
-| **Total** | **86** | **27** | **64** | **177** |
+| **Total** | **89** | **24** | **64** | **177** |
 
 ---
 

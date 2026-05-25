@@ -630,13 +630,14 @@ function getModelParamsStore() {
 }
 
 function readCurrentParams() {
+  const n = (v, d) => Number.isFinite(v) ? v : d;
   return {
-    temp:   parseFloat(document.getElementById('temp-slider')?.value   ?? DEFAULT_PARAMS.temp),
-    maxTok: parseInt(document.getElementById('max-tokens')?.value      ?? DEFAULT_PARAMS.maxTok, 10),
-    topP:   parseFloat(document.getElementById('top-p-slider')?.value  ?? DEFAULT_PARAMS.topP),
-    topK:   parseInt(document.getElementById('top-k-slider')?.value    ?? DEFAULT_PARAMS.topK, 10),
-    repeat: parseFloat(document.getElementById('repeat-slider')?.value ?? DEFAULT_PARAMS.repeat),
-    freq:   parseFloat(document.getElementById('freq-slider')?.value   ?? DEFAULT_PARAMS.freq),
+    temp:   n(parseFloat(document.getElementById('temp-slider')?.value),   DEFAULT_PARAMS.temp),
+    maxTok: n(parseInt(document.getElementById('max-tokens')?.value, 10),  DEFAULT_PARAMS.maxTok),
+    topP:   n(parseFloat(document.getElementById('top-p-slider')?.value),  DEFAULT_PARAMS.topP),
+    topK:   n(parseInt(document.getElementById('top-k-slider')?.value, 10),DEFAULT_PARAMS.topK),
+    repeat: n(parseFloat(document.getElementById('repeat-slider')?.value), DEFAULT_PARAMS.repeat),
+    freq:   n(parseFloat(document.getElementById('freq-slider')?.value),   DEFAULT_PARAMS.freq),
   };
 }
 
@@ -653,8 +654,11 @@ function applyParams(p) {
 
   document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('active'));
   const match = Object.entries(SAMPLING_PROFILES).find(([, v]) =>
-    p.temp !== undefined && Math.abs(v.temp - p.temp) < 0.01 &&
-    p.topP !== undefined && Math.abs(v.topP - p.topP) < 0.01
+    p.temp   !== undefined && Math.abs(v.temp   - p.temp)   < 0.01 &&
+    p.topP   !== undefined && Math.abs(v.topP   - p.topP)   < 0.01 &&
+    p.topK   !== undefined && v.topK === p.topK &&
+    p.repeat !== undefined && Math.abs(v.repeat - p.repeat) < 0.01 &&
+    p.freq   !== undefined && Math.abs(v.freq   - p.freq)   < 0.01
   );
   if (match) document.getElementById(`pchip-${match[0]}`)?.classList.add('active');
 }
