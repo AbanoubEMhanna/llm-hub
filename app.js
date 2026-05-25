@@ -12,6 +12,7 @@ const PROXY = 'http://localhost:8765';
 // ─────────────────────────────────────────────────────────────────────────────
 
 let conversations  = JSON.parse(localStorage.getItem('llm-convs')     || '[]');
+let folders        = JSON.parse(localStorage.getItem('llm-folders')   || '[]');
 let userPresets    = JSON.parse(localStorage.getItem('llm-presets')   || '{}');
 let templates      = JSON.parse(localStorage.getItem('llm-templates') || 'null') || defaultTemplates();
 let userSettings   = JSON.parse(localStorage.getItem('llm-settings')  || '{"theme":"dark"}');
@@ -765,6 +766,90 @@ function initDragDrop() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § FOLDERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function saveFolders() { localStorage.setItem('llm-folders', JSON.stringify(folders)); }
+
+function createFolder() {
+  const name = prompt('Folder name:');
+  if (!name?.trim()) return;
+  folders.push({ id: `f-${Date.now()}`, name: name.trim().slice(0, 40), collapsed: false });
+  saveFolders();
+  renderConvList();
+}
+
+function renameFolder(id, e) {
+  e.stopPropagation();
+  const folder = folders.find(f => f.id === id);
+  if (!folder) return;
+  const name = prompt('Rename folder:', folder.name);
+  if (!name?.trim() || name.trim() === folder.name) return;
+  folder.name = name.trim().slice(0, 40);
+  saveFolders();
+  renderConvList();
+}
+
+function deleteFolder(id, e) {
+  e.stopPropagation();
+  const folder = folders.find(f => f.id === id);
+  if (!folder) return;
+  if (!confirm(`Delete folder "${folder.name}"? Conversations will move to the main list.`)) return;
+  folders = folders.filter(f => f.id !== id);
+  conversations.forEach(c => { if (c.folderId === id) c.folderId = null; });
+  saveFolders();
+  saveConvs();
+  renderConvList();
+}
+
+function toggleFolderCollapse(id) {
+  const folder = folders.find(f => f.id === id);
+  if (!folder) return;
+  folder.collapsed = !folder.collapsed;
+  saveFolders();
+  renderConvList();
+}
+
+function openFolderPicker(convId, e) {
+  e.stopPropagation();
+  document.getElementById('folder-picker')?.remove();
+  document.getElementById('label-picker')?.remove();
+  const conv = conversations.find(c => c.id === convId);
+  if (!conv) return;
+  const btn = e.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  const picker = document.createElement('div');
+  picker.id = 'folder-picker';
+  picker.className = 'label-picker';
+  picker.innerHTML = `
+    <div class="label-picker-title">Move to folder</div>
+    <button class="label-picker-opt ${!conv.folderId ? 'active' : ''}"
+      onclick="setConvFolder('${convId}',null)">
+      <span style="font-size:11px;opacity:.5">— No folder</span>
+    </button>
+    ${folders.map(f => `
+      <button class="label-picker-opt ${conv.folderId === f.id ? 'active' : ''}"
+        onclick="setConvFolder('${convId}','${f.id}')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="opacity:.6;flex-shrink:0"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+        ${escHtml(f.name)}
+      </button>`).join('')}
+    ${folders.length === 0 ? `<div style="font-size:10px;color:var(--muted);padding:6px 8px 2px">No folders yet — create one first</div>` : ''}
+  `;
+  picker.style.top  = `${rect.bottom + 4}px`;
+  picker.style.left = `${Math.min(rect.left, window.innerWidth - 160)}px`;
+  document.body.appendChild(picker);
+  setTimeout(() => document.addEventListener('click', () => document.getElementById('folder-picker')?.remove(), { once: true }), 0);
+}
+
+function setConvFolder(convId, folderId) {
+  document.getElementById('folder-picker')?.remove();
+  const conv = conversations.find(c => c.id === convId);
+  if (!conv) return;
+  conv.folderId = folderId || null;
+  saveConvs();
+  renderConvList();
+}
+
 // § CONVERSATIONS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -836,7 +921,7 @@ function renderConvList() {
   const stagger = _convListFirstRender;
   _convListFirstRender = false;
 
-  list.innerHTML = sorted.map((c, i) => {
+  function convItemHtml(c, i) {
     const lbl = c.label ? CONV_LABELS[c.label] : null;
     const labelDot = lbl
       ? `<span class="conv-label-dot" style="background:${lbl.color}" title="${lbl.name}"></span>`
@@ -852,11 +937,53 @@ function renderConvList() {
       <div class="conv-meta">${c.messages.length} msgs · ${timeAgo(c.ts)}</div>
       <div class="conv-actions">
         <button onclick="openLabelPicker('${c.id}',event)" title="Label" class="${c.label ? 'labeled' : ''}">🏷</button>
+        <button onclick="openFolderPicker('${c.id}',event)" title="Move to folder" class="${c.folderId ? 'labeled' : ''}">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+        </button>
         <button onclick="togglePin('${c.id}',event)" title="${c.pinned ? 'Unpin' : 'Pin'}">${c.pinned ? '📌' : '📍'}</button>
         <button class="danger" onclick="deleteConversation('${c.id}',event)" title="Delete">×</button>
       </div>
     </div>`;
-  }).join('');
+  }
+
+  const pinned   = sorted.filter(c => c.pinned);
+  const unpinned = sorted.filter(c => !c.pinned);
+  let html = '';
+  let idx  = 0;
+
+  // Pinned convs (always on top, no folder grouping)
+  html += pinned.map((c, i) => convItemHtml(c, i)).join('');
+  idx += pinned.length;
+
+  // Folder sections
+  folders.forEach(folder => {
+    const fConvs = unpinned.filter(c => c.folderId === folder.id);
+    html += `
+    <div class="folder-header" onclick="toggleFolderCollapse('${folder.id}')">
+      <svg class="folder-chevron ${folder.collapsed ? 'collapsed' : ''}" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;opacity:.7"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+      <span class="folder-name">${escHtml(folder.name)}</span>
+      <span class="folder-count">${fConvs.length}</span>
+      <div class="folder-actions">
+        <button onclick="renameFolder('${folder.id}',event)" title="Rename folder">✎</button>
+        <button class="danger" onclick="deleteFolder('${folder.id}',event)" title="Delete folder">×</button>
+      </div>
+    </div>`;
+    if (!folder.collapsed) {
+      if (fConvs.length) {
+        html += fConvs.map((c, i) => convItemHtml(c, idx + i)).join('');
+        idx += fConvs.length;
+      } else {
+        html += `<div class="folder-empty">No chats in this folder</div>`;
+      }
+    }
+  });
+
+  // Unfiled conversations
+  const unfiled = unpinned.filter(c => !c.folderId || !folders.find(f => f.id === c.folderId));
+  html += unfiled.map((c, i) => convItemHtml(c, idx + i)).join('');
+
+  list.innerHTML = html;
 }
 
 function timeAgo(ts) {
