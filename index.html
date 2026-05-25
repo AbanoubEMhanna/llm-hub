@@ -372,6 +372,10 @@
         <svg class="panel-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <div class="panel-content">
+        <div class="param-profile-bar" id="param-profile-bar" style="display:none">
+          <span class="param-profile-label" id="param-profile-label"></span>
+          <button class="param-reset-btn" onclick="resetModelParams()" title="Reset parameters to defaults">Reset</button>
+        </div>
         <div class="param-presets">
           <button class="preset-chip" id="pchip-precise" onclick="applySamplingPreset('precise')" title="Temp 0.2 · focused output">Precise</button>
           <button class="preset-chip active" id="pchip-balanced" onclick="applySamplingPreset('balanced')" title="Temp 0.7 · balanced">Balanced</button>
