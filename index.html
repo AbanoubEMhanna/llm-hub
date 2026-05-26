@@ -586,6 +586,7 @@
       <button class="settings-tab active" id="tab-config" onclick="switchSettingsTab('config')">Config JSON</button>
       <button class="settings-tab" id="tab-apikeys" onclick="switchSettingsTab('apikeys')">Providers</button>
       <button class="settings-tab" id="tab-appearance" onclick="switchSettingsTab('appearance')">Appearance</button>
+      <button class="settings-tab" id="tab-voice" onclick="switchSettingsTab('voice')">Voice</button>
       <button class="settings-tab" id="tab-backup" onclick="switchSettingsTab('backup')">Backup</button>
     </div>
 
@@ -732,6 +733,42 @@
     <div class="modal-footer" id="settings-footer-appearance" style="display:none">
       <button class="btn" onclick="resetAppearance()">Reset to defaults</button>
       <button class="btn" onclick="closeModal('config-modal')">Close</button>
+    </div>
+
+    <!-- Tab: Voice / TTS -->
+    <div class="modal-body" id="settings-panel-voice" style="display:none">
+      <p style="color:var(--muted);font-size:12px;margin-bottom:16px">
+        Read AI responses aloud using your browser's built-in speech synthesis.
+        Click <strong>🔊 Read</strong> on any assistant message to start, or press again to stop.
+      </p>
+
+      <div class="appearance-section-label">Voice</div>
+      <select class="model-select" id="tts-voice-select" style="width:100%;margin-bottom:16px">
+        <option value="">Default voice</option>
+      </select>
+
+      <div class="appearance-section-label">Speed</div>
+      <div class="tts-slider-row">
+        <span class="tts-slider-label">Slow</span>
+        <input type="range" id="tts-rate" min="0.5" max="2" step="0.1" value="1"
+          oninput="onTtsSliderChange('rate', this.value)" style="flex:1"/>
+        <span class="tts-slider-label">Fast</span>
+        <span class="tts-slider-val" id="tts-rate-val">1.0</span>
+      </div>
+
+      <div class="appearance-section-label" style="margin-top:16px">Pitch</div>
+      <div class="tts-slider-row">
+        <span class="tts-slider-label">Low</span>
+        <input type="range" id="tts-pitch" min="0.5" max="2" step="0.1" value="1"
+          oninput="onTtsSliderChange('pitch', this.value)" style="flex:1"/>
+        <span class="tts-slider-label">High</span>
+        <span class="tts-slider-val" id="tts-pitch-val">1.0</span>
+      </div>
+    </div>
+    <div class="modal-footer" id="settings-footer-voice" style="display:none">
+      <button class="btn" onclick="testTtsSettings()">▶ Test Voice</button>
+      <button class="btn" onclick="closeModal('config-modal')">Cancel</button>
+      <button class="btn primary" onclick="saveTtsSettings()">Save</button>
     </div>
 
     <!-- Tab: Backup / Restore -->

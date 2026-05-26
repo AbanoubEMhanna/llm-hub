@@ -61,7 +61,7 @@
 - ✅ Conversation title rename — double-click to edit inline
 - ✅ Share conversation — export as self-contained HTML file
 - ✅ Collapsible long messages (auto-collapse > ~22 lines)
-- 🔥 🔲 Conversation folders — organize chats into named groups/projects
+- ✅ Conversation folders — organize chats into named groups/projects
 - 🔥 🔲 Conversation branching — fork from any message and explore different paths
 - 🔲 Import conversations from JSON / ChatGPT export
 - 🔲 Multi-tab chat (several conversations open side-by-side)
@@ -136,7 +136,7 @@
 - ✅ Vision model support (llava, qwen2-vl, llama3.2-vision)
 - ✅ Voice input via browser Web Speech API
 - ✅ Whisper server integration (local transcription)
-- 🔥 🔲 Text-to-speech output — read AI responses aloud (TTS synthesis)
+- ✅ Text-to-speech output — read AI responses aloud (TTS synthesis)
 - 🔥 🔲 PDF attachment — drag-and-drop PDF, extract text as context
 - 🔲 Audio file transcription by drag-and-drop
 - 🔲 Video frame extraction for vision models

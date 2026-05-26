@@ -1551,6 +1551,7 @@ function buildAssistantWrap(idx, content, stopped = false) {
       <button onclick="regenerateMessage(${idx})" title="Regenerate (⌘R)">🔄 Regenerate</button>
       <button onclick="continueMessage(${idx})" title="Continue">▶ Continue</button>
       <button onclick="copyMessage(${idx})" title="Copy">📋 Copy</button>
+      <button id="tts-btn-${idx}" onclick="speakMessage(${idx})" title="Read aloud">🔊 Read</button>
       <button class="danger" onclick="deleteMessage(${idx})" title="Delete">🗑 Delete</button>
     </div>` : ''}`;
 
@@ -2137,7 +2138,7 @@ function openApiKeySettings() {
 }
 
 function switchSettingsTab(tab) {
-  ['config', 'apikeys', 'appearance', 'backup'].forEach(t => {
+  ['config', 'apikeys', 'appearance', 'backup', 'voice'].forEach(t => {
     document.getElementById(`settings-panel-${t}`).style.display = t === tab ? '' : 'none';
     document.getElementById(`settings-footer-${t}`).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById(`tab-${t}`);
@@ -2146,6 +2147,7 @@ function switchSettingsTab(tab) {
   if (tab === 'backup') renderBackupSummary();
   if (tab === 'appearance') _syncAppearanceUI();
   if (tab === 'apikeys') renderCustomProvidersList();
+  if (tab === 'voice') initTtsVoiceSelect();
 }
 
 function renderBackupSummary() {
@@ -3567,6 +3569,148 @@ async function transcribeWithWhisper(audioBlob, mimeType) {
     setVoiceUI(false);
     delete input.dataset.preVoice;
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § TEXT-TO-SPEECH OUTPUT
+// ─────────────────────────────────────────────────────────────────────────────
+
+let _ttsCurrentIdx = -1;
+
+function stripMarkdownForSpeech(md) {
+  if (!md) return '';
+  return md
+    .replace(/```[\s\S]*?```/g, ' code block ')
+    .replace(/`[^`]+`/g, ' code ')
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^[-*+]\s+/gm, '')
+    .replace(/^\d+\.\s+/gm, '')
+    .replace(/^>\s+/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/\|[^\n]+\|/g, '')
+    .replace(/[-]{3,}/g, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function speakMessage(idx) {
+  if (!('speechSynthesis' in window)) {
+    toast('Text-to-speech is not supported in this browser.', 'error');
+    return;
+  }
+  if (_ttsCurrentIdx === idx) { stopSpeaking(); return; }
+  stopSpeaking();
+
+  const conv = currentConv();
+  const msg  = conv?.messages[idx];
+  if (!msg) return;
+  const raw  = typeof msg.content === 'string' ? msg.content : '';
+  const text = stripMarkdownForSpeech(raw);
+  if (!text) return;
+
+  const u = new SpeechSynthesisUtterance(text);
+  const tts = userSettings.tts || {};
+  if (tts.voiceURI) {
+    const v = speechSynthesis.getVoices().find(v => v.voiceURI === tts.voiceURI);
+    if (v) u.voice = v;
+  }
+  u.rate  = parseFloat(tts.rate  ?? 1.0);
+  u.pitch = parseFloat(tts.pitch ?? 1.0);
+
+  _ttsCurrentIdx = idx;
+  _updateTtsButton(idx, true);
+
+  u.onend   = () => { _ttsCurrentIdx = -1; _updateTtsButton(idx, false); };
+  u.onerror = () => { _ttsCurrentIdx = -1; _updateTtsButton(idx, false); };
+  speechSynthesis.speak(u);
+}
+
+function stopSpeaking() {
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const prev = _ttsCurrentIdx;
+  _ttsCurrentIdx = -1;
+  if (prev >= 0) _updateTtsButton(prev, false);
+}
+
+function _updateTtsButton(idx, speaking) {
+  const btn = document.getElementById(`tts-btn-${idx}`);
+  if (!btn) return;
+  btn.classList.toggle('tts-speaking', speaking);
+  btn.title = speaking ? 'Stop reading' : 'Read aloud';
+  btn.innerHTML = speaking
+    ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Stop`
+    : '🔊 Read';
+}
+
+function initTtsVoiceSelect() {
+  const sel = document.getElementById('tts-voice-select');
+  if (!sel) return;
+  const populate = () => {
+    const voices = speechSynthesis.getVoices();
+    const saved  = userSettings.tts?.voiceURI || '';
+    sel.innerHTML = `<option value="">Default voice</option>` +
+      voices.map(v =>
+        `<option value="${escHtml(v.voiceURI)}"${v.voiceURI === saved ? ' selected' : ''}>
+          ${escHtml(v.name)} (${v.lang})
+        </option>`
+      ).join('');
+  };
+  populate();
+  if (speechSynthesis.onvoiceschanged !== undefined) speechSynthesis.onvoiceschanged = populate;
+  const tts = userSettings.tts || {};
+  const rateEl  = document.getElementById('tts-rate');
+  const pitchEl = document.getElementById('tts-pitch');
+  if (rateEl)  { rateEl.value  = tts.rate  ?? 1.0; _syncTtsLabel('rate',  rateEl.value); }
+  if (pitchEl) { pitchEl.value = tts.pitch ?? 1.0; _syncTtsLabel('pitch', pitchEl.value); }
+}
+
+function _syncTtsLabel(key, val) {
+  const el = document.getElementById(`tts-${key}-val`);
+  if (el) el.textContent = parseFloat(val).toFixed(1);
+}
+
+function onTtsSliderChange(key, val) { _syncTtsLabel(key, val); }
+
+function saveTtsSettings() {
+  const sel   = document.getElementById('tts-voice-select');
+  const rate  = document.getElementById('tts-rate');
+  const pitch = document.getElementById('tts-pitch');
+  userSettings.tts = {
+    voiceURI: sel?.value  || '',
+    rate:     parseFloat(rate?.value  ?? 1.0),
+    pitch:    parseFloat(pitch?.value ?? 1.0),
+  };
+  localStorage.setItem('llm-settings', JSON.stringify(userSettings));
+  toast('Voice settings saved.', 'success');
+}
+
+function testTtsSettings() {
+  saveTtsSettings();
+  const conv = currentConv();
+  const msgs = conv?.messages || [];
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i].role === 'assistant') { speakMessage(i); return; }
+  }
+  // No assistant message yet — play a short demo
+  stopSpeaking();
+  const u = new SpeechSynthesisUtterance('Hello. This is how your AI assistant sounds.');
+  const tts = userSettings.tts || {};
+  if (tts.voiceURI) {
+    const v = speechSynthesis.getVoices().find(v => v.voiceURI === tts.voiceURI);
+    if (v) u.voice = v;
+  }
+  u.rate  = parseFloat(tts.rate  ?? 1.0);
+  u.pitch = parseFloat(tts.pitch ?? 1.0);
+  speechSynthesis.speak(u);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
