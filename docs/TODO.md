@@ -19,7 +19,7 @@
 - ✅ **OpenRouter provider** — unified cloud gateway
 - 🔲 Mistral / Together / Fireworks providers
 - ✅ **API key management** — stored in localStorage, transmitted to proxy via header only
-- 🔲 Custom provider endpoint configuration from UI
+- ✅ **Custom provider endpoint configuration from UI** — add any OpenAI-compatible endpoint + API key
 - 🔲 Provider health monitoring with auto-reconnect
 - 🔲 Per-provider timeout and retry settings
 - 🔲 `npx local-llm-hub` zero-install launcher
@@ -62,7 +62,7 @@
 - ✅ Chat fuzzy search (⌘K)
 - ✅ Conversation title rename — double-click to edit inline
 - ✅ **Conversation folders** — organize chats into named groups
-- 🔥 **Conversation branching** — fork from any message
+- ✅ **Conversation branching** — fork any conversation from any user message into a new parallel path
 - 🔲 Import conversations from JSON / ChatGPT export
 - ✅ **Share conversation** — export as self-contained HTML file (PR #11)
 - 🔲 Multi-tab chat (several conversations open side-by-side)
@@ -103,11 +103,11 @@
 - ✅ Collapsible long messages — auto-collapse messages > ~22 lines with "Show more / Show less"
 - 🔲 Customizable accent color (color picker in settings)
 - 🔲 Font size and chat density preferences (Compact / Comfortable / Spacious)
-- 🔲 Animated page transitions and micro-interactions
-- 🔲 Custom welcome screen with quick-action card configuration
+- ✅ **Animated page transitions and micro-interactions** — message fade-in, button hover effects, welcome screen
+- ✅ **Redesigned welcome screen** — quick-action cards with keyboard hints
 - 🔲 Inline message diff view for edited messages
-- 🔲 Skeleton loading states instead of spinners
-- 🔲 Drag-to-resize sidebars
+- ✅ **Skeleton loading states** — skeleton placeholders while models/conversations load
+- ✅ **Drag-to-resize sidebars** — left and right panels are resizable by dragging
 
 ---
 
@@ -177,7 +177,7 @@
 - ✅ Plan mode (think step-by-step prefix)
 - ✅ Sampling presets: Precise / Balanced / Creative
 - ✅ Advanced parameters — Top-P, Top-K, Repeat penalty, Frequency penalty
-- 🔥 **Per-model parameter profiles** — save temperature + max tokens per model
+- ✅ **Per-model parameter profiles** — save temperature + max tokens per model
 - 🔥 **Structured output mode** — force JSON schema response (JSON mode)
 - 🔲 Context length override per conversation
 - 🔲 Seed control (reproducible outputs)
@@ -221,10 +221,10 @@
 - ✅ Raw JSON config editor modal
 - ✅ Config hot-reload (MCP servers restart on save)
 - 🔥 **Proper settings UI with tabs** — General · Providers · Tools · RAG · Audio · Advanced
-- 🔥 **Provider connection test button** — ping + model count
+- ✅ **Provider connection test button** — ping + model count
 - 🔲 Theme customizer (accent color, font, density)
 - 🔲 Keyboard shortcut remapping
-- 🔥 **Backup & restore** — all settings + conversations as a single JSON
+- ✅ **Backup & restore** — all settings + conversations as a single JSON
 - 🔲 Onboarding wizard for first-time setup
 - 🔲 Per-workspace configuration profiles
 
@@ -274,7 +274,7 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ Done | ~52 |
-| 🔥 High priority | ~28 |
+| ✅ Done | ~60 |
+| 🔥 High priority | ~22 |
 | 🔲 Backlog | ~30 |
-| **Total** | **~110** |
+| **Total** | **~112** |
