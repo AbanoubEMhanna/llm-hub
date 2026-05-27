@@ -1799,3 +1799,23 @@ input[type=range]::-webkit-slider-thumb {
   .provider-test-btn { width: 100%; }
   .provider-test-status { text-align: left; }
 }
+
+/* ── TTS read-aloud button ── */
+.tts-speaking {
+  color: var(--accent) !important;
+  animation: tts-pulse 1.4s ease-in-out infinite;
+}
+@keyframes tts-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .4; }
+}
+
+/* ── Voice settings sliders ── */
+.tts-slider-row {
+  display: flex; align-items: center; gap: 8px; padding: 4px 0;
+}
+.tts-slider-label { font-size: 11px; color: var(--muted); width: 28px; flex-shrink: 0; }
+.tts-slider-val {
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  color: var(--accent); min-width: 28px; text-align: right;
+}

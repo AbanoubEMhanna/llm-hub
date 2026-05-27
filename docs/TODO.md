@@ -61,7 +61,7 @@
 - ✅ Auto-title from first message
 - ✅ Chat fuzzy search (⌘K)
 - ✅ Conversation title rename — double-click to edit inline
-- 🔥 **Conversation folders** / tag-based organization
+- ✅ **Conversation folders** — organize chats into named groups
 - 🔥 **Conversation branching** — fork from any message
 - 🔲 Import conversations from JSON / ChatGPT export
 - ✅ **Share conversation** — export as self-contained HTML file (PR #11)
@@ -192,7 +192,7 @@
 - ✅ Vision model support (llava, qwen2-vl, llama3.2-vision)
 - ✅ Voice input via browser Web Speech API
 - ✅ Whisper server integration (local transcription)
-- 🔥 **Text-to-speech output** — read responses aloud (TTS synthesis)
+- ✅ **Text-to-speech output** — read responses aloud (browser speechSynthesis + voice/rate/pitch settings)
 - 🔥 **PDF attachment** — extract text and attach as context
 - 🔲 Audio file transcription by drag-and-drop
 - 🔲 Video file frame extraction for vision models
