@@ -172,12 +172,12 @@
 |----------|---------|---------|-----------|
 | LM Studio DNA | 13 | 2 | 5 |
 | OpenCode DNA | 8 | 7 | 5 |
-| Modern UI | 12 | 4 | 4 |
-| Chat UX | 15 | 1 | 4 |
+| Modern UI | 12 | 3 | 4 |
+| Chat UX | 17 | 1 | 4 |
 | Voice & Multimodal | 5 | 1 | 3 |
 | Model Comparison | 3 | 2 | 3 |
-| RAG / Knowledge | 5 | 2 | 3 |
-| **Total** | **61** | **19** | **27** |
+| RAG / Knowledge | 5 | 2 | 4 |
+| **Total** | **63** | **18** | **28** |
 
 ---
 

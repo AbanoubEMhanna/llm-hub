@@ -969,7 +969,13 @@ function branchFromMessage(idx) {
   };
 
   conversations.unshift(newConv);
-  saveConvs();
+  try {
+    saveConvs();
+  } catch (err) {
+    conversations.shift();
+    toast('Could not create branch: local storage is full.', 'error');
+    return;
+  }
   loadConversation(id);
   renderConvList();
   toast(`Branched from message ${idx + 1} — explore a different path!`, 'success');
