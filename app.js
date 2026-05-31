@@ -2295,6 +2295,93 @@ function applyBackupFile(file) {
   reader.readAsText(file);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// § IMPORT CONVERSATIONS (LLM Hub JSON / ChatGPT export)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function importConversations() {
+  document.getElementById('import-convs-input').click();
+}
+
+function applyConvImportFile(input) {
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const raw = JSON.parse(e.target.result);
+      let toImport = [];
+
+      if (raw?.app === 'llm-hub' && Array.isArray(raw?.data?.conversations)) {
+        toImport = raw.data.conversations;
+      } else if (raw?.id && Array.isArray(raw?.messages)) {
+        toImport = [raw];
+      } else if (Array.isArray(raw) && raw[0]?.messages) {
+        toImport = raw;
+      } else if (Array.isArray(raw) && raw[0]?.mapping) {
+        toImport = raw.map(convertChatGptConv).filter(Boolean);
+      } else {
+        toast('Unrecognised format — expected LLM Hub JSON or ChatGPT export.', 'error');
+        return;
+      }
+
+      const existingIds = new Set(conversations.map(c => c.id));
+      const newConvs = toImport.filter(c => c?.id && !existingIds.has(c.id));
+
+      if (!newConvs.length) {
+        toast('No new conversations found (all already imported).', 'info');
+        return;
+      }
+
+      conversations.unshift(...newConvs);
+      try {
+        saveConvs();
+      } catch {
+        conversations.splice(0, newConvs.length);
+        toast('Import failed: local storage is full.', 'error');
+        return;
+      }
+      renderConvList();
+      toast(`Imported ${newConvs.length} conversation${newConvs.length !== 1 ? 's' : ''}`, 'success');
+    } catch {
+      toast('Failed to parse file — is it valid JSON?', 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function convertChatGptConv(chatGptConv) {
+  if (!chatGptConv?.mapping) return null;
+  const nodes = Object.values(chatGptConv.mapping);
+  const nodeMap = Object.fromEntries(nodes.map(n => [n.id, n]));
+  let cur = nodes.find(n => !n.parent || !nodeMap[n.parent]);
+  const messages = [];
+  const visited = new Set();
+  while (cur && !visited.has(cur.id)) {
+    visited.add(cur.id);
+    const msg = cur.message;
+    if (msg?.content?.parts && (msg.author?.role === 'user' || msg.author?.role === 'assistant')) {
+      const text = msg.content.parts.filter(p => typeof p === 'string').join('\n').trim();
+      if (text) messages.push({ role: msg.author.role, content: text });
+    }
+    const childId = cur.children?.[0];
+    cur = childId ? nodeMap[childId] : null;
+  }
+  if (!messages.length) return null;
+  return {
+    id: `chatgpt-${chatGptConv.id || Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    title: chatGptConv.title || 'Imported from ChatGPT',
+    messages,
+    ts: chatGptConv.create_time ? chatGptConv.create_time * 1000 : Date.now(),
+    pinned: false,
+    sysPrompt: '',
+    folderId: null,
+    label: null,
+  };
+}
+
 function toggleKeyVisibility(inputId, btn) {
   const el = document.getElementById(inputId);
   if (!el) return;

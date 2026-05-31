@@ -100,6 +100,10 @@
         <button class="icon-btn" onclick="createFolder()" title="New folder">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
         </button>
+        <button class="icon-btn" onclick="importConversations()" title="Import conversations (JSON / ChatGPT export)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+        <input type="file" id="import-convs-input" accept=".json" style="display:none" onchange="applyConvImportFile(this)"/>
         <button class="icon-btn" onclick="newConversation()" title="New chat (⌘J)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
@@ -783,7 +787,14 @@
       </p>
       <button class="btn primary" onclick="exportBackup()">↓ Download Backup</button>
 
-      <div class="backup-section-label" style="margin-top:20px">Import / Restore</div>
+      <div class="backup-section-label" style="margin-top:20px">Import Conversations</div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:12px">
+        Merge conversations from an LLM Hub JSON export or a <strong>ChatGPT conversations.json</strong> export.
+        Existing conversations are never overwritten — only new ones are added.
+      </p>
+      <button class="btn" onclick="importConversations()">↑ Import conversations…</button>
+
+      <div class="backup-section-label" style="margin-top:20px">Import / Restore Full Backup</div>
       <p style="color:var(--muted);font-size:12px;margin-bottom:12px">
         Restore from a previously exported backup. This overwrites your current conversations, presets, and templates.
       </p>
