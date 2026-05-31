@@ -943,6 +943,51 @@ function togglePin(id, e) {
   renderConvList();
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// § CONVERSATION BRANCHING
+// ─────────────────────────────────────────────────────────────────────────────
+
+function branchFromMessage(idx) {
+  const conv = currentConv();
+  if (!conv) return;
+
+  // Include messages 0..idx (the user message at idx becomes the branch point)
+  const branchMsgs = JSON.parse(JSON.stringify(conv.messages.slice(0, idx + 1)));
+
+  const id = Date.now().toString();
+  const newConv = {
+    id,
+    title: `Branch: ${conv.title}`,
+    messages: branchMsgs,
+    ts: Date.now(),
+    pinned: false,
+    sysPrompt: conv.sysPrompt || '',
+    folderId: conv.folderId || null,
+    label: conv.label || null,
+    parentId: conv.id,
+    branchIdx: idx,
+  };
+
+  conversations.unshift(newConv);
+  try {
+    saveConvs();
+  } catch (err) {
+    conversations.shift();
+    toast('Could not create branch: local storage is full.', 'error');
+    return;
+  }
+  loadConversation(id);
+  renderConvList();
+  toast(`Branched from message ${idx + 1} — explore a different path!`, 'success');
+}
+
+function jumpToParentConv(parentId, e) {
+  e?.stopPropagation();
+  const parent = conversations.find(c => c.id === parentId);
+  if (!parent) { toast('Parent conversation not found.', 'error'); return; }
+  loadConversation(parentId);
+}
+
 let _convListFirstRender = true;
 
 function renderConvList() {
@@ -961,13 +1006,16 @@ function renderConvList() {
     const labelDot = lbl
       ? `<span class="conv-label-dot" style="background:${lbl.color}" title="${lbl.name}"></span>`
       : '';
+    const branchDot = c.parentId
+      ? `<span class="conv-branch-dot" onclick="jumpToParentConv('${c.parentId}',event)" title="Branched conversation — click to go to parent">⑂</span>`
+      : '';
     const enterCls   = stagger ? ' conv-item-enter' : '';
     const staggerStyle = stagger ? ` style="--stagger-i:${Math.min(i, 8) * 35}ms"` : '';
     return `
     <div class="conv-item${enterCls} ${c.id === currentConvId ? 'active' : ''} ${c.pinned ? 'pinned' : ''}" data-id="${c.id}"${staggerStyle}
          onclick="loadConversation('${c.id}')">
       <div class="conv-title" ondblclick="startRenameConv('${c.id}',event)" title="Double-click to rename">
-        ${labelDot}${escHtml(c.title)}
+        ${branchDot}${labelDot}${escHtml(c.title)}
       </div>
       <div class="conv-meta">${c.messages.length} msgs · ${timeAgo(c.ts)}</div>
       <div class="conv-actions">
@@ -1518,6 +1566,7 @@ function appendUserBubble(idx, text, imgs = []) {
       </div>
     </div>
     ${idx >= 0 ? `<div class="msg-actions" style="justify-content:flex-end">
+      <button onclick="branchFromMessage(${idx})" title="Branch conversation from here">⑂ Branch</button>
       <button onclick="openEditMessage(${idx})" title="Edit & regenerate">✏️ Edit</button>
       <button onclick="copyMessage(${idx})" title="Copy">📋 Copy</button>
       <button class="danger" onclick="deleteMessage(${idx})" title="Delete">🗑 Delete</button>
