@@ -2295,6 +2295,106 @@ function applyBackupFile(file) {
   reader.readAsText(file);
 }
 
+// ── Import Conversations ────────────────────────────────────────────────────
+// Merges conversations from a file without overwriting existing data.
+// Supported formats:
+//   1. LLM Hub full backup  { app:'llm-hub', data:{ conversations:[…] } }
+//   2. LLM Hub single-conv export  { id, title, messages, ts }
+//   3. Array of LLM Hub conversations  [{ id, title, messages }…]
+//   4. ChatGPT conversations.json  [{ id, title, mapping:{…} }…]
+
+function onConvImportDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer?.files?.[0];
+  if (file) applyConversationImport(file);
+}
+
+function importConversations(input) {
+  const file = input.files?.[0];
+  input.value = '';
+  if (file) applyConversationImport(file);
+}
+
+function applyConversationImport(file) {
+  const statusEl = document.getElementById('conv-import-status');
+  const reader   = new FileReader();
+  reader.onload  = (evt) => {
+    try {
+      const raw = JSON.parse(evt.target.result);
+      let incoming = [];
+
+      if (raw?.app === 'llm-hub' && Array.isArray(raw?.data?.conversations)) {
+        incoming = raw.data.conversations;
+      } else if (raw?.id && Array.isArray(raw?.messages)) {
+        incoming = [raw];
+      } else if (Array.isArray(raw) && raw.length && raw[0]?.mapping) {
+        incoming = raw.map(convertChatGPTConv).filter(Boolean);
+      } else if (Array.isArray(raw) && raw.length && raw[0]?.messages) {
+        incoming = raw;
+      } else {
+        throw new Error('Unrecognized format. Expected LLM Hub backup/export or ChatGPT conversations.json.');
+      }
+
+      const existingIds = new Set(conversations.map(c => c.id));
+      const toAdd = incoming.filter(c => c.id && Array.isArray(c.messages) && !existingIds.has(c.id));
+
+      if (toAdd.length === 0) {
+        if (statusEl) { statusEl.textContent = '✓ No new conversations found (all already imported).'; statusEl.style.color = 'var(--muted)'; }
+        toast('No new conversations to import.', 'info');
+        return;
+      }
+
+      conversations.push(...toAdd);
+      conversations.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+      try {
+        saveConvs();
+      } catch (err) {
+        conversations.splice(conversations.length - toAdd.length, toAdd.length);
+        toast('Import failed: local storage is full.', 'error');
+        return;
+      }
+      renderConvList();
+      const msg = `✓ Imported ${toAdd.length} conversation${toAdd.length !== 1 ? 's' : ''}.`;
+      if (statusEl) { statusEl.textContent = msg; statusEl.style.color = 'var(--green)'; }
+      toast(`Imported ${toAdd.length} conversation${toAdd.length !== 1 ? 's' : ''}!`, 'success');
+    } catch (err) {
+      if (statusEl) { statusEl.textContent = '✗ ' + err.message; statusEl.style.color = 'var(--red)'; }
+      toast('Import failed: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function convertChatGPTConv(raw) {
+  try {
+    const { id, title, create_time, mapping } = raw;
+    if (!mapping) return null;
+    const rootId = Object.keys(mapping).find(k => !mapping[k].parent || !mapping[mapping[k].parent]);
+    if (!rootId) return null;
+    const messages = [];
+    function walk(nodeId) {
+      const node = mapping[nodeId];
+      if (!node) return;
+      const msg = node.message;
+      if (msg?.content?.parts && (msg.author?.role === 'user' || msg.author?.role === 'assistant')) {
+        const text = msg.content.parts.filter(p => typeof p === 'string').join('\n').trim();
+        if (text) messages.push({ role: msg.author.role, content: text });
+      }
+      const firstChild = node.children?.[0];
+      if (firstChild) walk(firstChild);
+    }
+    walk(rootId);
+    if (!messages.length) return null;
+    return {
+      id: `chatgpt-${id || Date.now()}`,
+      title: title || 'ChatGPT conversation',
+      messages,
+      ts: create_time ? Math.round(create_time * 1000) : Date.now(),
+      pinned: false,
+    };
+  } catch { return null; }
+}
+
 function toggleKeyVisibility(inputId, btn) {
   const el = document.getElementById(inputId);
   if (!el) return;
@@ -3130,6 +3230,7 @@ function buildPaletteCommands() {
     { group: 'Models',    icon: '📦',  label: 'Model Manager',                           action: () => openModelManager() },
     { group: 'Models',    icon: '🔄',  label: 'Reload Models',                           action: () => loadModels() },
     { group: 'Settings',  icon: '⚙️',  label: 'Open Settings',                           action: () => openConfigEditor() },
+    { group: 'Settings',  icon: '📥',  label: 'Import Conversations (merge)',             action: () => { openConfigEditor(); setTimeout(() => { switchSettingsTab('backup'); document.getElementById('conv-import-file-input')?.click(); }, 300); } },
     { group: 'Settings',  icon: '🔑',  label: 'API Keys',                                action: () => openApiKeySettings() },
     { group: 'Settings',  icon: '🎨',  label: 'Appearance — accent color, font, density', action: () => openAppearanceSettings() },
     { group: 'Tools',     icon: '🔧',  label: 'Toggle Agent Tools',        kbd: '⌘/',   action: () => document.getElementById('tools-toggle').click() },
