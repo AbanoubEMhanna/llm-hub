@@ -97,6 +97,9 @@
     <div class="sidebar-header">
       <span class="sidebar-label">Chats</span>
       <div style="display:flex;gap:2px">
+        <button class="icon-btn" id="bulk-select-btn" onclick="toggleBulkMode()" title="Select conversations to bulk delete / export">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="5" width="13" height="13" rx="2"/><polyline points="7 11 10 14 14 9"/></svg>
+        </button>
         <button class="icon-btn" onclick="createFolder()" title="New folder">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
         </button>
@@ -108,6 +111,14 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
       </div>
+    </div>
+    <!-- Bulk action bar — shown when bulk select mode is active -->
+    <div class="bulk-bar" id="bulk-bar">
+      <span class="bulk-count" id="bulk-count">None</span>
+      <button class="bulk-btn" id="bulk-all-btn" onclick="bulkSelectAll()">Select all</button>
+      <button class="bulk-btn" onclick="bulkExportSelected()">Export</button>
+      <button class="bulk-btn danger" onclick="bulkDeleteSelected()">Delete</button>
+      <button class="icon-btn" onclick="exitBulkMode()" title="Exit select mode" style="margin-left:auto;flex-shrink:0">×</button>
     </div>
     <div class="conv-filter-area" id="conv-filter-area"></div>
     <div class="conv-list" id="conv-list"></div>
