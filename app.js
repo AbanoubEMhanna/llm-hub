@@ -2295,64 +2295,80 @@ function applyBackupFile(file) {
   reader.readAsText(file);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// § IMPORT CONVERSATIONS (LLM Hub JSON / ChatGPT export)
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Import Conversations ────────────────────────────────────────────────────
 
-function importConversations() {
-  document.getElementById('import-convs-input').click();
+function onConvImportDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer?.files?.[0];
+  if (file) applyConversationImport(file);
+}
+
+// No-arg: triggers hidden file picker (sidebar button). With-arg: processes file input.
+function importConversations(input) {
+  if (!input) { document.getElementById('import-convs-input').click(); return; }
+  const file = input.files?.[0];
+  input.value = '';
+  if (file) applyConversationImport(file);
 }
 
 function applyConvImportFile(input) {
   const file = input.files?.[0];
   input.value = '';
-  if (!file) return;
+  if (file) applyConversationImport(file);
+}
 
-  const reader = new FileReader();
-  reader.onload = (e) => {
+function applyConversationImport(file) {
+  const statusEl = document.getElementById('conv-import-status');
+  const reader   = new FileReader();
+  reader.onload  = (evt) => {
     try {
-      const raw = JSON.parse(e.target.result);
-      let toImport = [];
+      const raw = JSON.parse(evt.target.result);
+      let incoming = [];
 
       if (raw?.app === 'llm-hub' && Array.isArray(raw?.data?.conversations)) {
-        toImport = raw.data.conversations;
+        incoming = raw.data.conversations;
       } else if (raw?.id && Array.isArray(raw?.messages)) {
-        toImport = [raw];
-      } else if (Array.isArray(raw) && raw[0]?.messages) {
-        toImport = raw;
-      } else if (Array.isArray(raw) && raw[0]?.mapping) {
-        toImport = raw.map(convertChatGptConv).filter(Boolean);
+        incoming = [raw];
+      } else if (Array.isArray(raw) && raw.length && raw[0]?.mapping) {
+        incoming = raw.map(convertChatGPTConv).filter(Boolean);
+      } else if (Array.isArray(raw) && raw.length && raw[0]?.messages) {
+        incoming = raw;
       } else {
-        toast('Unrecognised format — expected LLM Hub JSON or ChatGPT export.', 'error');
-        return;
+        throw new Error('Unrecognized format. Expected LLM Hub backup/export or ChatGPT conversations.json.');
       }
 
       const existingIds = new Set(conversations.map(c => c.id));
-      const newConvs = toImport.filter(c => c?.id && !existingIds.has(c.id));
+      const toAdd = incoming.filter(c => c.id && Array.isArray(c.messages) && !existingIds.has(c.id));
 
-      if (!newConvs.length) {
-        toast('No new conversations found (all already imported).', 'info');
+      if (toAdd.length === 0) {
+        if (statusEl) { statusEl.textContent = '✓ No new conversations found (all already imported).'; statusEl.style.color = 'var(--muted)'; }
+        toast('No new conversations to import.', 'info');
         return;
       }
 
-      conversations.unshift(...newConvs);
+      conversations.push(...toAdd);
+      conversations.sort((a, b) => (b.ts || 0) - (a.ts || 0));
       try {
         saveConvs();
-      } catch {
-        conversations.splice(0, newConvs.length);
+      } catch (err) {
+        conversations.splice(conversations.length - toAdd.length, toAdd.length);
         toast('Import failed: local storage is full.', 'error');
         return;
       }
       renderConvList();
-      toast(`Imported ${newConvs.length} conversation${newConvs.length !== 1 ? 's' : ''}`, 'success');
-    } catch {
-      toast('Failed to parse file — is it valid JSON?', 'error');
+      const msg = `✓ Imported ${toAdd.length} conversation${toAdd.length !== 1 ? 's' : ''}.`;
+      if (statusEl) { statusEl.textContent = msg; statusEl.style.color = 'var(--green)'; }
+      toast(`Imported ${toAdd.length} conversation${toAdd.length !== 1 ? 's' : ''}!`, 'success');
+    } catch (err) {
+      if (statusEl) { statusEl.textContent = '✗ ' + err.message; statusEl.style.color = 'var(--red)'; }
+      toast('Import failed: ' + err.message, 'error');
     }
   };
   reader.readAsText(file);
 }
 
-function convertChatGptConv(chatGptConv) {
+// Iterative walk — safe against circular references in ChatGPT exports
+function convertChatGPTConv(chatGptConv) {
   if (!chatGptConv?.mapping) return null;
   const nodes = Object.values(chatGptConv.mapping);
   const nodeMap = Object.fromEntries(nodes.map(n => [n.id, n]));
@@ -3217,6 +3233,7 @@ function buildPaletteCommands() {
     { group: 'Models',    icon: '📦',  label: 'Model Manager',                           action: () => openModelManager() },
     { group: 'Models',    icon: '🔄',  label: 'Reload Models',                           action: () => loadModels() },
     { group: 'Settings',  icon: '⚙️',  label: 'Open Settings',                           action: () => openConfigEditor() },
+    { group: 'Settings',  icon: '📥',  label: 'Import Conversations (merge)',             action: () => { openConfigEditor(); setTimeout(() => { switchSettingsTab('backup'); document.getElementById('conv-import-file-input')?.click(); }, 300); } },
     { group: 'Settings',  icon: '🔑',  label: 'API Keys',                                action: () => openApiKeySettings() },
     { group: 'Settings',  icon: '🎨',  label: 'Appearance — accent color, font, density', action: () => openAppearanceSettings() },
     { group: 'Tools',     icon: '🔧',  label: 'Toggle Agent Tools',        kbd: '⌘/',   action: () => document.getElementById('tools-toggle').click() },

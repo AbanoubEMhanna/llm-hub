@@ -63,7 +63,7 @@
 - ✅ Conversation title rename — double-click to edit inline
 - ✅ **Conversation folders** — organize chats into named groups
 - ✅ **Conversation branching** — fork any conversation from any user message into a new parallel path
-- 🔲 Import conversations from JSON / ChatGPT export
+- ✅ **Import conversations** — merge from LLM Hub backup/export or ChatGPT export (non-destructive)
 - ✅ **Share conversation** — export as self-contained HTML file (PR #11)
 - 🔲 Multi-tab chat (several conversations open side-by-side)
 - 🔲 Message reactions (👍 👎 — RLHF-style feedback)
