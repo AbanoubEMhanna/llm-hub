@@ -2296,12 +2296,6 @@ function applyBackupFile(file) {
 }
 
 // ── Import Conversations ────────────────────────────────────────────────────
-// Merges conversations from a file without overwriting existing data.
-// Supported formats:
-//   1. LLM Hub full backup  { app:'llm-hub', data:{ conversations:[…] } }
-//   2. LLM Hub single-conv export  { id, title, messages, ts }
-//   3. Array of LLM Hub conversations  [{ id, title, messages }…]
-//   4. ChatGPT conversations.json  [{ id, title, mapping:{…} }…]
 
 function onConvImportDrop(e) {
   e.preventDefault();
@@ -2309,7 +2303,15 @@ function onConvImportDrop(e) {
   if (file) applyConversationImport(file);
 }
 
+// No-arg: triggers hidden file picker (sidebar button). With-arg: processes file input.
 function importConversations(input) {
+  if (!input) { document.getElementById('import-convs-input').click(); return; }
+  const file = input.files?.[0];
+  input.value = '';
+  if (file) applyConversationImport(file);
+}
+
+function applyConvImportFile(input) {
   const file = input.files?.[0];
   input.value = '';
   if (file) applyConversationImport(file);
@@ -2365,34 +2367,35 @@ function applyConversationImport(file) {
   reader.readAsText(file);
 }
 
-function convertChatGPTConv(raw) {
-  try {
-    const { id, title, create_time, mapping } = raw;
-    if (!mapping) return null;
-    const rootId = Object.keys(mapping).find(k => !mapping[k].parent || !mapping[mapping[k].parent]);
-    if (!rootId) return null;
-    const messages = [];
-    function walk(nodeId) {
-      const node = mapping[nodeId];
-      if (!node) return;
-      const msg = node.message;
-      if (msg?.content?.parts && (msg.author?.role === 'user' || msg.author?.role === 'assistant')) {
-        const text = msg.content.parts.filter(p => typeof p === 'string').join('\n').trim();
-        if (text) messages.push({ role: msg.author.role, content: text });
-      }
-      const firstChild = node.children?.[0];
-      if (firstChild) walk(firstChild);
+// Iterative walk — safe against circular references in ChatGPT exports
+function convertChatGPTConv(chatGptConv) {
+  if (!chatGptConv?.mapping) return null;
+  const nodes = Object.values(chatGptConv.mapping);
+  const nodeMap = Object.fromEntries(nodes.map(n => [n.id, n]));
+  let cur = nodes.find(n => !n.parent || !nodeMap[n.parent]);
+  const messages = [];
+  const visited = new Set();
+  while (cur && !visited.has(cur.id)) {
+    visited.add(cur.id);
+    const msg = cur.message;
+    if (msg?.content?.parts && (msg.author?.role === 'user' || msg.author?.role === 'assistant')) {
+      const text = msg.content.parts.filter(p => typeof p === 'string').join('\n').trim();
+      if (text) messages.push({ role: msg.author.role, content: text });
     }
-    walk(rootId);
-    if (!messages.length) return null;
-    return {
-      id: `chatgpt-${id || Date.now()}`,
-      title: title || 'ChatGPT conversation',
-      messages,
-      ts: create_time ? Math.round(create_time * 1000) : Date.now(),
-      pinned: false,
-    };
-  } catch { return null; }
+    const childId = cur.children?.[0];
+    cur = childId ? nodeMap[childId] : null;
+  }
+  if (!messages.length) return null;
+  return {
+    id: `chatgpt-${chatGptConv.id || Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    title: chatGptConv.title || 'Imported from ChatGPT',
+    messages,
+    ts: chatGptConv.create_time ? chatGptConv.create_time * 1000 : Date.now(),
+    pinned: false,
+    sysPrompt: '',
+    folderId: null,
+    label: null,
+  };
 }
 
 function toggleKeyVisibility(inputId, btn) {
