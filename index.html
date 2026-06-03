@@ -801,6 +801,25 @@
       <input type="file" id="backup-file-input" accept=".json" style="display:none"
              onchange="importBackup(this)"/>
       <div id="backup-status" style="margin-top:8px;font-size:12px;font-family:var(--mono);color:var(--muted)"></div>
+
+      <div class="backup-section-label" style="margin-top:24px">Import Conversations</div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:12px">
+        Merge conversations into your existing history without overwriting anything. Accepts an LLM Hub backup, a single-conversation export, or a ChatGPT <code style="font-family:var(--mono);background:var(--surface2);padding:1px 4px;border-radius:3px">conversations.json</code> export.
+      </p>
+      <button type="button" class="backup-import-zone" id="conv-import-zone"
+           onclick="document.getElementById('conv-import-file-input').click()"
+           ondragover="event.preventDefault()"
+           ondrop="onConvImportDrop(event)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span>Drop JSON here or click to browse</span>
+      </button>
+      <input type="file" id="conv-import-file-input" accept=".json" style="display:none"
+             onchange="importConversations(this)"/>
+      <div id="conv-import-status" style="margin-top:8px;font-size:12px;font-family:var(--mono);color:var(--muted)"></div>
     </div>
     <div class="modal-footer" id="settings-footer-backup" style="display:none">
       <button class="btn" onclick="closeModal('config-modal')">Close</button>
