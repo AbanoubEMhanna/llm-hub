@@ -123,7 +123,7 @@
 - ✅ Voice input via browser Web Speech API
 - ✅ Whisper server integration — local transcription
 - ✅ Text-to-speech output — 🔊 Read button, Voice settings tab, voice/rate/pitch
-- 🔥 PDF attachment — extract text and attach as context
+- ✅ PDF attachment — client-side text extraction via PDF.js, sent as document context
 - 🔲 Audio file transcription by drag-and-drop
 - 🔲 Video frame extraction for vision models
 - 🔲 Screen capture / screenshot from clipboard
@@ -151,7 +151,7 @@
 - ✅ Collection management — create, query, delete
 - ✅ SSE upload progress
 - 🔥 Web page crawl — paste URL, auto-scrape into knowledge base
-- 🔥 PDF attachment — extract text, embed, attach as context
+- ✅ PDF attachment — extract text, attach as inline document context (chat input)
 - 🔲 GitHub repository indexing — clone + embed all files
 - 🔲 Auto-inject most-relevant chunks into every message
 - 🔲 Chunk preview and manual editing UI
@@ -181,12 +181,12 @@
 | OpenCode DNA | 8 | 7 | 5 |
 | Modern UI | 15 | 0 | 4 |
 | Chat Experience | 20 | 0 | 3 |
-| Voice & Multimodal | 5 | 1 | 3 |
+| Voice & Multimodal | 6 | 0 | 3 |
 | Model Comparison | 3 | 2 | 3 |
-| RAG / Knowledge | 5 | 2 | 5 |
+| RAG / Knowledge | 6 | 1 | 5 |
 | Security | 4 | 0 | 4 |
-| **Total** | **73** | **14** | **32** |
+| **Total** | **75** | **12** | **32** |
 
 ---
 
-*Last updated: 2026-06-03*
+*Last updated: 2026-06-04*
