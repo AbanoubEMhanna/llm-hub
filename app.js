@@ -67,6 +67,10 @@ let searchMatches        = [];
 let convSearchMatches    = [];
 let convSearchIdx        = 0;
 
+// Bulk selection state
+let bulkSelectMode = false;
+const bulkSelected = new Set();
+
 // Edit state
 let editingMessageIdx    = null;
 
@@ -988,6 +992,85 @@ function jumpToParentConv(parentId, e) {
   loadConversation(parentId);
 }
 
+// ── Bulk Conversation Management ────────────────────────────────────────────
+
+function toggleBulkMode() {
+  bulkSelectMode = !bulkSelectMode;
+  if (!bulkSelectMode) bulkSelected.clear();
+  document.getElementById('bulk-bar').classList.toggle('visible', bulkSelectMode);
+  document.getElementById('bulk-select-btn').classList.toggle('active', bulkSelectMode);
+  updateBulkCount();
+  renderConvList();
+}
+
+function exitBulkMode() {
+  bulkSelectMode = false;
+  bulkSelected.clear();
+  document.getElementById('bulk-bar').classList.remove('visible');
+  document.getElementById('bulk-select-btn').classList.remove('active');
+  renderConvList();
+}
+
+function bulkToggleConv(id, e) {
+  e.stopPropagation();
+  if (bulkSelected.has(id)) bulkSelected.delete(id); else bulkSelected.add(id);
+  updateBulkCount();
+  const item = document.querySelector(`.conv-item[data-id="${id}"]`);
+  if (item) {
+    item.classList.toggle('bulk-selected', bulkSelected.has(id));
+    const chk = item.querySelector('.conv-check');
+    if (chk) chk.classList.toggle('checked', bulkSelected.has(id));
+  }
+}
+
+function updateBulkCount() {
+  const n = bulkSelected.size;
+  const el = document.getElementById('bulk-count');
+  if (el) el.textContent = n === 0 ? 'None' : `${n} selected`;
+  const allBtn = document.getElementById('bulk-all-btn');
+  if (allBtn) allBtn.textContent = (bulkSelected.size === conversations.length && conversations.length > 0) ? 'Deselect all' : 'Select all';
+}
+
+function bulkSelectAll() {
+  if (bulkSelected.size === conversations.length && conversations.length > 0) {
+    bulkSelected.clear();
+  } else {
+    conversations.forEach(c => bulkSelected.add(c.id));
+  }
+  updateBulkCount();
+  renderConvList();
+}
+
+function bulkDeleteSelected() {
+  const n = bulkSelected.size;
+  if (!n) { toast('No conversations selected.', 'info'); return; }
+  if (!confirm(`Delete ${n} conversation${n !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+  const hadCurrent = currentConvId && bulkSelected.has(currentConvId);
+  conversations = conversations.filter(c => !bulkSelected.has(c.id));
+  if (hadCurrent) {
+    currentConvId = null;
+    const msgs = document.getElementById('messages');
+    if (msgs) msgs.innerHTML = '';
+    const hdr = document.getElementById('chat-header-title');
+    if (hdr) hdr.innerHTML = '';
+  }
+  saveConvs();
+  toast(`Deleted ${n} conversation${n !== 1 ? 's' : ''}.`, 'success');
+  exitBulkMode();
+}
+
+function bulkExportSelected() {
+  const n = bulkSelected.size;
+  if (!n) { toast('No conversations selected.', 'info'); return; }
+  const selected = conversations.filter(c => bulkSelected.has(c.id));
+  const blob = new Blob([JSON.stringify({ app: 'llm-hub', exported: new Date().toISOString(), conversations: selected }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `llm-hub-${n}-conversations.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast(`Exported ${n} conversation${n !== 1 ? 's' : ''}.`, 'success');
+}
+
 let _convListFirstRender = true;
 
 function renderConvList() {
@@ -1011,6 +1094,20 @@ function renderConvList() {
       : '';
     const enterCls   = stagger ? ' conv-item-enter' : '';
     const staggerStyle = stagger ? ` style="--stagger-i:${Math.min(i, 8) * 35}ms"` : '';
+
+    if (bulkSelectMode) {
+      const isSel = bulkSelected.has(c.id);
+      return `
+      <div class="conv-item${enterCls}${isSel ? ' bulk-selected' : ''}" data-id="${c.id}"${staggerStyle}
+           onclick="bulkToggleConv('${c.id}',event)">
+        <span class="conv-check${isSel ? ' checked' : ''}" aria-hidden="true">
+          ${isSel ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+        </span>
+        <div class="conv-title">${branchDot}${labelDot}${escHtml(c.title)}</div>
+        <div class="conv-meta">${c.messages.length} msgs · ${timeAgo(c.ts)}</div>
+      </div>`;
+    }
+
     return `
     <div class="conv-item${enterCls} ${c.id === currentConvId ? 'active' : ''} ${c.pinned ? 'pinned' : ''}" data-id="${c.id}"${staggerStyle}
          onclick="loadConversation('${c.id}')">
@@ -3320,8 +3417,9 @@ function initHotkeys() {
   document.addEventListener('keydown', (e) => {
     const meta = e.metaKey || e.ctrlKey;
 
-    // Escape closes modals
+    // Escape closes modals / exits bulk mode
     if (e.key === 'Escape') {
+      if (bulkSelectMode) { exitBulkMode(); return; }
       document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
       return;
     }

@@ -263,6 +263,39 @@ body {
 .conv-actions button.danger:hover { color: var(--red); }
 .conv-actions button.labeled { color: var(--accent) !important; opacity: 1 !important; }
 
+/* ── Bulk action bar ── */
+.bulk-bar {
+  display: none; align-items: center; gap: 5px; flex-wrap: wrap;
+  padding: 5px 8px; background: color-mix(in srgb, var(--accent) 8%, var(--s2));
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+  font-size: 11px; font-family: var(--mono);
+}
+.bulk-bar.visible { display: flex; }
+.bulk-count { color: var(--accent); font-weight: 600; flex-shrink: 0; min-width: 40px; }
+.bulk-btn {
+  font-size: 10px; font-family: var(--mono); padding: 2px 7px;
+  border-radius: 4px; border: 1px solid var(--border);
+  background: var(--s1); color: var(--text); cursor: pointer; line-height: 1.6;
+  transition: var(--transition);
+}
+.bulk-btn:hover { background: var(--s3); border-color: var(--border2); }
+.bulk-btn.danger { color: var(--red); border-color: color-mix(in srgb, var(--red) 30%, transparent); }
+.bulk-btn.danger:hover { background: color-mix(in srgb, var(--red) 10%, transparent); }
+
+/* ── Bulk-mode conversation items ── */
+.conv-item.bulk-selected {
+  background: color-mix(in srgb, var(--accent) 12%, var(--s1)) !important;
+  border-left: 2px solid var(--accent);
+  padding-left: 6px;
+}
+.conv-check {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; border-radius: 3px; flex-shrink: 0; margin-right: 7px;
+  border: 1.5px solid var(--muted); cursor: pointer; transition: var(--transition);
+  vertical-align: middle;
+}
+.conv-check.checked { background: var(--accent); border-color: var(--accent); color: #fff; }
+
 /* ── Conversation label dot ── */
 .conv-label-dot {
   display: inline-block; width: 7px; height: 7px; border-radius: 50%;

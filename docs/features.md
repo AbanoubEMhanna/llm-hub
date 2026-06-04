@@ -77,9 +77,9 @@
 - ✅ Collapsible long messages — auto-collapse > ~22 lines
 - ✅ Responsive welcome screen with quick-action cards
 - ✅ Sampling presets — Precise / Balanced / Creative one-click buttons
-- 🔥 Fully responsive mobile layout — hamburger sidebar, touch-friendly
-- 🔥 Customizable accent color — color picker in settings
-- 🔥 Font size and chat density — Compact / Comfortable / Spacious modes
+- ✅ Fully responsive mobile layout — hamburger sidebar, touch-friendly
+- ✅ Customizable accent color — color picker + 7 presets + custom hex in Appearance tab
+- ✅ Font size and chat density — Compact / Comfortable / Spacious modes in Appearance tab
 - 🔲 Inline message diff view for edited messages
 - 🔲 Custom welcome screen card configuration
 - 🔲 Onboarding wizard for first-time setup
@@ -109,10 +109,10 @@
 - ✅ Chat export — Markdown and JSON
 - ✅ Backup & restore — all settings + conversations as single JSON
 - ✅ Import conversations — merge from LLM Hub backup or ChatGPT export
+- ✅ Bulk conversation management — checkbox select, bulk delete & export JSON
+- ✅ Message search within a single conversation (⌘F, highlight + navigate)
 - 🔲 Multi-tab chat (several conversations side-by-side)
-- 🔲 Bulk conversation management (select all → delete / export)
 - 🔲 Context window timeline visualization
-- 🔲 Message search within a single conversation
 
 ---
 
@@ -179,14 +179,14 @@
 |------|---------|---------|-----------|
 | LM Studio DNA | 13 | 2 | 5 |
 | OpenCode DNA | 8 | 7 | 5 |
-| Modern UI | 12 | 3 | 4 |
-| Chat Experience | 18 | 0 | 4 |
+| Modern UI | 15 | 0 | 4 |
+| Chat Experience | 20 | 0 | 3 |
 | Voice & Multimodal | 5 | 1 | 3 |
 | Model Comparison | 3 | 2 | 3 |
 | RAG / Knowledge | 5 | 2 | 5 |
 | Security | 4 | 0 | 4 |
-| **Total** | **68** | **17** | **33** |
+| **Total** | **73** | **14** | **32** |
 
 ---
 
-*Last updated: 2026-05-31*
+*Last updated: 2026-06-03*
