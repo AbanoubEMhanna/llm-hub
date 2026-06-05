@@ -766,8 +766,11 @@ async function handlePdfFile(file) {
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-  const idx = attachments.length;
-  attachments.push({ type: 'pdf', name: file.name, text: null, pageCount: 0, loading: true });
+  const attachmentId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `pdf-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  attachments.push({ id: attachmentId, type: 'pdf', name: file.name, text: null, pageCount: 0, loading: true });
   renderAttachments();
 
   try {
@@ -779,16 +782,21 @@ async function handlePdfFile(file) {
       const content = await page.getTextContent();
       parts.push(content.items.map(item => item.str).join(' '));
     }
-    attachments[idx] = {
-      type: 'pdf',
-      name: file.name,
-      text: parts.join('\n\n'),
-      pageCount: pdf.numPages,
-      loading: false,
-    };
+    const idx = attachments.findIndex(a => a.id === attachmentId);
+    if (idx !== -1) {
+      attachments[idx] = {
+        id: attachmentId,
+        type: 'pdf',
+        name: file.name,
+        text: parts.join('\n\n'),
+        pageCount: pdf.numPages,
+        loading: false,
+      };
+    }
   } catch (err) {
     console.error('PDF extraction failed:', err);
-    attachments.splice(idx, 1);
+    const idx = attachments.findIndex(a => a.id === attachmentId);
+    if (idx !== -1) attachments.splice(idx, 1);
   }
   renderAttachments();
 }
@@ -1296,6 +1304,11 @@ async function send() {
   const text  = input.value.trim();
   if (!text && !attachments.length) return;
 
+  if (attachments.some(a => a.type === 'pdf' && a.loading)) {
+    toast('Please wait until PDF extraction finishes.', 'info');
+    return;
+  }
+
   input.value = '';
   autoResize(input);
   updateInputTokenCount();
@@ -1334,8 +1347,8 @@ async function send() {
   saveConvs();
   renderConvList();
 
-  const imgsForBubble = attachments.filter(a => a.type === 'image');
-  const pdfsForBubble = attachments.filter(a => a.type === 'pdf');
+  const imgsForBubble = attachments.filter(a => a.type === 'image' && a.dataUrl);
+  const pdfsForBubble = attachments.filter(a => a.type === 'pdf' && a.text && !a.loading);
   appendUserBubble(conv.messages.length - 1, text, imgsForBubble, pdfsForBubble);
   attachments = []; renderAttachments();
 
@@ -1601,8 +1614,13 @@ async function saveEditAndRegenerate() {
 
   const m = conv.messages[editingMessageIdx];
   if (Array.isArray(m.content)) {
+    const pdfBlocks = m.content.filter(p =>
+      p.type === 'text' && /^📄 Document: .+ \(\d+ pages?\)\n/.test(p.text || '')
+    );
     const imgs = m.content.filter(p => p.type === 'image_url');
-    m.content = imgs.length ? [{ type: 'text', text: newText }, ...imgs] : newText;
+    m.content = (pdfBlocks.length || imgs.length)
+      ? [...pdfBlocks, { type: 'text', text: newText }, ...imgs]
+      : newText;
   } else {
     m.content = newText;
   }

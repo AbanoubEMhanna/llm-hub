@@ -858,7 +858,7 @@ input[type=range]::-webkit-slider-thumb {
   display: flex; align-items: center; gap: 6px;
   padding: 5px 8px; border-radius: 6px; max-width: 220px;
   background: var(--bg-tertiary, var(--s2)); border: 1px solid var(--border);
-  font-size: 11px; color: var(--text-secondary);
+  font-size: 11px; color: var(--text2);
 }
 .att-doc svg { flex-shrink: 0; color: var(--accent); }
 .att-doc > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
@@ -872,7 +872,7 @@ input[type=range]::-webkit-slider-thumb {
   padding: 3px 8px; border-radius: 4px;
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  font-size: 11px; color: var(--text-secondary);
+  font-size: 11px; color: var(--text2);
 }
 .bubble-doc svg { color: var(--accent); flex-shrink: 0; }
 .bubble-doc span { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
