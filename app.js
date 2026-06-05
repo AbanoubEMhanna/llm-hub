@@ -2006,34 +2006,60 @@ function enhanceCodeBlocks(scope = document) {
     if (pre.dataset.enhanced) return;
     const lang = (pre.dataset.lang || '').toLowerCase();
     if (!['html', 'svg', 'jsx', 'tsx', 'react'].includes(lang)) return;
-    const code = pre.querySelector('code')?.innerText || '';
-    if (!code.trim()) return;
+    const originalCode = pre.querySelector('code')?.innerText || '';
+    if (!originalCode.trim()) return;
 
     const wrap = document.createElement('div');
     wrap.className = 'artifact-wrap';
 
+    // ── Tab bar ──────────────────────────────────────────────────────────────
     const tabs = document.createElement('div');
     tabs.className = 'artifact-tabs';
     tabs.innerHTML = `
       <button class="artifact-tab active" data-tab="preview">🖼 Preview</button>
-      <button class="artifact-tab" data-tab="code">💻 Code</button>`;
+      <button class="artifact-tab" data-tab="code">✏️ Edit</button>`;
     wrap.appendChild(tabs);
 
+    // ── Preview pane ──────────────────────────────────────────────────────────
     const previewPane = document.createElement('div');
     previewPane.className = 'artifact-pane active';
-    previewPane.appendChild(buildPreviewEl(lang, code));
+    let currentPreviewEl = buildPreviewEl(lang, originalCode);
+    previewPane.appendChild(currentPreviewEl);
 
+    // ── Code / editor pane ────────────────────────────────────────────────────
     const codePane = document.createElement('div');
-    codePane.className = 'artifact-pane';
-    const preClone = pre.cloneNode(true);
-    preClone.style.margin = '0';
-    preClone.style.border = 'none';
-    preClone.style.borderRadius = '0';
-    codePane.appendChild(preClone);
+    codePane.className = 'artifact-pane artifact-editor-pane';
+
+    const editorToolbar = document.createElement('div');
+    editorToolbar.className = 'artifact-editor-toolbar';
+    editorToolbar.innerHTML = `
+      <span class="artifact-lang-badge">${lang.toUpperCase()}</span>
+      <button class="artifact-editor-btn artifact-run-btn" title="Run (Ctrl+Enter)">▶ Run</button>
+      <button class="artifact-editor-btn artifact-reset-btn" title="Reset to original">↺ Reset</button>
+      <button class="artifact-editor-btn artifact-copy-btn" title="Copy code">⎘ Copy</button>`;
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'artifact-editor-textarea';
+    textarea.value = originalCode;
+    textarea.spellcheck = false;
+    textarea.setAttribute('autocomplete', 'off');
+    textarea.setAttribute('autocorrect', 'off');
+    textarea.setAttribute('autocapitalize', 'off');
+
+    codePane.appendChild(editorToolbar);
+    codePane.appendChild(textarea);
 
     wrap.appendChild(previewPane);
     wrap.appendChild(codePane);
 
+    // ── Re-render helper ──────────────────────────────────────────────────────
+    function rerender() {
+      const newEl = buildPreviewEl(lang, textarea.value);
+      previewPane.replaceChild(newEl, currentPreviewEl);
+      currentPreviewEl = newEl;
+    }
+
+    // ── Tab switching — auto-run when going to Preview ────────────────────────
     tabs.querySelectorAll('.artifact-tab').forEach(btn => {
       btn.onclick = () => {
         tabs.querySelectorAll('.artifact-tab').forEach(b => b.classList.remove('active'));
@@ -2041,7 +2067,45 @@ function enhanceCodeBlocks(scope = document) {
         const showPreview = btn.dataset.tab === 'preview';
         previewPane.classList.toggle('active', showPreview);
         codePane.classList.toggle('active', !showPreview);
+        if (showPreview) rerender();
       };
+    });
+
+    // ── Toolbar actions ───────────────────────────────────────────────────────
+    editorToolbar.querySelector('.artifact-run-btn').onclick = () => {
+      rerender();
+      tabs.querySelectorAll('.artifact-tab').forEach(b => b.classList.remove('active'));
+      tabs.querySelector('[data-tab="preview"]').classList.add('active');
+      previewPane.classList.add('active');
+      codePane.classList.remove('active');
+    };
+
+    editorToolbar.querySelector('.artifact-reset-btn').onclick = () => {
+      textarea.value = originalCode;
+    };
+
+    editorToolbar.querySelector('.artifact-copy-btn').onclick = (e) => {
+      navigator.clipboard.writeText(textarea.value).then(() => {
+        const btn = e.currentTarget;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = '⎘ Copy'; }, 1500);
+      });
+    };
+
+    // ── Ctrl+Enter shortcut to run ────────────────────────────────────────────
+    textarea.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        editorToolbar.querySelector('.artifact-run-btn').click();
+      }
+      // Tab key inserts 2 spaces instead of losing focus
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        textarea.value = textarea.value.slice(0, start) + '  ' + textarea.value.slice(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 2;
+      }
     });
 
     pre.dataset.enhanced = '1';
