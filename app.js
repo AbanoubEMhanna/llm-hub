@@ -741,14 +741,64 @@ function closeMobileSidebars() {
 
 function handleFiles(files) {
   for (const file of files) {
-    if (!file.type.startsWith('image/')) continue;
-    const reader = new FileReader();
-    reader.onload = () => {
-      attachments.push({ dataUrl: reader.result, name: file.name });
-      renderAttachments();
-    };
-    reader.readAsDataURL(file);
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      handlePdfFile(file);
+    } else if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        attachments.push({ type: 'image', dataUrl: reader.result, name: file.name });
+        renderAttachments();
+      };
+      reader.readAsDataURL(file);
+    }
   }
+}
+
+function handlePdfFiles(files) {
+  for (const file of files) handlePdfFile(file);
+}
+
+async function handlePdfFile(file) {
+  if (typeof pdfjsLib === 'undefined') {
+    alert('PDF.js is not loaded. Please refresh the page.');
+    return;
+  }
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  const attachmentId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `pdf-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  attachments.push({ id: attachmentId, type: 'pdf', name: file.name, text: null, pageCount: 0, loading: true });
+  renderAttachments();
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const parts = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      parts.push(content.items.map(item => item.str).join(' '));
+    }
+    const idx = attachments.findIndex(a => a.id === attachmentId);
+    if (idx !== -1) {
+      attachments[idx] = {
+        id: attachmentId,
+        type: 'pdf',
+        name: file.name,
+        text: parts.join('\n\n'),
+        pageCount: pdf.numPages,
+        loading: false,
+      };
+    }
+  } catch (err) {
+    console.error('PDF extraction failed:', err);
+    const idx = attachments.findIndex(a => a.id === attachmentId);
+    if (idx !== -1) attachments.splice(idx, 1);
+  }
+  renderAttachments();
 }
 
 function handlePaste(e) {
@@ -766,11 +816,22 @@ function renderAttachments() {
   const c = document.getElementById('attachments-preview');
   if (!attachments.length) { c.style.display = 'none'; c.innerHTML = ''; return; }
   c.style.display = 'flex';
-  c.innerHTML = attachments.map((a, i) => `
-    <div class="att-thumb">
-      <img src="${a.dataUrl}" alt=""/>
+  c.innerHTML = attachments.map((a, i) => {
+    if (a.type === 'pdf') {
+      const label = a.loading
+        ? `${escHtml(a.name)} — extracting…`
+        : `${escHtml(a.name)} (${a.pageCount}p, ${Math.round((a.text?.length || 0) / 1000)}k chars)`;
+      return `<div class="att-doc${a.loading ? ' att-doc-loading' : ''}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span>${label}</span>
+        <button class="att-remove" style="position:static;width:14px;height:14px" onclick="removeAttachment(${i})" title="Remove">×</button>
+      </div>`;
+    }
+    return `<div class="att-thumb">
+      <img src="${escHtml(a.dataUrl)}" alt=""/>
       <button class="att-remove" onclick="removeAttachment(${i})" title="Remove">×</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function removeAttachment(i) { attachments.splice(i, 1); renderAttachments(); }
@@ -1243,6 +1304,11 @@ async function send() {
   const text  = input.value.trim();
   if (!text && !attachments.length) return;
 
+  if (attachments.some(a => a.type === 'pdf' && a.loading)) {
+    toast('Please wait until PDF extraction finishes.', 'info');
+    return;
+  }
+
   input.value = '';
   autoResize(input);
   updateInputTokenCount();
@@ -1254,8 +1320,21 @@ async function send() {
   let userContent;
   if (attachments.length > 0) {
     userContent = [];
+    // PDFs go first as document context blocks
+    for (const a of attachments) {
+      if (a.type === 'pdf' && a.text && !a.loading) {
+        const MAX_CHARS = 80000;
+        const body = a.text.length > MAX_CHARS
+          ? a.text.slice(0, MAX_CHARS) + '\n\n[… document truncated at 80 000 characters]'
+          : a.text;
+        userContent.push({ type: 'text', text: `📄 Document: ${a.name} (${a.pageCount} pages)\n\n${body}` });
+      }
+    }
     if (text) userContent.push({ type: 'text', text });
-    for (const a of attachments) userContent.push({ type: 'image_url', image_url: { url: a.dataUrl } });
+    for (const a of attachments) {
+      if (a.type === 'image') userContent.push({ type: 'image_url', image_url: { url: a.dataUrl } });
+    }
+    if (!userContent.length) userContent = text;
   } else {
     userContent = text;
   }
@@ -1268,8 +1347,9 @@ async function send() {
   saveConvs();
   renderConvList();
 
-  const imgsForBubble = attachments.slice();
-  appendUserBubble(conv.messages.length - 1, text, imgsForBubble);
+  const imgsForBubble = attachments.filter(a => a.type === 'image' && a.dataUrl);
+  const pdfsForBubble = attachments.filter(a => a.type === 'pdf' && a.text && !a.loading);
+  appendUserBubble(conv.messages.length - 1, text, imgsForBubble, pdfsForBubble);
   attachments = []; renderAttachments();
 
   await streamAssistantReply(conv);
@@ -1534,8 +1614,13 @@ async function saveEditAndRegenerate() {
 
   const m = conv.messages[editingMessageIdx];
   if (Array.isArray(m.content)) {
+    const pdfBlocks = m.content.filter(p =>
+      p.type === 'text' && /^📄 Document: .+ \(\d+ pages?\)\n/.test(p.text || '')
+    );
     const imgs = m.content.filter(p => p.type === 'image_url');
-    m.content = imgs.length ? [{ type: 'text', text: newText }, ...imgs] : newText;
+    m.content = (pdfBlocks.length || imgs.length)
+      ? [...pdfBlocks, { type: 'text', text: newText }, ...imgs]
+      : newText;
   } else {
     m.content = newText;
   }
@@ -1603,14 +1688,23 @@ function renderMessages(msgs) {
     if (m.role === 'user') {
       let text = '';
       const imgs = [];
+      const pdfs = [];
       if (typeof m.content === 'string') text = m.content;
       else if (Array.isArray(m.content)) {
         for (const p of m.content) {
-          if (p.type === 'text') text = p.text;
-          else if (p.type === 'image_url') imgs.push({ dataUrl: p.image_url?.url });
+          if (p.type === 'text') {
+            const pdfMatch = p.text.match(/^📄 Document: (.+) \((\d+) pages?\)\n/);
+            if (pdfMatch) {
+              pdfs.push({ name: pdfMatch[1], pageCount: parseInt(pdfMatch[2]) });
+            } else {
+              text = p.text;
+            }
+          } else if (p.type === 'image_url') {
+            imgs.push({ dataUrl: p.image_url?.url });
+          }
         }
       }
-      appendUserBubble(i, text, imgs);
+      appendUserBubble(i, text, imgs, pdfs);
     } else if (m.role === 'assistant') {
       const w = buildAssistantWrap(i, m.content || '', m.stopped);
       container.appendChild(w);
@@ -1646,18 +1740,24 @@ function applyCollapse(wrap) {
   });
 }
 
-function appendUserBubble(idx, text, imgs = []) {
+function appendUserBubble(idx, text, imgs = [], pdfs = []) {
   const container = document.getElementById('messages');
   const wrap = document.createElement('div');
   wrap.className = 'msg-wrap';
+  const pdfsHtml = pdfs.length
+    ? `<div class="bubble-docs">${pdfs.map(p =>
+        `<div class="bubble-doc"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>${escHtml(p.name)}${p.pageCount ? ` (${p.pageCount}p)` : ''}</span></div>`
+      ).join('')}</div>`
+    : '';
   const imagesHtml = imgs.length
     ? `<div class="bubble-images">${imgs.map(a =>
-        `<img class="bubble-img" src="${a.dataUrl}" onclick="window.open(this.src)"/>`).join('')}</div>`
+        `<img class="bubble-img" src="${escHtml(a.dataUrl)}" onclick="window.open(this.src)"/>`).join('')}</div>`
     : '';
   wrap.innerHTML = `
     <div class="msg user">
       <div class="avatar">👤</div>
       <div class="bubble">
+        ${pdfsHtml}
         ${imagesHtml}
         ${text ? `<div>${renderMarkdown(text)}</div>` : ''}
       </div>
