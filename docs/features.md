@@ -46,7 +46,7 @@
 - ✅ MCP stdio client — spawn external MCP servers
 - ✅ Prompt templates with `{{variable}}` placeholders
 - ✅ Plan mode — think step-by-step prefix before answering
-- 🔥 Live code editing inside artifact preview — edit + re-render inline
+- ✅ Live code editing inside artifact preview — edit + re-render inline (Ctrl+Enter to run, Tab inserts spaces, Reset to original)
 - 🔥 File tree sidebar — browse local filesystem via MCP filesystem server
 - 🔥 Multi-file context — select and attach multiple files as context
 - 🔥 Git integration — show diff, stage, commit, PR review workflow
