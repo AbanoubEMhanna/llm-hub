@@ -4634,14 +4634,17 @@ const MM_LIB_CATEGORIES = ['All', 'fast', 'code', 'vision', 'large', 'embed'];
 let   mmLibActiveFilter  = 'All';
 
 function switchModelManagerTab(tab) {
-  document.getElementById('mm-panel-installed').style.display = tab === 'installed' ? '' : 'none';
-  document.getElementById('mm-panel-library').style.display   = tab === 'library'   ? '' : 'none';
-  document.getElementById('mm-tab-installed').classList.toggle('active', tab === 'installed');
-  document.getElementById('mm-tab-library').classList.toggle('active', tab === 'library');
+  document.getElementById('mm-panel-installed').style.display  = tab === 'installed'  ? '' : 'none';
+  document.getElementById('mm-panel-library').style.display    = tab === 'library'    ? '' : 'none';
+  document.getElementById('mm-panel-benchmark').style.display  = tab === 'benchmark'  ? '' : 'none';
+  document.getElementById('mm-tab-installed').classList.toggle('active',  tab === 'installed');
+  document.getElementById('mm-tab-library').classList.toggle('active',    tab === 'library');
+  document.getElementById('mm-tab-benchmark').classList.toggle('active',  tab === 'benchmark');
   if (tab === 'library') {
     renderLibraryFilters();
     renderModelLibrary('');
   }
+  if (tab === 'benchmark') openBenchmarkTab();
 }
 
 function renderLibraryFilters() {
@@ -4705,6 +4708,244 @@ function pullFromLibrary(name, btnEl) {
   setTimeout(() => {
     pullModel().finally(() => { btnEl.disabled = false; });
   }, 100);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § MODEL BENCHMARK RUNNER
+// ─────────────────────────────────────────────────────────────────────────────
+
+let benchmarkRunning = false;
+
+async function openBenchmarkTab() {
+  const listEl = document.getElementById('mm-bench-model-list');
+  listEl.innerHTML = '<div class="loading-row"><div class="spinner"></div> Loading…</div>';
+
+  try {
+    const res = await fetch(`${PROXY}/v1/models`);
+    const data = await res.json();
+    const models = (data.data || []).filter(m => m.owned_by === 'ollama' || m.id?.startsWith('ollama/'));
+
+    if (!models.length) {
+      listEl.innerHTML = '<div class="mm-empty">No Ollama models installed. Pull one first.</div>';
+      return;
+    }
+
+    listEl.innerHTML = models.map(m => {
+      const shortName = m.id.replace(/^ollama\//, '');
+      const meta = modelMetadata[m.id] || {};
+      const metaStr = [meta.parameter_size, meta.quantization].filter(Boolean).join(' · ') || '';
+      return `<label class="mm-bench-model-check">
+        <input type="checkbox" class="mm-bench-cb" value="${shortName}" checked>
+        <span class="bench-model-name">${shortName}</span>
+        ${metaStr ? `<span class="bench-model-meta">${metaStr}</span>` : ''}
+      </label>`;
+    }).join('');
+  } catch {
+    listEl.innerHTML = '<div class="mm-empty">Could not reach proxy — is it running?</div>';
+  }
+}
+
+async function benchmarkSingleModel(modelId, prompt, onToken) {
+  const startMs = performance.now();
+  let firstTokenMs = null;
+  let charCount = 0;
+
+  const res = await fetch(`${PROXY}/v1/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...apiKeyHeader() },
+    body: JSON.stringify({
+      model: modelId,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 256,
+      use_tools: false,
+    }),
+  });
+
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const reader  = res.body.getReader();
+  const decoder = new TextDecoder();
+  let   buf     = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buf.indexOf('\n\n')) >= 0) {
+      const block = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      for (const line of block.split('\n')) {
+        if (!line.startsWith('data: ')) continue;
+        let evt;
+        try { evt = JSON.parse(line.slice(6)); } catch { continue; }
+        if (evt.type === 'text_delta' && evt.delta) {
+          if (firstTokenMs === null) firstTokenMs = performance.now();
+          charCount += evt.delta.length;
+          if (onToken) onToken(charCount);
+        }
+      }
+    }
+  }
+
+  const endMs     = performance.now();
+  const ttft      = firstTokenMs !== null ? firstTokenMs - startMs : null;
+  const genMs     = firstTokenMs !== null ? endMs - firstTokenMs   : endMs - startMs;
+  const estTokens = Math.round(charCount / 4);
+  const tokPerSec = genMs > 0 ? (estTokens / (genMs / 1000)) : 0;
+
+  return { modelId, estTokens, tokPerSec, ttft, totalMs: endMs - startMs };
+}
+
+async function runBenchmark() {
+  if (benchmarkRunning) return;
+
+  const checkboxes = [...document.querySelectorAll('.mm-bench-cb:checked')];
+  if (!checkboxes.length) { showToast('Select at least one model to benchmark.', 'warning'); return; }
+
+  const prompt = document.getElementById('mm-bench-prompt').value.trim();
+  if (!prompt) { showToast('Enter a benchmark prompt.', 'warning'); return; }
+
+  benchmarkRunning = true;
+  const runBtn   = document.getElementById('mm-bench-run-btn');
+  const statusEl = document.getElementById('mm-bench-status');
+  runBtn.disabled = true;
+
+  const models  = checkboxes.map(cb => cb.value);
+  const results = [];
+
+  // Show results area immediately with running state
+  const resultsEl = document.getElementById('mm-bench-results');
+  const tableEl   = document.getElementById('mm-bench-table');
+  resultsEl.style.display = '';
+  renderBenchmarkTable(models.map(id => ({ modelId: id, state: 'running' })), results);
+
+  for (let i = 0; i < models.length; i++) {
+    const modelId = models[i];
+    statusEl.textContent = `Running ${i + 1}/${models.length}: ${modelId}…`;
+
+    try {
+      const result = await benchmarkSingleModel(modelId, prompt, () => {
+        // Update live display with partial results
+        renderBenchmarkTable(
+          models.map((id, j) => ({
+            modelId: id,
+            state: j < i ? 'done' : j === i ? 'running' : 'pending',
+          })),
+          results
+        );
+      });
+      results.push({ ...result, state: 'done' });
+    } catch (e) {
+      results.push({ modelId, state: 'error', error: e.message });
+    }
+
+    renderBenchmarkTable(
+      models.map((id, j) => ({
+        modelId: id,
+        state: j < i + 1 ? 'done' : j === i + 1 ? 'running' : 'pending',
+      })),
+      results
+    );
+  }
+
+  const maxTok = Math.max(...results.filter(r => r.state === 'done').map(r => r.tokPerSec || 0), 0);
+  document.getElementById('mm-bench-results-subtitle').textContent =
+    `— ${models.length} model${models.length !== 1 ? 's' : ''}, ${Math.round(maxTok)} tok/s best`;
+  statusEl.textContent = 'Done ✓';
+  runBtn.disabled = false;
+  benchmarkRunning = false;
+
+  // Final sorted render
+  renderBenchmarkTable(models.map(id => ({ modelId: id, state: 'done' })), results, true);
+}
+
+function renderBenchmarkTable(modelStates, results, sorted = false) {
+  const tableEl = document.getElementById('mm-bench-table');
+  const doneResults = results.filter(r => r.state === 'done' && r.tokPerSec != null);
+  const maxTok = doneResults.length ? Math.max(...doneResults.map(r => r.tokPerSec)) : 1;
+
+  // Sort by tok/s descending when final
+  const orderedModels = sorted
+    ? [...modelStates].sort((a, b) => {
+        const ra = results.find(r => r.modelId === a.modelId);
+        const rb = results.find(r => r.modelId === b.modelId);
+        return ((rb?.tokPerSec || 0) - (ra?.tokPerSec || 0));
+      })
+    : modelStates;
+
+  let html = `<div class="mm-bench-row mm-bench-header">
+    <div>Model</div>
+    <div style="text-align:right">Tok/s</div>
+    <div style="text-align:right">TTFT</div>
+    <div style="text-align:right">Total</div>
+    <div></div>
+  </div>`;
+
+  orderedModels.forEach((ms, idx) => {
+    const r    = results.find(r => r.modelId === ms.modelId);
+    const rank = idx + 1;
+
+    if (!r || ms.state === 'pending') {
+      html += `<div class="mm-bench-row">
+        <div class="mm-bench-cell-model">
+          <span class="mm-bench-rank rank-n">#?</span>
+          <span class="mm-bench-model-label">${ms.modelId}</span>
+        </div>
+        <div class="mm-bench-val" style="text-align:right;color:var(--muted)">—</div>
+        <div class="mm-bench-val" style="text-align:right;color:var(--muted)">—</div>
+        <div class="mm-bench-val" style="text-align:right;color:var(--muted)">—</div>
+        <div class="mm-bench-bar-cell"></div>
+      </div>`;
+      return;
+    }
+
+    if (ms.state === 'running' || r.state === 'running') {
+      html += `<div class="mm-bench-row mm-bench-running">
+        <div class="mm-bench-cell-model">
+          <div class="mm-bench-spinner"></div>
+          <span class="mm-bench-model-label">${ms.modelId}</span>
+        </div>
+        <div class="mm-bench-val" style="text-align:right;color:var(--muted)">…</div>
+        <div class="mm-bench-val" style="text-align:right;color:var(--muted)">…</div>
+        <div class="mm-bench-val" style="text-align:right;color:var(--muted)">…</div>
+        <div class="mm-bench-bar-cell"></div>
+      </div>`;
+      return;
+    }
+
+    if (r.state === 'error') {
+      html += `<div class="mm-bench-row mm-bench-error">
+        <div class="mm-bench-cell-model">
+          <span class="mm-bench-rank rank-n">ERR</span>
+          <span class="mm-bench-model-label">${ms.modelId}</span>
+        </div>
+        <div class="mm-bench-val" style="text-align:right;color:var(--orange)" title="${r.error}">fail</div>
+        <div></div><div></div><div></div>
+      </div>`;
+      return;
+    }
+
+    const tps    = r.tokPerSec.toFixed(1);
+    const pct    = maxTok > 0 ? (r.tokPerSec / maxTok) * 100 : 0;
+    const ttftMs = r.ttft != null ? `${Math.round(r.ttft)}` : '—';
+    const totMs  = `${(r.totalMs / 1000).toFixed(1)}`;
+    const rankCls = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-n';
+    const valCls  = r.tokPerSec >= maxTok * 0.8 ? 'val-best' : r.tokPerSec >= maxTok * 0.4 ? 'val-good' : 'val-slow';
+
+    html += `<div class="mm-bench-row">
+      <div class="mm-bench-cell-model">
+        <span class="mm-bench-rank ${rankCls}">#${rank}</span>
+        <span class="mm-bench-model-label">${ms.modelId}</span>
+      </div>
+      <div class="mm-bench-val ${valCls}" style="text-align:right">${tps}<span class="mm-bench-val-unit">t/s</span></div>
+      <div class="mm-bench-val" style="text-align:right">${ttftMs}<span class="mm-bench-val-unit">ms</span></div>
+      <div class="mm-bench-val" style="text-align:right">${totMs}<span class="mm-bench-val-unit">s</span></div>
+      <div class="mm-bench-bar-cell"><div class="mm-bench-bar-fill" style="width:${pct.toFixed(1)}%"></div></div>
+    </div>`;
+  });
+
+  tableEl.innerHTML = html;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

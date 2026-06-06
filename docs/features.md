@@ -25,7 +25,7 @@
 - ✅ System RAM usage bar
 - ✅ Cost estimation for cloud providers — per-response USD display
 - 🔥 Model library search — live search against ollama.com/library API
-- 🔥 Model benchmark runner — measure tokens/sec per model with a standard prompt
+- ✅ Model benchmark runner — measure tokens/sec, TTFT, and total time per model; ranked results table
 - 🔲 Hardware-aware model suggestions — recommend models that fit available VRAM
 - 🔲 GGUF file drag-and-drop import
 - 🔲 Favorite / pin models to top of selector
@@ -177,16 +177,16 @@
 
 | Area | ✅ Done | 🔥 Next | 🔲 Backlog |
 |------|---------|---------|-----------|
-| LM Studio DNA | 13 | 2 | 5 |
-| OpenCode DNA | 8 | 7 | 5 |
+| LM Studio DNA | 14 | 1 | 5 |
+| OpenCode DNA | 9 | 6 | 5 |
 | Modern UI | 15 | 0 | 4 |
 | Chat Experience | 20 | 0 | 3 |
 | Voice & Multimodal | 6 | 0 | 3 |
 | Model Comparison | 3 | 2 | 3 |
 | RAG / Knowledge | 6 | 1 | 5 |
 | Security | 4 | 0 | 4 |
-| **Total** | **75** | **12** | **32** |
+| **Total** | **77** | **10** | **32** |
 
 ---
 
-*Last updated: 2026-06-04*
+*Last updated: 2026-06-06*
