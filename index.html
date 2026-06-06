@@ -942,6 +942,7 @@
     <div class="mm-tabs">
       <button class="mm-tab active" id="mm-tab-installed" onclick="switchModelManagerTab('installed')">Installed</button>
       <button class="mm-tab" id="mm-tab-library" onclick="switchModelManagerTab('library')">Browse Library</button>
+      <button class="mm-tab" id="mm-tab-benchmark" onclick="switchModelManagerTab('benchmark')">&#x26A1; Benchmark</button>
     </div>
 
     <!-- Tab: Installed -->
@@ -984,6 +985,33 @@
       </div>
       <div class="mm-library-filters" id="mm-library-filters"></div>
       <div class="mm-library-grid" id="mm-library-grid"></div>
+    </div>
+
+    <!-- Tab: Benchmark -->
+    <div class="modal-body" id="mm-panel-benchmark" style="display:none">
+
+      <div class="mm-section">
+        <div class="mm-section-title">Benchmark Prompt</div>
+        <textarea id="mm-bench-prompt" class="mm-bench-prompt" rows="3">Explain the Fibonacci sequence and write a Python implementation with memoization.</textarea>
+      </div>
+
+      <div class="mm-section">
+        <div class="mm-section-title">Select models to benchmark</div>
+        <div id="mm-bench-model-list" class="mm-bench-model-list">
+          <div class="loading-row"><div class="spinner"></div> Loading…</div>
+        </div>
+      </div>
+
+      <div class="mm-bench-actions">
+        <button class="btn primary" id="mm-bench-run-btn" onclick="runBenchmark()">&#x26A1; Run Benchmark</button>
+        <span id="mm-bench-status" class="mm-bench-status"></span>
+      </div>
+
+      <div id="mm-bench-results" class="mm-bench-results" style="display:none">
+        <div class="mm-section-title">Results <span id="mm-bench-results-subtitle" class="mm-bench-results-subtitle"></span></div>
+        <div id="mm-bench-table" class="mm-bench-table"></div>
+      </div>
+
     </div>
 
   </div>
