@@ -71,6 +71,9 @@ let convSearchIdx        = 0;
 let bulkSelectMode = false;
 const bulkSelected = new Set();
 
+// Session cost accumulator (resets on page reload)
+let sessionCostTotal = 0;
+
 // Edit state
 let editingMessageIdx    = null;
 
@@ -1897,10 +1900,27 @@ function updateStats({ model, elapsed, prompt_tokens, completion_tokens }) {
       costWrap.style.display = '';
       document.getElementById('stat-cost').textContent =
         cost < 0.0001 ? '<$0.0001' : `$${cost.toFixed(4)}`;
+      sessionCostTotal += cost;
+      updateSessionCostDisplay();
     } else {
       costWrap.style.display = 'none';
     }
   }
+}
+
+function updateSessionCostDisplay() {
+  const wrap = document.getElementById('stat-session-cost-wrap');
+  const el   = document.getElementById('stat-session-cost');
+  if (!wrap || !el) return;
+  wrap.style.display = '';
+  el.textContent = sessionCostTotal < 0.0001 ? '<$0.0001' : `$${sessionCostTotal.toFixed(4)}`;
+}
+
+function resetSessionCost() {
+  sessionCostTotal = 0;
+  const wrap = document.getElementById('stat-session-cost-wrap');
+  if (wrap) wrap.style.display = 'none';
+  showToast('Session cost reset', 'success');
 }
 
 function clearMessages() {
@@ -3497,6 +3517,7 @@ function buildPaletteCommands() {
     { group: 'Settings',  icon: '📥',  label: 'Import Conversations (merge)',             action: () => { openConfigEditor(); setTimeout(() => { switchSettingsTab('backup'); document.getElementById('conv-import-file-input')?.click(); }, 300); } },
     { group: 'Settings',  icon: '🔑',  label: 'API Keys',                                action: () => openApiKeySettings() },
     { group: 'Settings',  icon: '🎨',  label: 'Appearance — accent color, font, density', action: () => openAppearanceSettings() },
+    { group: 'Settings',  icon: '💰',  label: 'Reset session cost total',                action: () => resetSessionCost() },
     { group: 'Tools',     icon: '🔧',  label: 'Toggle Agent Tools',        kbd: '⌘/',   action: () => document.getElementById('tools-toggle').click() },
     { group: 'Tools',     icon: '📄',  label: 'Prompt Templates',                        action: () => openTemplates() },
     { group: 'Tools',     icon: '📚',  label: 'Add to Knowledge Base',                   action: () => openRagUpload() },

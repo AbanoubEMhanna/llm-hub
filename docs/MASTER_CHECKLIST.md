@@ -12,7 +12,7 @@
 
 | Branch | Feature | Status |
 |--------|---------|--------|
-| `claude/sharp-davinci-uTjn1` | Import conversations (LLM Hub JSON + ChatGPT export) | 🔀 Open |
+| `claude/sharp-davinci-QphWM` | Session cost accumulator + docs/TODO.md refresh | 🔀 Open |
 
 ---
 
@@ -53,8 +53,8 @@
 - [x] GPU / VRAM usage monitoring — live VRAM bar per loaded model
 - [x] System RAM usage bar
 - [x] Cost estimation for cloud providers — per-response USD display
-- [ ] 🔥 Model library search — live search against ollama.com/library API
-- [ ] 🔥 Model benchmark runner — tokens/sec speed test per model
+- [x] Model library search — live filter by name, org, description, and category tag
+- [x] Model benchmark runner — tokens/sec, TTFT, total time per Ollama model; ranked results table
 - [ ] 🔥 Hardware-aware model suggestions — recommend models that fit available VRAM
 - [ ] GGUF file drag-and-drop import
 - [ ] Favorite / pin models to top of selector
@@ -87,7 +87,7 @@
 - [x] Backup & restore — all settings + conversations as a single JSON
 - [x] **Import conversations** — merge from LLM Hub JSON export or ChatGPT conversations.json
 - [ ] 🔥 Multi-tab chat — several conversations open side-by-side
-- [ ] Bulk conversation management — select all → delete / export
+- [x] Bulk conversation management — checkbox select, delete & export
 - [ ] Context window timeline visualization — which messages fit in context
 - [ ] Inline message threading / replies
 - [ ] Message timestamps toggle
@@ -169,7 +169,7 @@
 - [x] Syntax-highlighted code blocks (14 languages via Prism.js)
 - [x] Artifact rendering — HTML, SVG, JSX, TSX in sandboxed iframe
 - [x] Prompt templates with `{{variable}}` placeholders
-- [ ] 🔥 Live code editing inside artifact preview — edit + re-render inline
+- [x] Live code editing inside artifact preview — edit + re-render inline
 - [ ] 🔥 File tree sidebar — browse local filesystem via MCP filesystem server
 - [ ] 🔥 Multi-file context — select and attach multiple files as context
 - [ ] 🔥 Git integration — show diff, stage, commit, PR review workflow
@@ -190,7 +190,7 @@
 - [x] Collection management — create, query, delete
 - [x] SSE upload progress
 - [ ] 🔥 Web page crawl — paste URL, auto-scrape into knowledge base
-- [ ] 🔥 PDF attachment — extract text, embed, attach as context
+- [x] PDF attachment — client-side text extraction via PDF.js, attach as context
 - [ ] GitHub repository indexing — clone + embed all files
 - [ ] Auto-inject most-relevant chunks into every message (toggle)
 - [ ] Chunk preview and manual editing UI
@@ -208,7 +208,7 @@
 - [x] Voice input via browser Web Speech API
 - [x] Whisper server integration — local transcription
 - [x] Text-to-speech output — 🔊 Read button, Voice settings tab, voice/rate/pitch controls
-- [ ] 🔥 PDF attachment — extract text and attach as context
+- [x] PDF attachment — client-side text extraction via PDF.js, attach as context
 - [ ] Audio file transcription by drag-and-drop
 - [ ] Video frame extraction for vision models
 - [ ] Screen capture / screenshot attach from clipboard
@@ -224,7 +224,7 @@
 - [x] Real-time tokens/sec counter during generation
 - [x] GPU / VRAM usage monitoring — live VRAM bar per loaded model
 - [x] Cloud API cost estimation — per-response USD cost for OpenAI / Anthropic / Groq
-- [ ] Session cost accumulator — running total per session
+- [x] Session cost accumulator — running total per browser session with ↺ reset button
 - [ ] Response latency histogram per model
 - [ ] Performance dashboard — charts comparing models over time
 - [ ] CPU / GPU temperature display (where available)
@@ -294,8 +294,8 @@
 | Settings UI | 5 | 1 | 2 |
 | Security & Privacy | 4 | 0 | 5 |
 | Developer & Integration | 5 | 3 | 5 |
-| **Total** | **105** | **26** | **62** |
+| **Total** | **111** | **18** | **64** |
 
 ---
 
-*Last updated: 2026-05-31 — reflects all merged PRs #1–#30 plus import conversations feature.*
+*Last updated: 2026-06-07 — reflects all merged PRs #1–#36 plus session cost accumulator.*
