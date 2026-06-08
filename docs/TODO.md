@@ -92,7 +92,7 @@
 - ✅ Side-by-side split-screen comparison
 - ✅ Parallel streaming to two models simultaneously
 - ✅ Per-pane latency and token stats
-- 🔥 Response quality grading — thumbs up/down per pane
+- ✅ Response quality grading — thumbs up/down per pane with session win counter
 - 🔥 Diff view between two model responses
 - 🔲 Save comparison as a formatted report
 - 🔲 A/B test mode — random model selection, reveal after both respond
@@ -275,7 +275,7 @@
 | Core Infrastructure | 11 | — | 5 |
 | Model Management | 16 | 1 | 4 |
 | Chat Interface | 22 | 1 | 3 |
-| Model Comparison | 3 | 2 | 4 |
+| Model Comparison | 4 | 1 | 4 |
 | UI / Design | 13 | 1 | 4 |
 | Generation Modes | 4 | 1 | 3 |
 | AI Agent & Tools | 5 | 3 | 6 |
@@ -286,8 +286,8 @@
 | Settings UI | 5 | 1 | 2 |
 | Security & Privacy | 4 | — | 5 |
 | Developer & Integration | 5 | 3 | 5 |
-| **Total** | **111** | **18** | **59** |
+| **Total** | **112** | **17** | **59** |
 
 ---
 
-*Last updated: 2026-06-07 — reflects all merged PRs #1–#36 plus session cost accumulator.*
+*Last updated: 2026-06-08 — reflects all merged PRs #1–#37 plus response quality grading in model comparison.*

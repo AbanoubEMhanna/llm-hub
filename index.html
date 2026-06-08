@@ -296,6 +296,7 @@
         <span class="compare-title-sub">Send one prompt to two models side-by-side</span>
       </div>
       <div class="compare-header-actions">
+        <span class="compare-score" id="compare-score"></span>
         <button class="ghost-btn" onclick="swapCompareModels()" title="Swap left and right models">↔ Swap</button>
         <button class="ghost-btn" onclick="clearCompare()" title="Clear both panes">Clear</button>
         <button class="ghost-btn" onclick="toggleCompareMode()" title="Exit compare mode">Exit</button>
@@ -306,6 +307,7 @@
       <div class="compare-pane">
         <div class="compare-pane-header">
           <select id="compare-model-a" onchange="onCompareModelChange()"></select>
+          <span class="compare-wins" id="compare-wins-a"></span>
         </div>
         <div class="compare-messages" id="compare-msgs-a"></div>
       </div>
@@ -313,6 +315,7 @@
       <div class="compare-pane">
         <div class="compare-pane-header">
           <select id="compare-model-b" onchange="onCompareModelChange()"></select>
+          <span class="compare-wins" id="compare-wins-b"></span>
         </div>
         <div class="compare-messages" id="compare-msgs-b"></div>
       </div>

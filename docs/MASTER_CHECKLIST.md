@@ -12,7 +12,7 @@
 
 | Branch | Feature | Status |
 |--------|---------|--------|
-| `claude/sharp-davinci-QphWM` | Session cost accumulator + docs/TODO.md refresh | 🔀 Open |
+| `claude/sharp-davinci-EgHmJ` | Response quality grading in model comparison | 🔀 Open |
 
 ---
 
@@ -99,7 +99,7 @@
 - [x] Side-by-side split-screen comparison
 - [x] Parallel streaming to two models simultaneously
 - [x] Per-pane latency and token stats
-- [ ] 🔥 Response quality grading — thumbs up/down per pane
+- [x] Response quality grading — 👍/👎 per pane, session win counter in pane header + header score
 - [ ] 🔥 Diff view between two model responses
 - [ ] Save comparison as a formatted report
 - [ ] A/B test mode — random model selection, reveal after both respond
@@ -283,7 +283,7 @@
 | Core Infrastructure | 11 | 0 | 5 |
 | Model Management | 14 | 3 | 5 |
 | Chat Interface | 21 | 3 | 5 |
-| Model Comparison | 3 | 2 | 4 |
+| Model Comparison | 4 | 1 | 4 |
 | UI / Design | 13 | 1 | 4 |
 | Generation Modes | 4 | 2 | 3 |
 | AI Agent & Tools | 5 | 3 | 6 |
@@ -294,8 +294,8 @@
 | Settings UI | 5 | 1 | 2 |
 | Security & Privacy | 4 | 0 | 5 |
 | Developer & Integration | 5 | 3 | 5 |
-| **Total** | **111** | **18** | **64** |
+| **Total** | **112** | **17** | **64** |
 
 ---
 
-*Last updated: 2026-06-07 — reflects all merged PRs #1–#36 plus session cost accumulator.*
+*Last updated: 2026-06-08 — reflects all merged PRs #1–#37 plus response quality grading.*
