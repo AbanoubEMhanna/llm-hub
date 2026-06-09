@@ -92,7 +92,7 @@
 - ✅ Side-by-side split-screen comparison
 - ✅ Parallel streaming to two models simultaneously
 - ✅ Per-pane latency and token stats
-- ✅ Response quality grading — thumbs up/down per pane with session win counter
+- ✅ Response quality grading — header score; thumbs up/down per pane with session win counter
 - 🔥 Diff view between two model responses
 - 🔲 Save comparison as a formatted report
 - 🔲 A/B test mode — random model selection, reveal after both respond

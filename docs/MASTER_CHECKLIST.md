@@ -294,7 +294,7 @@
 | Settings UI | 5 | 1 | 2 |
 | Security & Privacy | 4 | 0 | 5 |
 | Developer & Integration | 5 | 3 | 5 |
-| **Total** | **112** | **17** | **64** |
+| **Total** | **106** | **25** | **62** |
 
 ---
 

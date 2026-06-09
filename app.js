@@ -3153,6 +3153,8 @@ function toggleCompareMode() {
     updateCompareEmptyState();
     updateCompareSendState();
     setTimeout(() => document.getElementById('compare-input')?.focus(), 50);
+  } else {
+    clearCompare();
   }
 }
 
@@ -3237,7 +3239,7 @@ function clearCompare() {
   updateCompareEmptyState();
 }
 
-function gradeCompareMsg(wrap, side, grade) {
+function gradeCompareMsg(wrap, grade) {
   const current = wrap.dataset.cmpGrade;
   const newGrade = current === grade ? null : grade;
   wrap.dataset.cmpGrade = newGrade || '';
@@ -3385,8 +3387,8 @@ async function sendCompare() {
         gw.innerHTML =
           '<button class="cmp-grade-btn cmp-grade-up" title="Good response">👍</button>' +
           '<button class="cmp-grade-btn cmp-grade-dn" title="Bad response">👎</button>';
-        gw.querySelector('.cmp-grade-up').addEventListener('click', () => gradeCompareMsg(wrap, side, 'up'));
-        gw.querySelector('.cmp-grade-dn').addEventListener('click', () => gradeCompareMsg(wrap, side, 'down'));
+        gw.querySelector('.cmp-grade-up').addEventListener('click', () => gradeCompareMsg(wrap, 'up'));
+        gw.querySelector('.cmp-grade-dn').addEventListener('click', () => gradeCompareMsg(wrap, 'down'));
         meta.appendChild(gw);
       }
     }
