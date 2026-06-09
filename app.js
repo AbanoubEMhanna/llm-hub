@@ -55,6 +55,9 @@ let compareActiveCount   = 0;
 let compareAbortA        = null;
 let compareAbortB        = null;
 
+// Compare grading (reset on clearCompare / mode toggle)
+// Grades are stored as data-cmp-grade attributes on each assistant msg-wrap
+
 // Template edit state
 let editingTemplateId    = null;
 let activeRunTemplateId  = null;
@@ -3150,6 +3153,8 @@ function toggleCompareMode() {
     updateCompareEmptyState();
     updateCompareSendState();
     setTimeout(() => document.getElementById('compare-input')?.focus(), 50);
+  } else {
+    clearCompare();
   }
 }
 
@@ -3225,7 +3230,38 @@ function clearCompare() {
   if (isLoading) stopGeneration();
   document.getElementById('compare-msgs-a').innerHTML = '';
   document.getElementById('compare-msgs-b').innerHTML = '';
+  const da = document.getElementById('compare-wins-a');
+  const db = document.getElementById('compare-wins-b');
+  const sc = document.getElementById('compare-score');
+  if (da) da.textContent = '';
+  if (db) db.textContent = '';
+  if (sc) sc.textContent = '';
   updateCompareEmptyState();
+}
+
+function gradeCompareMsg(wrap, grade) {
+  const current = wrap.dataset.cmpGrade;
+  const newGrade = current === grade ? null : grade;
+  wrap.dataset.cmpGrade = newGrade || '';
+  wrap.querySelector('.cmp-grade-up')?.classList.toggle('active', newGrade === 'up');
+  wrap.querySelector('.cmp-grade-dn')?.classList.toggle('active', newGrade === 'down');
+  updateCompareWinDisplay();
+}
+
+function updateCompareWinDisplay() {
+  const paneA = document.getElementById('compare-msgs-a');
+  const paneB = document.getElementById('compare-msgs-b');
+  const winsA = paneA ? paneA.querySelectorAll('[data-cmp-grade="up"]').length : 0;
+  const winsB = paneB ? paneB.querySelectorAll('[data-cmp-grade="up"]').length : 0;
+  const dispA = document.getElementById('compare-wins-a');
+  const dispB = document.getElementById('compare-wins-b');
+  const score = document.getElementById('compare-score');
+  if (dispA) dispA.textContent = winsA > 0 ? `${winsA} 👍` : '';
+  if (dispB) dispB.textContent = winsB > 0 ? `${winsB} 👍` : '';
+  if (score) {
+    const total = winsA + winsB;
+    score.textContent = total > 0 ? `A: ${winsA}  B: ${winsB}` : '';
+  }
 }
 
 function setCompareLoadingState(loading) {
@@ -3275,7 +3311,7 @@ async function sendCompare() {
   compareAbortA = new AbortController();
   compareAbortB = new AbortController();
 
-  const runOne = async (model, pane, controller) => {
+  const runOne = async (model, pane, controller, side) => {
     const wrap = document.createElement('div');
     wrap.className = 'msg-wrap';
     wrap.innerHTML = `
@@ -3342,10 +3378,24 @@ async function sendCompare() {
     compareActiveCount--;
     if (compareActiveCount <= 0) setCompareLoadingState(false);
     highlightNewCode();
+    // Grade buttons appear once generation is complete (only when there's content)
+    if (full) {
+      const meta = wrap.querySelector('.msg-meta');
+      if (meta) {
+        const gw = document.createElement('span');
+        gw.className = 'cmp-grade-wrap';
+        gw.innerHTML =
+          '<button class="cmp-grade-btn cmp-grade-up" title="Good response">👍</button>' +
+          '<button class="cmp-grade-btn cmp-grade-dn" title="Bad response">👎</button>';
+        gw.querySelector('.cmp-grade-up').addEventListener('click', () => gradeCompareMsg(wrap, 'up'));
+        gw.querySelector('.cmp-grade-dn').addEventListener('click', () => gradeCompareMsg(wrap, 'down'));
+        meta.appendChild(gw);
+      }
+    }
   };
 
-  runOne(compareModelA, paneA, compareAbortA);
-  runOne(compareModelB, paneB, compareAbortB);
+  runOne(compareModelA, paneA, compareAbortA, 'a');
+  runOne(compareModelB, paneB, compareAbortB, 'b');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
