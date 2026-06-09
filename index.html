@@ -298,6 +298,7 @@
       <div class="compare-header-actions">
         <span class="compare-score" id="compare-score"></span>
         <button class="ghost-btn" onclick="swapCompareModels()" title="Swap left and right models">↔ Swap</button>
+        <button class="ghost-btn" id="compare-diff-btn" onclick="showCompareDiff()" title="Show word-level diff between the two latest responses" disabled>⬍ Diff</button>
         <button class="ghost-btn" onclick="clearCompare()" title="Clear both panes">Clear</button>
         <button class="ghost-btn" onclick="toggleCompareMode()" title="Exit compare mode">Exit</button>
       </div>
@@ -1022,6 +1023,28 @@
 </div>
 
 <!-- Command Palette -->
+<!-- Compare Diff modal -->
+<div class="modal-overlay" id="compare-diff-modal" onclick="if(event.target===this)closeCompareDiff()">
+  <div class="modal modal-diff">
+    <div class="modal-header">
+      <div class="modal-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 00-2 2v14a2 2 0 002 2h4"/><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Response Diff
+        <span class="diff-legend">
+          <span class="diff-legend-del">− A only</span>
+          <span class="diff-legend-add">+ B only</span>
+        </span>
+      </div>
+      <button class="modal-close" onclick="closeCompareDiff()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="diff-prompt-label" id="diff-prompt-label"></div>
+      <div class="diff-models-row" id="diff-models-row"></div>
+      <div class="diff-body" id="diff-body"></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay palette-overlay" id="palette-modal">
   <div class="modal modal-palette">
     <div class="search-input-wrap">

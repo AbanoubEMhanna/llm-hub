@@ -93,7 +93,7 @@
 - ✅ Parallel streaming to two models simultaneously
 - ✅ Per-pane latency and token stats
 - ✅ Response quality grading — header score; thumbs up/down per pane with session win counter
-- 🔥 Diff view between two model responses
+- ✅ Diff view between two model responses — word-level LCS diff in modal, colour-coded ins/del
 - 🔲 Save comparison as a formatted report
 - 🔲 A/B test mode — random model selection, reveal after both respond
 - 🔲 Multi-model tournament — bracket-style comparison
