@@ -861,7 +861,21 @@
       <div class="modal-title">Add to Knowledge Base</div>
       <button class="icon-btn" onclick="closeModal('rag-modal')">×</button>
     </div>
-    <div class="modal-body">
+
+    <!-- Source tabs: Files | URL -->
+    <div class="rag-source-tabs">
+      <button class="rag-source-tab active" id="rag-tab-files" onclick="switchRagTab('files')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Files
+      </button>
+      <button class="rag-source-tab" id="rag-tab-url" onclick="switchRagTab('url')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        Web URL
+      </button>
+    </div>
+
+    <!-- Shared collection selector -->
+    <div class="modal-body" style="padding-top:12px">
       <label>Collection</label>
       <select class="model-select" id="rag-collection-select" onchange="onRagCollectionChange()">
         <option value="__new__">+ New collection</option>
@@ -870,21 +884,45 @@
         <label>Collection name</label>
         <input type="text" id="rag-new-name" placeholder="e.g. My Project Docs"/>
       </div>
-      <label>Files (.txt, .md, .json, .js, .ts, .py, etc.)</label>
-      <div class="rag-dropzone" id="rag-dropzone" onclick="document.getElementById('rag-files').click()">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <span>Drop files here or click to browse</span>
+
+      <!-- Files panel -->
+      <div id="rag-panel-files">
+        <label>Files (.txt, .md, .json, .js, .ts, .py, etc.)</label>
+        <div class="rag-dropzone" id="rag-dropzone" onclick="document.getElementById('rag-files').click()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Drop files here or click to browse</span>
+        </div>
+        <input type="file" id="rag-files" multiple style="display:none" onchange="onRagFiles(this.files)"/>
+        <div id="rag-file-list" class="rag-file-list"></div>
       </div>
-      <input type="file" id="rag-files" multiple style="display:none" onchange="onRagFiles(this.files)"/>
-      <div id="rag-file-list" class="rag-file-list"></div>
+
+      <!-- URL panel -->
+      <div id="rag-panel-url" style="display:none">
+        <label>Web page URL</label>
+        <p style="color:var(--muted);font-size:12px;margin-bottom:10px">
+          Paste a public URL — the page is fetched server-side, HTML is stripped, and the clean text is embedded into the collection.
+        </p>
+        <div class="rag-url-row">
+          <input class="rag-url-input" id="rag-url-input" type="url"
+            placeholder="https://example.com/article"
+            onkeydown="if(event.key==='Enter')crawlRagUrl()"/>
+          <button class="btn primary btn-sm" id="rag-crawl-btn" onclick="crawlRagUrl()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Crawl
+          </button>
+        </div>
+      </div>
+
+      <!-- Shared progress / status -->
       <div class="rag-progress" id="rag-progress" style="display:none">
         <div class="rag-progress-fill" id="rag-progress-fill" style="width:0%"></div>
       </div>
       <div id="rag-status" style="margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--muted)"></div>
     </div>
+
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('rag-modal')">Cancel</button>
-      <button class="btn primary" id="rag-upload-btn" onclick="uploadRagFiles()">Upload & Embed</button>
+      <button class="btn primary" id="rag-upload-btn" onclick="uploadRagFiles()">Upload &amp; Embed</button>
     </div>
   </div>
 </div>
