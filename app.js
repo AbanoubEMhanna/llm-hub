@@ -3237,6 +3237,8 @@ function clearCompare() {
   if (db) db.textContent = '';
   if (sc) sc.textContent = '';
   updateCompareEmptyState();
+  updateCompareDiffBtn();
+  closeCompareDiff();
 }
 
 function gradeCompareMsg(wrap, grade) {
@@ -3392,10 +3394,121 @@ async function sendCompare() {
         meta.appendChild(gw);
       }
     }
+    updateCompareDiffBtn();
   };
 
   runOne(compareModelA, paneA, compareAbortA, 'a');
   runOne(compareModelB, paneB, compareAbortB, 'b');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § COMPARE DIFF VIEW
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getLastAssistantText(paneEl) {
+  const msgs = paneEl.querySelectorAll('.msg-wrap[data-role="assistant"]');
+  if (!msgs.length) return null;
+  const last = msgs[msgs.length - 1];
+  const content = last.querySelector('.msg-content');
+  return content ? content.innerText.trim() : null;
+}
+
+function wordTokenize(str) {
+  return str.match(/\S+|\n+| +/g) || [];
+}
+
+function computeWordDiff(a, b) {
+  const tokA = wordTokenize(a);
+  const tokB = wordTokenize(b);
+  const m = tokA.length, n = tokB.length;
+
+  // Cap to avoid O(m*n) hanging on massive responses
+  if (m * n > 400000) {
+    return [{ type: 'del', text: a }, { type: 'add', text: b }];
+  }
+
+  // LCS via DP table
+  const dp = new Uint32Array((m + 1) * (n + 1));
+  const idx = (i, j) => i * (n + 1) + j;
+  for (let i = m - 1; i >= 0; i--) {
+    for (let j = n - 1; j >= 0; j--) {
+      dp[idx(i, j)] = tokA[i] === tokB[j]
+        ? dp[idx(i + 1, j + 1)] + 1
+        : Math.max(dp[idx(i + 1, j)], dp[idx(i, j + 1)]);
+    }
+  }
+
+  // Traceback
+  const parts = [];
+  let i = 0, j = 0;
+  while (i < m || j < n) {
+    if (i < m && j < n && tokA[i] === tokB[j]) {
+      parts.push({ type: 'eq', text: tokA[i] }); i++; j++;
+    } else if (j < n && (i >= m || dp[idx(i + 1, j)] <= dp[idx(i, j + 1)])) {
+      parts.push({ type: 'add', text: tokB[j] }); j++;
+    } else {
+      parts.push({ type: 'del', text: tokA[i] }); i++;
+    }
+  }
+  return parts;
+}
+
+function renderDiff(parts) {
+  return parts.map(p => {
+    const txt = p.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    if (p.type === 'eq')  return `<span>${txt}</span>`;
+    if (p.type === 'add') return `<ins class="diff-add">${txt}</ins>`;
+    return `<del class="diff-del">${txt}</del>`;
+  }).join('');
+}
+
+function updateCompareDiffBtn() {
+  const btn = document.getElementById('compare-diff-btn');
+  if (!btn) return;
+  const paneA = document.getElementById('compare-msgs-a');
+  const paneB = document.getElementById('compare-msgs-b');
+  const hasA = paneA && paneA.querySelector('.msg-wrap[data-role="assistant"]');
+  const hasB = paneB && paneB.querySelector('.msg-wrap[data-role="assistant"]');
+  btn.disabled = !(hasA && hasB);
+}
+
+function showCompareDiff() {
+  const paneA = document.getElementById('compare-msgs-a');
+  const paneB = document.getElementById('compare-msgs-b');
+  const textA = getLastAssistantText(paneA);
+  const textB = getLastAssistantText(paneB);
+  if (!textA || !textB) {
+    return toast('Both models need at least one response to diff', 'error');
+  }
+
+  const parts = computeWordDiff(textA, textB);
+  const html = renderDiff(parts);
+
+  const promptLabel = document.getElementById('diff-prompt-label');
+  const modelsRow   = document.getElementById('diff-models-row');
+  const diffBody    = document.getElementById('diff-body');
+
+  // Find the prompt that triggered the last pair
+  const lastUserA = paneA.querySelector('.msg-wrap[data-role="user"]:last-of-type');
+  const promptText = lastUserA ? lastUserA.querySelector('.msg-content')?.innerText?.trim() : '';
+
+  if (promptLabel) {
+    promptLabel.textContent = promptText ? `Prompt: "${promptText.slice(0, 120)}${promptText.length > 120 ? '…' : ''}"` : '';
+  }
+  if (modelsRow) {
+    const nameA = document.getElementById('compare-model-a')?.value || 'Model A';
+    const nameB = document.getElementById('compare-model-b')?.value || 'Model B';
+    modelsRow.innerHTML =
+      `<span class="diff-model-tag diff-model-a"><span class="diff-del-dot"></span>${nameA}</span>` +
+      `<span class="diff-model-tag diff-model-b"><span class="diff-add-dot"></span>${nameB}</span>`;
+  }
+  if (diffBody) diffBody.innerHTML = `<p class="diff-text">${html}</p>`;
+
+  document.getElementById('compare-diff-modal').classList.add('active');
+}
+
+function closeCompareDiff() {
+  document.getElementById('compare-diff-modal').classList.remove('active');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

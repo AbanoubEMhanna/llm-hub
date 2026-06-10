@@ -136,7 +136,7 @@
 - ✅ Parallel streaming to two models simultaneously
 - ✅ Per-pane latency and token stats
 - 🔥 Response quality grading — thumbs up/down per pane
-- 🔥 Diff view between two model responses
+- ✅ Diff view between two model responses — word-level LCS diff modal, colour-coded ins/del
 - 🔲 Save comparison as formatted report
 - 🔲 A/B test mode — random model selection, reveal after both respond
 - 🔲 Multi-model tournament — bracket-style comparison

@@ -283,7 +283,7 @@
 | Core Infrastructure | 11 | 0 | 5 |
 | Model Management | 14 | 3 | 5 |
 | Chat Interface | 21 | 3 | 5 |
-| Model Comparison | 4 | 1 | 4 |
+| Model Comparison | 5 | 0 | 4 |
 | UI / Design | 13 | 1 | 4 |
 | Generation Modes | 4 | 2 | 3 |
 | AI Agent & Tools | 5 | 3 | 6 |
@@ -294,7 +294,7 @@
 | Settings UI | 5 | 1 | 2 |
 | Security & Privacy | 4 | 0 | 5 |
 | Developer & Integration | 5 | 3 | 5 |
-| **Total** | **106** | **25** | **62** |
+| **Total** | **107** | **24** | **62** |
 
 ---
 
