@@ -13,6 +13,7 @@ const PROXY = 'http://localhost:8765';
 
 let conversations  = JSON.parse(localStorage.getItem('llm-convs')     || '[]');
 let folders        = JSON.parse(localStorage.getItem('llm-folders')   || '[]');
+let favoriteModels = JSON.parse(localStorage.getItem('llm-fav-models') || '[]');
 let userPresets    = JSON.parse(localStorage.getItem('llm-presets')   || '{}');
 let templates      = JSON.parse(localStorage.getItem('llm-templates') || 'null') || defaultTemplates();
 let userSettings   = JSON.parse(localStorage.getItem('llm-settings')  || '{"theme":"dark"}');
@@ -287,6 +288,7 @@ async function loadModels() {
     fillModelSelect(document.getElementById('compare-model-b'));
     document.getElementById('model-loading').style.display = 'none';
     document.getElementById('model-select').style.display  = 'block';
+    updateFavModelBtn();
 
     // Also check running models
     await checkRunningModels();
@@ -444,9 +446,34 @@ function estimateCost(provider, modelName, promptTokens, completionTokens) {
 }
 
 
+function buildModelOption(m) {
+  const o = document.createElement('option');
+  o.value = m.id;
+  const name = m.id.replace(MODEL_ID_PREFIX_RE, '');
+  const meta = modelMetadata[m.id] || {};
+  const caps = detectModelCapabilities(m.id, meta);
+  const parts = [name];
+  if (meta.parameter_size) parts.push(`(${meta.parameter_size})`);
+  if (meta.size_label)     parts.push(`[${meta.size_label}]`);
+  if (meta.context_length) parts.push(`ctx:${(meta.context_length/1024).toFixed(0)}K`);
+  if (caps.length)         parts.push(caps.map(c => CAP_ICONS[c] || c).join(''));
+  o.text = parts.join(' ');
+  return o;
+}
+
 function fillModelSelect(sel) {
   if (!sel) return;
   sel.innerHTML = '<option value="">— select model —</option>';
+
+  // Pinned models at the top
+  const pinnedAvailable = favoriteModels.map(id => availableModels.find(x => x.id === id)).filter(Boolean);
+  if (pinnedAvailable.length) {
+    const ogPin = document.createElement('optgroup');
+    ogPin.label = '★ Pinned';
+    pinnedAvailable.forEach(m => ogPin.appendChild(buildModelOption(m)));
+    sel.appendChild(ogPin);
+  }
+
   const groups = {};
   for (const m of availableModels) {
     (groups[m.owned_by] = groups[m.owned_by] || []).push(m);
@@ -462,18 +489,7 @@ function fillModelSelect(sel) {
       return fa !== fb ? fa.localeCompare(fb) : a.id.localeCompare(b.id);
     });
     for (const m of sortedModels) {
-      const o = document.createElement('option');
-      o.value = m.id;
-      const name = m.id.replace(MODEL_ID_PREFIX_RE, '');
-      const meta = modelMetadata[m.id] || {};
-      const caps = detectModelCapabilities(m.id, meta);
-      const parts = [name];
-      if (meta.parameter_size) parts.push(`(${meta.parameter_size})`);
-      if (meta.size_label)     parts.push(`[${meta.size_label}]`);
-      if (meta.context_length) parts.push(`ctx:${(meta.context_length/1024).toFixed(0)}K`);
-      if (caps.length)         parts.push(caps.map(c => CAP_ICONS[c] || c).join(''));
-      o.text = parts.join(' ');
-      og.appendChild(o);
+      og.appendChild(buildModelOption(m));
     }
     sel.appendChild(og);
   }
@@ -512,6 +528,7 @@ async function onModelChange() {
   updateModelInfoCard();
   loadModelParams(selectedModel);
   updateParamProfileBadge();
+  updateFavModelBtn();
   document.getElementById('send-btn').disabled = !selectedModel || isLoading;
   updateInputTokenCount();
 }
@@ -875,7 +892,35 @@ function initDragDrop() {
 // § FOLDERS
 // ─────────────────────────────────────────────────────────────────────────────
 
-function saveFolders() { localStorage.setItem('llm-folders', JSON.stringify(folders)); }
+function saveFolders()        { localStorage.setItem('llm-folders',    JSON.stringify(folders)); }
+function saveFavoriteModels() { localStorage.setItem('llm-fav-models', JSON.stringify(favoriteModels)); }
+
+function toggleFavoriteModel() {
+  if (!selectedModel) return;
+  const idx = favoriteModels.indexOf(selectedModel);
+  if (idx === -1) favoriteModels.push(selectedModel);
+  else            favoriteModels.splice(idx, 1);
+  saveFavoriteModels();
+  for (const id of ['model-select', 'compare-model-a', 'compare-model-b']) {
+    const sel = document.getElementById(id);
+    if (!sel) continue;
+    const prev = sel.value;
+    fillModelSelect(sel);
+    sel.value = prev;
+  }
+  updateFavModelBtn();
+}
+
+function updateFavModelBtn() {
+  const btn = document.getElementById('fav-model-btn');
+  if (!btn) return;
+  if (!selectedModel) { btn.style.display = 'none'; return; }
+  btn.style.display = 'flex';
+  const isFav = favoriteModels.includes(selectedModel);
+  btn.textContent = isFav ? '★ Pinned' : '☆ Pin to top';
+  btn.classList.toggle('is-fav', isFav);
+  btn.title = isFav ? 'Remove from pinned models' : 'Pin to top of model list';
+}
 
 function createFolder() {
   const name = prompt('Folder name:');

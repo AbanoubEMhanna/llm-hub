@@ -50,7 +50,7 @@
 - ✅ Model benchmark runner — tokens/sec, TTFT, total time per Ollama model; ranked results table
 - 🔥 Hardware-aware model suggestions — recommend models that fit available VRAM
 - 🔲 GGUF file drag-and-drop import
-- 🔲 Favorite / pin models to top of selector
+- ✅ Favorite / pin models to top of selector
 - 🔲 Model update notifications — alert when a newer version exists
 - 🔲 Performance dashboard — tokens/sec charts over time per model
 
