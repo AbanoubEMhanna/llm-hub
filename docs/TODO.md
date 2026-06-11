@@ -182,7 +182,7 @@
 - ✅ Cosine-similarity vector search
 - ✅ Collection management — create, query, delete
 - ✅ SSE upload progress
-- 🔥 Web page crawl — paste URL, auto-scrape into knowledge base
+- ✅ Web page crawl — paste URL, fetch server-side, strip HTML, embed into collection
 - 🔲 GitHub repository indexing — clone + embed all files
 - 🔲 Auto-inject most-relevant chunks into every message (toggle)
 - 🔲 Chunk preview and manual editing UI
@@ -280,14 +280,14 @@
 | Generation Modes | 4 | 1 | 3 |
 | AI Agent & Tools | 5 | 3 | 6 |
 | Code Features | 4 | 4 | 5 |
-| RAG / Knowledge Base | 5 | 1 | 7 |
+| RAG / Knowledge Base | 6 | — | 7 |
 | Voice & Multimodal | 6 | — | 3 |
 | Hardware Stats | 8 | — | 3 |
 | Settings UI | 5 | 1 | 2 |
 | Security & Privacy | 4 | — | 5 |
 | Developer & Integration | 5 | 3 | 5 |
-| **Total** | **112** | **17** | **59** |
+| **Total** | **113** | **16** | **59** |
 
 ---
 
-*Last updated: 2026-06-08 — reflects all merged PRs #1–#37 plus response quality grading in model comparison.*
+*Last updated: 2026-06-10 — reflects all merged PRs #1–#39 plus web page crawl for RAG.*

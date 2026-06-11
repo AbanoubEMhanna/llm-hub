@@ -1711,6 +1711,104 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // ── RAG: crawl URL and embed into collection
+    if (req.method === 'POST' && url.pathname === '/v1/rag/crawl') {
+      const body = await readBody(req);
+      const { url: crawlUrl, collection_id, collection_name } = body;
+      if (!crawlUrl) { sendJSON(res, 400, { error: 'url required' }); return; }
+
+      let parsed;
+      try { parsed = new URL(crawlUrl); } catch { sendJSON(res, 400, { error: 'Invalid URL' }); return; }
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        sendJSON(res, 400, { error: `Unsupported protocol: ${parsed.protocol}` }); return;
+      }
+      if (isPrivateHost(parsed.hostname)) {
+        sendJSON(res, 400, { error: `Blocked: cannot fetch private/local addresses (${parsed.hostname})` }); return;
+      }
+
+      setCORS(res);
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      });
+      const emit = (type, payload) => {
+        try { res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`); } catch {}
+      };
+
+      try {
+        emit('status', { message: `Fetching ${crawlUrl}…` });
+
+        const rawHtml = await new Promise((resolve, reject) => {
+          const TIMEOUT_MS = 15000;
+          const MAX_BYTES  = 4 * 1024 * 1024;
+          const mod = parsed.protocol === 'https:' ? https : http;
+          const r = mod.get(crawlUrl, {
+            headers: { 'User-Agent': 'LocalLLMHub/3.1', 'Accept': 'text/html,text/plain,*/*' },
+            timeout: TIMEOUT_MS,
+          }, (httpRes) => {
+            if ([301, 302, 303, 307, 308].includes(httpRes.statusCode) && httpRes.headers.location) {
+              try {
+                const next = new URL(httpRes.headers.location, crawlUrl);
+                if (isPrivateHost(next.hostname)) return reject(new Error('Redirect to private address blocked'));
+              } catch { /* ignore */ }
+              return reject(new Error(`Redirect to ${httpRes.headers.location} — retry with the final URL`));
+            }
+            let buf = '', bytes = 0, aborted = false;
+            httpRes.on('data', (c) => {
+              if (aborted) return;
+              bytes += c.length;
+              if (bytes > MAX_BYTES) { aborted = true; r.destroy(); return reject(new Error('Page too large (>4 MB)')); }
+              buf += c;
+            });
+            httpRes.on('end', () => { if (!aborted) resolve(buf); });
+          });
+          r.on('timeout', () => { r.destroy(); reject(new Error('Fetch timed out after 15 s')); });
+          r.on('error', reject);
+        });
+
+        emit('status', { message: 'Extracting text…' });
+
+        const text = rawHtml
+          .replace(/<script[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[\s\S]*?<\/style>/gi, '')
+          .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+          .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+          .replace(/<header[\s\S]*?<\/header>/gi, '')
+          .replace(/<!--[\s\S]*?-->/g, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/\s{2,}/g, ' ')
+          .trim();
+
+        if (!text || text.length < 50) {
+          emit('error', { message: 'Could not extract readable text from this page' });
+          try { res.end(); } catch {}
+          return;
+        }
+
+        emit('status', { message: `Embedding ${text.length.toLocaleString()} characters…` });
+
+        const result = await rag.addDocument({
+          collectionId:   collection_id || null,
+          collectionName: collection_name || (parsed.hostname + parsed.pathname).slice(0, 60),
+          source:         crawlUrl,
+          text,
+          onProgress: ({ done, total }) => emit('progress', { done, total }),
+        });
+        emit('done', result);
+      } catch (e) {
+        emit('error', { message: e.message });
+      }
+      try { res.end(); } catch {}
+      return;
+    }
+
     // ── RAG: get collection
     if (req.method === 'GET' && url.pathname.startsWith('/v1/rag/collections/')) {
       const id = url.pathname.split('/').pop();

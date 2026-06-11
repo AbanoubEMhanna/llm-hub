@@ -150,7 +150,7 @@
 - ✅ Cosine-similarity vector search
 - ✅ Collection management — create, query, delete
 - ✅ SSE upload progress
-- 🔥 Web page crawl — paste URL, auto-scrape into knowledge base
+- ✅ Web page crawl — paste URL, fetch server-side, strip HTML, embed into collection
 - ✅ PDF attachment — extract text, attach as inline document context (chat input)
 - 🔲 GitHub repository indexing — clone + embed all files
 - 🔲 Auto-inject most-relevant chunks into every message

@@ -2892,6 +2892,8 @@ function openRagUpload() {
   document.getElementById('rag-progress').style.display = 'none';
   document.getElementById('rag-status').textContent = '';
   document.getElementById('rag-new-name').value = '';
+  document.getElementById('rag-url-input').value = '';
+  switchRagTab('files');
 
   const sel = document.getElementById('rag-collection-select');
   sel.innerHTML = '<option value="__new__">+ New collection</option>';
@@ -2902,6 +2904,76 @@ function openRagUpload() {
   }
   onRagCollectionChange();
   openModal('rag-modal');
+}
+
+function switchRagTab(tab) {
+  const isFiles = tab === 'files';
+  document.getElementById('rag-panel-files').style.display = isFiles ? '' : 'none';
+  document.getElementById('rag-panel-url').style.display  = isFiles ? 'none' : '';
+  document.getElementById('rag-upload-btn').style.display = isFiles ? '' : 'none';
+  document.getElementById('rag-tab-files').classList.toggle('active', isFiles);
+  document.getElementById('rag-tab-url').classList.toggle('active', !isFiles);
+  document.getElementById('rag-progress').style.display = 'none';
+  document.getElementById('rag-status').textContent = '';
+}
+
+async function crawlRagUrl() {
+  const urlVal = document.getElementById('rag-url-input').value.trim();
+  if (!urlVal) return toast('Enter a URL first', 'error');
+
+  const sel     = document.getElementById('rag-collection-select');
+  const colId   = sel.value === '__new__' ? null : sel.value;
+  const newName = document.getElementById('rag-new-name').value.trim();
+  if (!colId && !newName) return toast('Name the new collection', 'error');
+
+  const btn = document.getElementById('rag-crawl-btn');
+  btn.disabled = true;
+  document.getElementById('rag-progress').style.display = 'block';
+  document.getElementById('rag-progress-fill').style.width = '0%';
+  document.getElementById('rag-status').textContent = 'Sending request…';
+
+  try {
+    const body = { url: urlVal, ...(colId ? { collection_id: colId } : { collection_name: newName }) };
+    const res = await fetch(`${PROXY}/v1/rag/crawl`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf('\n\n')) >= 0) {
+        const line = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        if (!line.startsWith('data: ')) continue;
+        let evt; try { evt = JSON.parse(line.slice(6)); } catch { continue; }
+        if (evt.type === 'status') {
+          document.getElementById('rag-status').textContent = evt.message;
+        } else if (evt.type === 'progress') {
+          const pct = Math.round((evt.done / evt.total) * 100);
+          document.getElementById('rag-progress-fill').style.width = pct + '%';
+        } else if (evt.type === 'done') {
+          document.getElementById('rag-status').textContent = '✓ Crawled and embedded';
+          await loadRagCollections();
+          setTimeout(() => closeModal('rag-modal'), 700);
+          toast('Page crawled and embedded', 'success');
+        } else if (evt.type === 'error') {
+          throw new Error(evt.message);
+        }
+      }
+    }
+  } catch (e) {
+    document.getElementById('rag-status').textContent = '❌ ' + e.message;
+    toast('Crawl failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function onRagCollectionChange() {
