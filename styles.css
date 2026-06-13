@@ -684,6 +684,7 @@ input[type=range]::-webkit-slider-thumb {
 }
 .msg-wrap:hover .msg-timestamp,
 .show-timestamps .msg-timestamp { opacity: 1; }
+.show-timestamps .msg-actions { opacity: 1; }
 
 .bubble-images { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
 .bubble-img { max-width: 200px; max-height: 180px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; }

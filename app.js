@@ -3903,7 +3903,7 @@ function initHotkeys() {
     }
 
     // T toggles message timestamps (only if not typing)
-    if (e.key === 't' && !meta && document.activeElement?.tagName !== 'TEXTAREA' && document.activeElement?.tagName !== 'INPUT') {
+    if ((e.key === 't' || e.key === 'T') && !meta && document.activeElement?.tagName !== 'TEXTAREA' && document.activeElement?.tagName !== 'INPUT') {
       toggleTimestamps();
       return;
     }
