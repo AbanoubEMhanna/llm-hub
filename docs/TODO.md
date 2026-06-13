@@ -83,7 +83,7 @@
 - 🔥 Multi-tab chat — several conversations open side-by-side
 - 🔲 Context window timeline visualization — which messages fit in context
 - 🔲 Inline message threading / replies
-- 🔲 Message timestamps toggle
+- ✅ Message timestamps toggle — hover to peek, T key or ⏱ button to always show
 
 ---
 

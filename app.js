@@ -14,6 +14,7 @@ const PROXY = 'http://localhost:8765';
 let conversations  = JSON.parse(localStorage.getItem('llm-convs')     || '[]');
 let folders        = JSON.parse(localStorage.getItem('llm-folders')   || '[]');
 let favoriteModels = JSON.parse(localStorage.getItem('llm-fav-models') || '[]');
+let showTimestamps = localStorage.getItem('llm-show-ts') === '1';
 let userPresets    = JSON.parse(localStorage.getItem('llm-presets')   || '{}');
 let templates      = JSON.parse(localStorage.getItem('llm-templates') || 'null') || defaultTemplates();
 let userSettings   = JSON.parse(localStorage.getItem('llm-settings')  || '{"theme":"dark"}');
@@ -219,6 +220,8 @@ function defaultTemplates() {
 async function init() {
   applyTheme(userSettings.theme || 'dark');
   applyAppearance();
+  if (showTimestamps) document.body.classList.add('show-timestamps');
+  document.getElementById('ts-btn')?.classList.toggle('active', showTimestamps);
   await checkHealth();
   await loadModels();
   await loadTools();
@@ -235,6 +238,7 @@ async function init() {
   updateInputTokenCount();
   setInterval(checkHealth, 30000);
   setInterval(loadSystemInfo, 15000);  // Refresh system RAM + running models
+  setInterval(refreshTimestamps, 60000);
 }
 
 async function checkHealth() {
@@ -1390,17 +1394,18 @@ async function send() {
     userContent = text;
   }
 
-  conv.messages.push({ role: 'user', content: userContent });
+  const msgTs = Date.now();
+  conv.messages.push({ role: 'user', content: userContent, ts: msgTs });
   if (conv.messages.length === 1 && text) {
     conv.title = text.slice(0, 40) + (text.length > 40 ? '…' : '');
   }
-  conv.ts = Date.now();
+  conv.ts = msgTs;
   saveConvs();
   renderConvList();
 
   const imgsForBubble = attachments.filter(a => a.type === 'image' && a.dataUrl);
   const pdfsForBubble = attachments.filter(a => a.type === 'pdf' && a.text && !a.loading);
-  appendUserBubble(conv.messages.length - 1, text, imgsForBubble, pdfsForBubble);
+  appendUserBubble(conv.messages.length - 1, text, imgsForBubble, pdfsForBubble, msgTs);
   attachments = []; renderAttachments();
 
   await streamAssistantReply(conv);
@@ -1535,7 +1540,7 @@ async function streamAssistantReply(conv) {
             if (speedInterval) { clearInterval(speedInterval); speedInterval = null; }
             if (speedEl) { speedEl.remove(); speedEl = null; }
             updateStats({ ...evt, completion_tokens: evt.completion_tokens ?? deltaCount });
-            conv.messages.push({ role: 'assistant', content: fullText });
+            conv.messages.push({ role: 'assistant', content: fullText, ts: Date.now() });
             saveConvs();
             reRenderLastAssistant(conv, fullText);
             // Refresh running models + system info (model is now loaded)
@@ -1553,7 +1558,7 @@ async function streamAssistantReply(conv) {
     if (e.name === 'AbortError') {
       if (fullText) {
         textDiv.innerHTML = renderMarkdown(fullText) + '<div class="stopped-marker">⏹ Stopped</div>';
-        conv.messages.push({ role: 'assistant', content: fullText, stopped: true });
+        conv.messages.push({ role: 'assistant', content: fullText, stopped: true, ts: Date.now() });
         saveConvs();
         reRenderLastAssistant(conv, fullText, true);
       } else {
@@ -1755,9 +1760,9 @@ function renderMessages(msgs) {
           }
         }
       }
-      appendUserBubble(i, text, imgs, pdfs);
+      appendUserBubble(i, text, imgs, pdfs, m.ts || 0);
     } else if (m.role === 'assistant') {
-      const w = buildAssistantWrap(i, m.content || '', m.stopped);
+      const w = buildAssistantWrap(i, m.content || '', m.stopped, m.ts || 0);
       container.appendChild(w);
       applyCollapse(w);
     }
@@ -1791,7 +1796,7 @@ function applyCollapse(wrap) {
   });
 }
 
-function appendUserBubble(idx, text, imgs = [], pdfs = []) {
+function appendUserBubble(idx, text, imgs = [], pdfs = [], ts = 0) {
   const container = document.getElementById('messages');
   const wrap = document.createElement('div');
   wrap.className = 'msg-wrap';
@@ -1814,6 +1819,7 @@ function appendUserBubble(idx, text, imgs = [], pdfs = []) {
       </div>
     </div>
     ${idx >= 0 ? `<div class="msg-actions" style="justify-content:flex-end">
+      ${formatTs(ts, 'right')}
       <button onclick="branchFromMessage(${idx})" title="Branch conversation from here">⑂ Branch</button>
       <button onclick="openEditMessage(${idx})" title="Edit & regenerate">✏️ Edit</button>
       <button onclick="copyMessage(${idx})" title="Copy">📋 Copy</button>
@@ -1823,7 +1829,7 @@ function appendUserBubble(idx, text, imgs = [], pdfs = []) {
   applyCollapse(wrap);
 }
 
-function buildAssistantWrap(idx, content, stopped = false) {
+function buildAssistantWrap(idx, content, stopped = false, ts = 0) {
   const wrap = document.createElement('div');
   wrap.className = 'msg-wrap';
   if (idx >= 0) wrap.dataset.msgIdx = idx;
@@ -1850,6 +1856,7 @@ function buildAssistantWrap(idx, content, stopped = false) {
       <button onclick="copyMessage(${idx})" title="Copy">📋 Copy</button>
       <button id="tts-btn-${idx}" onclick="speakMessage(${idx})" title="Read aloud">🔊 Read</button>
       <button class="danger" onclick="deleteMessage(${idx})" title="Delete">🗑 Delete</button>
+      ${formatTs(ts, 'left')}
     </div>` : ''}`;
 
   const bubble = wrap.querySelector('.bubble');
@@ -3895,6 +3902,12 @@ function initHotkeys() {
       return;
     }
 
+    // T toggles message timestamps (only if not typing)
+    if ((e.key === 't' || e.key === 'T') && !meta && document.activeElement?.tagName !== 'TEXTAREA' && document.activeElement?.tagName !== 'INPUT') {
+      toggleTimestamps();
+      return;
+    }
+
     if (!meta) return;
 
     if (e.key === 'p' || e.key === 'P') { e.preventDefault(); openPalette(); return; }
@@ -3942,6 +3955,45 @@ function showToast(msg, kind = '') { return toast(msg, kind); }
 // ─────────────────────────────────────────────────────────────────────────────
 // § UTILS
 // ─────────────────────────────────────────────────────────────────────────────
+
+function formatTs(ts, margin = '') {
+  if (!ts) return '';
+  const d = new Date(ts), diff = Date.now() - ts;
+  let rel;
+  if      (diff < 60000)     rel = 'just now';
+  else if (diff < 3600000)   rel = `${Math.floor(diff / 60000)}m ago`;
+  else if (diff < 86400000)  rel = `${Math.floor(diff / 3600000)}h ago`;
+  else if (diff < 172800000) rel = 'yesterday';
+  else rel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const abs  = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const full = d.toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'medium' });
+  const sty  = margin ? ` style="margin-${margin}:auto"` : '';
+  return `<time class="msg-timestamp" data-ts="${ts}" datetime="${d.toISOString()}" title="${escHtml(full)}"${sty}>${escHtml(rel)} · ${escHtml(abs)}</time>`;
+}
+
+function refreshTimestamps() {
+  document.querySelectorAll('time.msg-timestamp[data-ts]').forEach(el => {
+    const ts = +el.dataset.ts;
+    if (!ts) return;
+    const d = new Date(ts), diff = Date.now() - ts;
+    let rel;
+    if      (diff < 60000)     rel = 'just now';
+    else if (diff < 3600000)   rel = `${Math.floor(diff / 60000)}m ago`;
+    else if (diff < 86400000)  rel = `${Math.floor(diff / 3600000)}h ago`;
+    else if (diff < 172800000) rel = 'yesterday';
+    else rel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const abs = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    el.textContent = `${rel} · ${abs}`;
+  });
+}
+
+function toggleTimestamps() {
+  showTimestamps = !showTimestamps;
+  localStorage.setItem('llm-show-ts', showTimestamps ? '1' : '0');
+  document.body.classList.toggle('show-timestamps', showTimestamps);
+  document.getElementById('ts-btn')?.classList.toggle('active', showTimestamps);
+  toast(showTimestamps ? 'Timestamps on' : 'Timestamps off');
+}
 
 function escHtml(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

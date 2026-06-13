@@ -675,6 +675,17 @@ input[type=range]::-webkit-slider-thumb {
 .msg-actions .reaction-up.active { color: var(--green) !important; border-color: color-mix(in srgb, var(--green) 40%, var(--border)) !important; background: color-mix(in srgb, var(--green) 8%, transparent) !important; }
 .msg-actions .reaction-dn.active { color: var(--red) !important; border-color: color-mix(in srgb, var(--red) 40%, var(--border)) !important; background: color-mix(in srgb, var(--red) 8%, transparent) !important; }
 
+/* Message timestamps — visible on hover or when toggle is on */
+.msg-timestamp {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  opacity: 0; transition: opacity .15s;
+  white-space: nowrap; cursor: default; user-select: none;
+  align-self: center;
+}
+.msg-wrap:hover .msg-timestamp,
+.show-timestamps .msg-timestamp { opacity: 1; }
+.show-timestamps .msg-actions { opacity: 1; }
+
 .bubble-images { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
 .bubble-img { max-width: 200px; max-height: 180px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; }
 
