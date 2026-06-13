@@ -130,7 +130,7 @@
 - ✅ JSON mode — forces `response_format: json_object` for structured output
 - ✅ Sampling presets: Precise / Balanced / Creative
 - ✅ Advanced parameters — Top-P, Top-K, Repeat penalty, Frequency penalty
-- 🔥 Structured output with JSON schema editor — enforce specific JSON structure
+- ✅ Structured output with JSON schema editor — enforce specific JSON structure; preset templates + Format button
 - 🔲 Grammar-constrained generation (GBNF / regex)
 - 🔲 Seed control — reproducible outputs
 - 🔲 Stop sequences configuration

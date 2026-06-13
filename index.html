@@ -65,6 +65,9 @@
     <button class="topbar-btn" onclick="toggleJsonMode()" title="JSON mode — force structured JSON output" id="json-btn">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
     </button>
+    <button class="topbar-btn" onclick="toggleSchemaMode()" title="JSON Schema mode — enforce output structure" id="schema-btn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H7a4 4 0 00-4 4v2a2 2 0 01-2 2 2 2 0 012 2v2a4 4 0 004 4h1"/><path d="M16 3h1a4 4 0 014 4v2a2 2 0 002 2 2 2 0 00-2 2v2a4 4 0 01-4 4h-1"/></svg>
+    </button>
     <button class="topbar-btn" onclick="toggleCompareMode()" title="Compare models" id="compare-btn">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
     </button>
@@ -250,6 +253,12 @@
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
         <span>JSON Mode — response will be valid JSON</span>
         <button onclick="toggleJsonMode()" title="Turn off">×</button>
+      </div>
+      <div class="schema-indicator" id="schema-indicator">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H7a4 4 0 00-4 4v2a2 2 0 01-2 2 2 2 0 012 2v2a4 4 0 004 4h1"/><path d="M16 3h1a4 4 0 014 4v2a2 2 0 002 2 2 2 0 00-2 2v2a4 4 0 01-4 4h-1"/></svg>
+        <span>JSON Schema Mode</span>
+        <span class="schema-validity" id="schema-validity"></span>
+        <button onclick="toggleSchemaMode()" title="Turn off">×</button>
       </div>
       <div class="voice-status" id="voice-status">
         <div class="voice-dot"></div>
@@ -454,6 +463,42 @@
           <input type="range" min="-2" max="2" step="0.1" value="0" id="freq-slider"
             oninput="document.getElementById('freq-val').textContent=parseFloat(this.value).toFixed(1)"/>
         </details>
+      </div>
+    </div>
+
+    <!-- Structured Output (collapsed by default) -->
+    <div class="sidebar-panel" data-open="false" id="schema-panel">
+      <button class="panel-toggle" onclick="togglePanel(this)">
+        <span class="panel-label">Structured Output</span>
+        <div class="panel-badge schema-panel-badge" id="schema-panel-badge" style="display:none">ON</div>
+        <svg class="panel-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="panel-content">
+        <label class="tool-toggle schema-toggle-row">
+          <div class="toggle" id="schema-toggle" onclick="toggleSchemaMode()"></div>
+          Enforce JSON schema
+        </label>
+        <div class="schema-editor-wrap" id="schema-editor-wrap">
+          <div class="schema-editor-header">
+            <span class="schema-editor-label">JSON Schema</span>
+            <span class="schema-validity schema-validity-panel" id="schema-validity-panel"></span>
+            <button class="schema-fmt-btn" onclick="formatSchema()" title="Format / pretty-print JSON">Format</button>
+          </div>
+          <textarea
+            class="schema-editor"
+            id="schema-editor"
+            placeholder='{"type":"object","properties":{"answer":{"type":"string"},"confidence":{"type":"number"}},"required":["answer"]}'
+            oninput="onSchemaEdit()"
+            spellcheck="false"
+          ></textarea>
+          <div class="schema-presets">
+            <span class="schema-presets-label">Presets:</span>
+            <button class="schema-preset-chip" onclick="applySchemaPreset('qa')">Q&amp;A</button>
+            <button class="schema-preset-chip" onclick="applySchemaPreset('list')">List</button>
+            <button class="schema-preset-chip" onclick="applySchemaPreset('step')">Steps</button>
+            <button class="schema-preset-chip" onclick="applySchemaPreset('kv')">Key-value</button>
+          </div>
+        </div>
       </div>
     </div>
 
