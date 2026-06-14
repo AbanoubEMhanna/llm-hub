@@ -23,6 +23,10 @@ const crypto     = require('crypto');
 const os         = require('os');
 const { URL }    = require('url');
 
+const { isPrivateHost }    = require('./lib/ssrf');
+const { chunkText, cosine: cosineSimilarity } = require('./lib/rag-utils');
+const { evaluate: calcEvaluate } = require('./lib/calculator');
+
 // ─────────────────────────────────────────────────────────────────────────────
 // § CONFIG & STORAGE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -284,38 +288,8 @@ class RagEngine {
     if (fs.existsSync(p)) fs.unlinkSync(p);
   }
 
-  /** Split text into overlapping chunks by paragraph/sentence heuristic */
-  chunkText(text, chunkSize, overlap) {
-    const clean = text.replace(/\r\n/g, '\n').trim();
-    if (!clean) return [];
-    if (clean.length <= chunkSize) return [clean];
-
-    const paragraphs = clean.split(/\n\n+/);
-    const chunks = [];
-    let current = '';
-
-    for (const p of paragraphs) {
-      if ((current + '\n\n' + p).length > chunkSize && current) {
-        chunks.push(current.trim());
-        current = current.slice(Math.max(0, current.length - overlap)) + '\n\n' + p;
-      } else {
-        current = current ? current + '\n\n' + p : p;
-      }
-    }
-    if (current.trim()) chunks.push(current.trim());
-
-    // Hard-split any chunk that's still too big
-    const finalChunks = [];
-    for (const c of chunks) {
-      if (c.length <= chunkSize * 1.5) finalChunks.push(c);
-      else {
-        for (let i = 0; i < c.length; i += chunkSize - overlap) {
-          finalChunks.push(c.slice(i, i + chunkSize));
-        }
-      }
-    }
-    return finalChunks;
-  }
+  /** Delegate to shared lib/rag-utils (single source of truth for tests) */
+  chunkText(text, chunkSize, overlap) { return chunkText(text, chunkSize, overlap); }
 
   async embed(text) {
     const cfg = CONFIG.rag;
@@ -335,13 +309,8 @@ class RagEngine {
     return res.data.embedding;
   }
 
-  static cosine(a, b) {
-    let dot = 0, na = 0, nb = 0;
-    const len = Math.min(a.length, b.length);
-    for (let i = 0; i < len; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
-    const denom = Math.sqrt(na) * Math.sqrt(nb);
-    return denom === 0 ? 0 : dot / denom;
-  }
+  /** Delegate to shared lib/rag-utils (single source of truth for tests) */
+  static cosine(a, b) { return cosineSimilarity(a, b); }
 
   async addDocument({ collectionId, collectionName, source, text, onProgress }) {
     const cfg = CONFIG.rag;
@@ -395,27 +364,7 @@ const rag = new RagEngine();
 // ─────────────────────────────────────────────────────────────────────────────
 // § SSRF PROTECTION HELPER
 // ─────────────────────────────────────────────────────────────────────────────
-
-function isPrivateHost(host) {
-  if (!host) return true;
-  const h = host.toLowerCase();
-  if (h === 'localhost' || h === '0.0.0.0') return true;
-  // IPv6 loopback / link-local / unique-local
-  if (h === '::1' || h.startsWith('fe80:') || h.startsWith('fc') || h.startsWith('fd')) return true;
-  // Known cloud metadata endpoints
-  if (h === '169.254.169.254' || h === 'metadata.google.internal') return true;
-  // IPv4 private/reserved ranges
-  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (m) {
-    const a = +m[1], b = +m[2];
-    if (a === 10 || a === 127) return true;
-    if (a === 192 && b === 168) return true;
-    if (a === 172 && b >= 16 && b <= 31) return true;
-    if (a === 169 && b === 254) return true;
-    if (a === 0) return true;
-  }
-  return false;
-}
+// isPrivateHost is imported from lib/ssrf.js (single source of truth for tests)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § BUILT-IN TOOLS
@@ -499,26 +448,8 @@ const builtInExecutors = {
     });
   },
 
-  // Safer calculator: isolated vm context with ONLY Math exposed.
-  // Still not a hard security boundary (vm can be escaped) but far better than new Function.
-  calculator({ expression }) {
-    try {
-      if (typeof expression !== 'string' || expression.length > 500) {
-        return JSON.stringify({ error: 'expression missing or too long' });
-      }
-      // Quick denylist of obvious escape attempts (defense in depth)
-      if (/\b(require|process|global|this|constructor|import|eval|Function|setTimeout|setInterval)\b/.test(expression)) {
-        return JSON.stringify({ error: 'expression contains disallowed identifier' });
-      }
-      const sandbox = { Math, result: null };
-      vm.createContext(sandbox);
-      const script = new vm.Script(`result = (${expression});`);
-      script.runInContext(sandbox, { timeout: 1000 });
-      return JSON.stringify({ expression, result: sandbox.result });
-    } catch (e) {
-      return JSON.stringify({ error: `Cannot evaluate: ${e.message}` });
-    }
-  },
+  // Delegate to lib/calculator.js (single source of truth for tests).
+  calculator({ expression }) { return JSON.stringify(calcEvaluate(expression)); },
 
   web_search({ query }) {
     return new Promise((resolve) => {
