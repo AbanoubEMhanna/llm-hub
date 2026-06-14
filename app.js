@@ -222,6 +222,7 @@ async function init() {
   applyAppearance();
   if (showTimestamps) document.body.classList.add('show-timestamps');
   document.getElementById('ts-btn')?.classList.toggle('active', showTimestamps);
+  _initSchemaEditor();
   await checkHealth();
   await loadModels();
   await loadTools();
@@ -1471,7 +1472,8 @@ async function streamAssistantReply(conv) {
       temperature: temp, max_tokens: maxTok, use_tools: useTools,
       top_p: topP, top_k: topK, repeat_penalty: repeatPen, frequency_penalty: freqPen,
     };
-    if (jsonMode) chatBody.response_format = { type: 'json_object' };
+    const rf = _buildResponseFormat();
+    if (rf) chatBody.response_format = rf;
 
     const res = await fetch(`${PROXY}/v1/chat`, {
       method: 'POST',
@@ -3461,7 +3463,8 @@ async function sendCompare() {
         max_tokens: parseInt(document.getElementById('max-tokens').value) || 2048,
         use_tools: false,
       };
-      if (jsonMode) compareBody.response_format = { type: 'json_object' };
+      const compareRf = _buildResponseFormat();
+      if (compareRf) compareBody.response_format = compareRf;
 
       const res = await fetch(`${PROXY}/v1/chat`, {
         method: 'POST',
@@ -4043,6 +4046,143 @@ function toggleJsonMode() {
   document.getElementById('json-btn').classList.toggle('active', jsonMode);
   document.getElementById('json-indicator').classList.toggle('active', jsonMode);
   toast(jsonMode ? 'JSON mode ON — response will be valid JSON' : 'JSON mode OFF', 'success');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § JSON SCHEMA MODE
+// ─────────────────────────────────────────────────────────────────────────────
+
+let schemaMode = false;
+let schemaContent = localStorage.getItem('llm-schema') || '';
+
+const SCHEMA_PRESETS = {
+  qa: {
+    type: 'object',
+    properties: {
+      answer: { type: 'string', description: 'The direct answer to the question' },
+      confidence: { type: 'number', description: 'Confidence 0–1' },
+      sources: { type: 'array', items: { type: 'string' } }
+    },
+    required: ['answer', 'confidence']
+  },
+  list: {
+    type: 'object',
+    properties: {
+      items: { type: 'array', items: { type: 'string' }, description: 'List of items' },
+      total: { type: 'number' }
+    },
+    required: ['items']
+  },
+  step: {
+    type: 'object',
+    properties: {
+      steps: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            step: { type: 'number' },
+            title: { type: 'string' },
+            description: { type: 'string' }
+          },
+          required: ['step', 'title']
+        }
+      },
+      summary: { type: 'string' }
+    },
+    required: ['steps']
+  },
+  kv: {
+    type: 'object',
+    additionalProperties: { type: 'string' },
+    description: 'Flexible key-value map'
+  }
+};
+
+function toggleSchemaMode() {
+  schemaMode = !schemaMode;
+  document.getElementById('schema-btn')?.classList.toggle('active', schemaMode);
+  document.getElementById('schema-indicator')?.classList.toggle('active', schemaMode);
+  document.getElementById('schema-toggle')?.classList.toggle('on', schemaMode);
+  const badge = document.getElementById('schema-panel-badge');
+  if (badge) badge.style.display = schemaMode ? '' : 'none';
+  _syncSchemaValidity();
+  toast(schemaMode ? 'Schema mode ON — responses will follow your JSON schema' : 'Schema mode OFF');
+  if (schemaMode) {
+    const panel = document.getElementById('schema-panel');
+    if (panel && panel.dataset.open === 'false') {
+      const toggle = panel.querySelector('.panel-toggle');
+      if (toggle) togglePanel(toggle);
+    }
+    setTimeout(() => document.getElementById('schema-editor')?.focus(), 80);
+  }
+}
+
+function onSchemaEdit() {
+  const el = document.getElementById('schema-editor');
+  schemaContent = el?.value || '';
+  localStorage.setItem('llm-schema', schemaContent);
+  _syncSchemaValidity();
+  if (el && schemaContent.trim()) {
+    const valid = !!_parseSchema();
+    el.classList.toggle('valid-schema', valid);
+    el.classList.toggle('invalid-schema', !valid);
+  } else if (el) {
+    el.classList.remove('valid-schema', 'invalid-schema');
+  }
+}
+
+function _syncSchemaValidity() {
+  const valid = _parseSchema();
+  const label = schemaMode ? (valid ? '✓ valid' : schemaContent.trim() ? '✗ invalid' : 'empty') : '';
+  const cls   = schemaMode ? (valid ? 'ok' : schemaContent.trim() ? 'err' : 'empty') : '';
+  ['schema-validity', 'schema-validity-panel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = label; el.className = `schema-validity ${cls}`; }
+  });
+}
+
+function _parseSchema() {
+  if (!schemaContent.trim()) return null;
+  try { return JSON.parse(schemaContent); } catch { return null; }
+}
+
+function formatSchema() {
+  const parsed = _parseSchema();
+  if (!parsed) { toast('Invalid JSON — fix the schema first', 'error'); return; }
+  const pretty = JSON.stringify(parsed, null, 2);
+  schemaContent = pretty;
+  const el = document.getElementById('schema-editor');
+  if (el) el.value = pretty;
+  localStorage.setItem('llm-schema', pretty);
+  _syncSchemaValidity();
+}
+
+function applySchemaPreset(key) {
+  const preset = SCHEMA_PRESETS[key];
+  if (!preset) return;
+  schemaContent = JSON.stringify(preset, null, 2);
+  const el = document.getElementById('schema-editor');
+  if (el) el.value = schemaContent;
+  localStorage.setItem('llm-schema', schemaContent);
+  _syncSchemaValidity();
+  if (!schemaMode) toggleSchemaMode();
+  toast(`Schema preset "${key}" applied`);
+}
+
+function _buildResponseFormat() {
+  if (schemaMode) {
+    const schema = _parseSchema();
+    if (schema) return { type: 'json_schema', json_schema: { name: 'output', strict: true, schema } };
+  }
+  if (jsonMode) return { type: 'json_object' };
+  return null;
+}
+
+function _initSchemaEditor() {
+  const el = document.getElementById('schema-editor');
+  if (el && schemaContent) el.value = schemaContent;
+  _syncSchemaValidity();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
