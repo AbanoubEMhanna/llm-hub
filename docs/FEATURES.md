@@ -269,17 +269,17 @@
 | Category | Done | Todo |
 |----------|------|------|
 | Core Infrastructure | 11 | 5 |
-| Model Management | 17 | 4 |
+| Model Management | 18 | 4 |
 | Chat Interface | 23 | 3 |
 | Model Comparison | 5 | 4 |
 | UI / Design | 12 | 5 |
 | Generation Modes | 5 | 4 |
-| AI Agent & Tools | 5 | 7 |
+| AI Agent & Tools | 5 | 8 |
 | Code Features | 4 | 8 |
-| RAG / Knowledge Base | 7 | 5 |
+| RAG / Knowledge Base | 7 | 6 |
 | Voice & Multimodal | 5 | 3 |
 | Hardware Stats | 8 | 3 |
 | Settings UI | 5 | 3 |
 | Security & Privacy | 4 | 5 |
-| Developer & Integration | 6 | 6 |
-| **Total** | **117** | **65** |
+| Developer & Integration | 6 | 7 |
+| **Total** | **118** | **68** |
