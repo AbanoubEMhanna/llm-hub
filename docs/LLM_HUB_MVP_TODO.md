@@ -5,7 +5,7 @@
 >
 > **Legend:** `[x]` Done · `[ ]` Not started · 🔥 High priority (next sprint)
 >
-> **Version:** 3.1.0 — Last updated: 2026-06-16 — Reflects PRs #1–#45
+> **Version:** 3.1.0 — Last updated: 2026-06-17 — Reflects PRs #1–#46
 
 ---
 
@@ -304,7 +304,7 @@
 
 ## 15. Deployment & Distribution 🚀
 
-- [ ] 🔥 `.env.example` — document all configurable environment variables
+- [x] `.env.example` — document all configurable environment variables
 - [ ] 🔥 `Dockerfile` — multi-stage, non-root user, healthcheck at `/health`
 - [ ] 🔥 `docker-compose.yml` — LLM Hub + Ollama in a single stack
 - [ ] `npx local-llm-hub` zero-install launcher
@@ -334,8 +334,8 @@
 | Settings & Config | 5 | 2 | 4 |
 | Security & Privacy | 4 | — | 6 |
 | Developer & Integration | 8 | 1 | 6 |
-| Deployment | 0 | 3 | 6 |
-| **Total** | **123** | **28** | **76** |
+| Deployment | 1 | 2 | 6 |
+| **Total** | **124** | **27** | **76** |
 
 Legend: ✅ Done · 🔥 High priority (next sprint) · 🔲 Backlog
 
