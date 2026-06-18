@@ -2525,16 +2525,18 @@ function openApiKeySettings() {
 }
 
 function switchSettingsTab(tab) {
-  ['config', 'apikeys', 'appearance', 'backup', 'voice'].forEach(t => {
+  ['config', 'apikeys', 'appearance', 'backup', 'voice', 'tools', 'rag'].forEach(t => {
     document.getElementById(`settings-panel-${t}`).style.display = t === tab ? '' : 'none';
     document.getElementById(`settings-footer-${t}`).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById(`tab-${t}`);
     if (btn) btn.classList.toggle('active', t === tab);
   });
-  if (tab === 'backup') renderBackupSummary();
+  if (tab === 'backup')     renderBackupSummary();
   if (tab === 'appearance') _syncAppearanceUI();
-  if (tab === 'apikeys') renderCustomProvidersList();
-  if (tab === 'voice') initTtsVoiceSelect();
+  if (tab === 'apikeys')    renderCustomProvidersList();
+  if (tab === 'voice')      initTtsVoiceSelect();
+  if (tab === 'tools')      loadToolsSettings();
+  if (tab === 'rag')        loadRagSettings();
 }
 
 function renderBackupSummary() {
@@ -2899,6 +2901,130 @@ async function saveConfig() {
     await loadTools();
   } catch (e) {
     document.getElementById('config-error').textContent = e.message;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § TOOLS SETTINGS TAB
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BUILTIN_TOOL_META = {
+  datetime:       { label: 'Datetime',       desc: 'Get current date and time' },
+  calculator:     { label: 'Calculator',     desc: 'Evaluate mathematical expressions safely' },
+  web_search:     { label: 'Web Search',     desc: 'Search the web via DuckDuckGo (no API key required)' },
+  fetch_url:      { label: 'Fetch URL',      desc: 'Fetch and read any web page or REST endpoint' },
+  run_javascript: { label: 'Run JavaScript', desc: 'Execute JS in a sandboxed Node.js vm (dev use only — not a true sandbox)' },
+  rag_search:     { label: 'RAG Search',     desc: 'Search your local knowledge base collections' },
+};
+
+async function loadToolsSettings() {
+  const statusEl = document.getElementById('tools-panel-status');
+  try {
+    const res   = await fetch(`${PROXY}/v1/config`);
+    const cfg   = await res.json();
+    const tools = cfg.tools || {};
+    const masterOn  = tools.enabled !== false;
+    const builtIn   = new Set(tools.built_in || Object.keys(BUILTIN_TOOL_META));
+
+    const masterToggle = document.getElementById('tools-master-toggle');
+    if (masterToggle) masterToggle.classList.toggle('on', masterOn);
+
+    const container = document.getElementById('settings-builtin-tools');
+    if (!container) return;
+    container.innerHTML = Object.entries(BUILTIN_TOOL_META).map(([key, meta]) => `
+      <label class="tool-toggle" style="padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:0">
+        <div class="toggle ${builtIn.has(key) ? 'on' : ''}" id="tool-toggle-${key}"
+             onclick="this.classList.toggle('on')"></div>
+        <span>
+          <strong style="font-size:12px">${meta.label}</strong>
+          <span style="color:var(--muted);font-size:11px;display:block">${meta.desc}</span>
+        </span>
+      </label>`).join('');
+    if (statusEl) statusEl.textContent = '';
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Failed to load config: ' + e.message;
+  }
+}
+
+async function saveToolsSettings() {
+  const statusEl = document.getElementById('tools-panel-status');
+  try {
+    const res = await fetch(`${PROXY}/v1/config`);
+    const cfg = await res.json();
+
+    cfg.tools = cfg.tools || {};
+    cfg.tools.enabled  = document.getElementById('tools-master-toggle')?.classList.contains('on') ?? true;
+    cfg.tools.built_in = Object.keys(BUILTIN_TOOL_META)
+      .filter(k => document.getElementById(`tool-toggle-${k}`)?.classList.contains('on'));
+
+    const saveRes = await fetch(`${PROXY}/v1/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
+    });
+    const data = await saveRes.json();
+    if (!saveRes.ok) throw new Error(data.error || 'save failed');
+    toast('Tools settings saved', 'success');
+    closeModal('config-modal');
+    await loadTools();
+  } catch (e) {
+    if (statusEl) { statusEl.textContent = e.message; statusEl.style.color = 'var(--red)'; }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § RAG SETTINGS TAB
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function loadRagSettings() {
+  const statusEl = document.getElementById('rag-panel-status');
+  try {
+    const res = await fetch(`${PROXY}/v1/config`);
+    const cfg = await res.json();
+    const rag = cfg.rag || {};
+
+    const toggle = document.getElementById('rag-enabled-toggle');
+    if (toggle) toggle.classList.toggle('on', rag.enabled !== false);
+
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.value = val; };
+    setVal('rag-embed-provider', rag.embedding_provider || 'ollama');
+    setVal('rag-embed-model',    rag.embedding_model    || 'nomic-embed-text');
+    setVal('rag-chunk-size',     rag.chunk_size         ?? 800);
+    setVal('rag-chunk-overlap',  rag.chunk_overlap      ?? 100);
+    setVal('rag-top-k',          rag.top_k              ?? 5);
+    if (statusEl) statusEl.textContent = '';
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Failed to load config: ' + e.message;
+  }
+}
+
+async function saveRagSettings() {
+  const statusEl = document.getElementById('rag-panel-status');
+  try {
+    const res = await fetch(`${PROXY}/v1/config`);
+    const cfg = await res.json();
+
+    cfg.rag = {
+      ...cfg.rag,
+      enabled:            document.getElementById('rag-enabled-toggle')?.classList.contains('on') ?? true,
+      embedding_provider: document.getElementById('rag-embed-provider')?.value  || 'ollama',
+      embedding_model:    document.getElementById('rag-embed-model')?.value     || 'nomic-embed-text',
+      chunk_size:         parseInt(document.getElementById('rag-chunk-size')?.value    || '800',  10),
+      chunk_overlap:      parseInt(document.getElementById('rag-chunk-overlap')?.value || '100', 10),
+      top_k:              parseInt(document.getElementById('rag-top-k')?.value         || '5',   10),
+    };
+
+    const saveRes = await fetch(`${PROXY}/v1/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
+    });
+    const data = await saveRes.json();
+    if (!saveRes.ok) throw new Error(data.error || 'save failed');
+    toast('RAG settings saved', 'success');
+    closeModal('config-modal');
+  } catch (e) {
+    if (statusEl) { statusEl.textContent = e.message; statusEl.style.color = 'var(--red)'; }
   }
 }
 
