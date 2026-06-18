@@ -52,13 +52,21 @@ function loadConfig() {
 }
 
 let CONFIG = loadConfig();
-const PORT = CONFIG.proxy_port || 8765;
-// Default bind: 127.0.0.1 (localhost only). Set HOST=0.0.0.0 env to expose to LAN.
+// Env vars take precedence over config.json so Docker / CI can override without editing files.
+const PORT = parseInt(process.env.PORT || process.env.PROXY_PORT || CONFIG.proxy_port || 8765, 10);
+// Default bind: 127.0.0.1 (localhost only). Set HOST=0.0.0.0 env to expose to LAN / container.
 const HOST = process.env.HOST || '127.0.0.1';
 
-const STORAGE_DIR = path.isAbsolute(CONFIG.storage_dir || '.llm-hub')
-  ? CONFIG.storage_dir
-  : path.join(__dirname, CONFIG.storage_dir || '.llm-hub');
+// Provider host/port overrides — useful for Docker where services talk by container name.
+if (process.env.OLLAMA_HOST)    CONFIG.providers.ollama.host    = process.env.OLLAMA_HOST;
+if (process.env.OLLAMA_PORT)    CONFIG.providers.ollama.port    = parseInt(process.env.OLLAMA_PORT, 10);
+if (process.env.LM_STUDIO_HOST) CONFIG.providers.lmstudio.host  = process.env.LM_STUDIO_HOST;
+if (process.env.LM_STUDIO_PORT) CONFIG.providers.lmstudio.port  = parseInt(process.env.LM_STUDIO_PORT, 10);
+
+const _storageCfg = process.env.STORAGE_DIR || CONFIG.storage_dir || '.llm-hub';
+const STORAGE_DIR = path.isAbsolute(_storageCfg)
+  ? _storageCfg
+  : path.join(__dirname, _storageCfg);
 
 const RAG_DIR = path.join(STORAGE_DIR, 'rag');
 if (!fs.existsSync(STORAGE_DIR)) fs.mkdirSync(STORAGE_DIR, { recursive: true });

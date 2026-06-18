@@ -1,0 +1,55 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: llm-hub-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  llm-hub:
+    build:
+      context: .
+      target: production
+    image: llm-hub:latest
+    container_name: llm-hub
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+    ports:
+      - "8765:8765"
+    volumes:
+      - llm-hub-data:/data
+    environment:
+      - HOST=0.0.0.0
+      - STORAGE_DIR=/data/.llm-hub
+      # Override Ollama host so LLM Hub can reach the Ollama container by service name
+      - OLLAMA_HOST=ollama
+      - OLLAMA_PORT=11434
+      # Cloud API keys — copy .env.example → .env and fill in values
+      # - OPENAI_API_KEY=sk-...
+      # - ANTHROPIC_API_KEY=sk-ant-...
+      # - GROQ_API_KEY=gsk_...
+    env_file:
+      - path: .env
+        required: false
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8765/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1));"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+volumes:
+  ollama-data:
+  llm-hub-data:
