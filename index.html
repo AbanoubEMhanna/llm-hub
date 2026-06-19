@@ -664,6 +664,8 @@
       <button class="settings-tab" id="tab-appearance" onclick="switchSettingsTab('appearance')">Appearance</button>
       <button class="settings-tab" id="tab-voice" onclick="switchSettingsTab('voice')">Voice</button>
       <button class="settings-tab" id="tab-backup" onclick="switchSettingsTab('backup')">Backup</button>
+      <button class="settings-tab" id="tab-tools" onclick="switchSettingsTab('tools')">Tools</button>
+      <button class="settings-tab" id="tab-rag" onclick="switchSettingsTab('rag')">RAG</button>
     </div>
 
     <!-- Tab: Config JSON -->
@@ -900,6 +902,79 @@
     <div class="modal-footer" id="settings-footer-backup" style="display:none">
       <button class="btn" onclick="closeModal('config-modal')">Close</button>
     </div>
+
+    <!-- Tab: Tools -->
+    <div class="modal-body" id="settings-panel-tools" style="display:none">
+      <p style="color:var(--muted);font-size:12px;margin-bottom:16px">
+        Enable or disable the tools available to the model during agent mode.
+        Changes update <code style="font-family:var(--mono);background:var(--surface2);padding:1px 4px;border-radius:3px">config.json</code> and reload immediately.
+      </p>
+
+      <label class="tool-toggle" style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+        <div class="toggle" id="tools-master-toggle" onclick="this.classList.toggle('on')"></div>
+        <span>
+          <strong>Tools enabled</strong>
+          <span style="color:var(--muted);font-size:11px;display:block">Allow the model to call built-in and MCP tools during generation</span>
+        </span>
+      </label>
+
+      <div class="appearance-section-label" style="margin-bottom:8px">Built-in Tools</div>
+      <div id="settings-builtin-tools"></div>
+      <div id="tools-panel-status" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
+    </div>
+    <div class="modal-footer" id="settings-footer-tools" style="display:none">
+      <button class="btn" onclick="closeModal('config-modal')">Cancel</button>
+      <button class="btn primary" onclick="saveToolsSettings()">Save</button>
+    </div>
+
+    <!-- Tab: RAG -->
+    <div class="modal-body" id="settings-panel-rag" style="display:none">
+      <p style="color:var(--muted);font-size:12px;margin-bottom:16px">
+        Configure how documents are embedded and retrieved from your knowledge base.
+      </p>
+
+      <label class="tool-toggle" style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+        <div class="toggle" id="rag-enabled-toggle" onclick="this.classList.toggle('on')"></div>
+        <span>
+          <strong>RAG enabled</strong>
+          <span style="color:var(--muted);font-size:11px;display:block">Allow the model to search your local knowledge base via <code style="font-family:var(--mono)">rag_search</code></span>
+        </span>
+      </label>
+
+      <div class="appearance-section-label" style="margin-bottom:10px">Embedding</div>
+      <div style="display:grid;grid-template-columns:120px 1fr;gap:8px 12px;align-items:center;margin-bottom:18px">
+        <label style="font-size:12px;color:var(--muted)">Provider</label>
+        <select class="model-select" id="rag-embed-provider" style="font-size:12px">
+          <option value="ollama">Ollama</option>
+        </select>
+        <label style="font-size:12px;color:var(--muted)">Model</label>
+        <input type="text" class="model-select" id="rag-embed-model" style="font-size:12px" placeholder="nomic-embed-text"/>
+      </div>
+
+      <div class="appearance-section-label" style="margin-bottom:10px">Chunking</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+        <div>
+          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Chunk Size (tokens)</label>
+          <input type="number" class="model-select" id="rag-chunk-size" style="font-size:12px;width:100%" min="100" max="4000" step="50"/>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Overlap (tokens)</label>
+          <input type="number" class="model-select" id="rag-chunk-overlap" style="font-size:12px;width:100%" min="0" max="500" step="10"/>
+        </div>
+      </div>
+
+      <div class="appearance-section-label" style="margin-bottom:10px">Search</div>
+      <div style="margin-bottom:8px">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Top K results returned per query</label>
+        <input type="number" class="model-select" id="rag-top-k" style="font-size:12px;width:100px" min="1" max="20" step="1"/>
+      </div>
+      <div id="rag-panel-status" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
+    </div>
+    <div class="modal-footer" id="settings-footer-rag" style="display:none">
+      <button class="btn" onclick="closeModal('config-modal')">Cancel</button>
+      <button class="btn primary" onclick="saveRagSettings()">Save</button>
+    </div>
+
   </div>
 </div>
 
