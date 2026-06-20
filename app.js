@@ -3726,10 +3726,12 @@ function updateCompareDiffBtn() {
   if (!btn) return;
   const paneA = document.getElementById('compare-msgs-a');
   const paneB = document.getElementById('compare-msgs-b');
-  const hasA = paneA && paneA.querySelector('.msg-wrap[data-role="assistant"]');
-  const hasB = paneB && paneB.querySelector('.msg-wrap[data-role="assistant"]');
-  btn.disabled = !(hasA && hasB);
-  if (saveBtn) saveBtn.disabled = !(hasA || hasB);
+  const doneA = paneA ? [...paneA.querySelectorAll('.msg-wrap[data-role="assistant"]')]
+    .some(w => w.dataset.rawText !== undefined && w.dataset.rawText.trim()) : false;
+  const doneB = paneB ? [...paneB.querySelectorAll('.msg-wrap[data-role="assistant"]')]
+    .some(w => w.dataset.rawText !== undefined && w.dataset.rawText.trim()) : false;
+  btn.disabled = !(doneA && doneB);
+  if (saveBtn) saveBtn.disabled = !(doneA || doneB);
 }
 
 function showCompareDiff() {
