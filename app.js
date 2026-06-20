@@ -3556,6 +3556,8 @@ async function sendCompare() {
     if (pane.querySelector('.empty')) pane.innerHTML = '';
     const u = document.createElement('div');
     u.className = 'msg-wrap';
+    u.dataset.role = 'user';
+    u.dataset.rawText = text;
     u.innerHTML = `<div class="msg user"><div class="avatar">👤</div><div class="bubble">${renderMarkdown(text)}</div></div>`;
     pane.appendChild(u);
   }
@@ -3568,6 +3570,7 @@ async function sendCompare() {
   const runOne = async (model, pane, controller, side) => {
     const wrap = document.createElement('div');
     wrap.className = 'msg-wrap';
+    wrap.dataset.role = 'assistant';
     wrap.innerHTML = `
       <div class="msg assistant">
         <div class="avatar">🤖</div>
@@ -3612,7 +3615,7 @@ async function sendCompare() {
             if (!line.startsWith('data: ')) continue;
             let evt; try { evt = JSON.parse(line.slice(6)); } catch { continue; }
             if (evt.type === 'text_delta') {
-              if (!cleared) { bubble.innerHTML = ''; textDiv = document.createElement('div'); bubble.appendChild(textDiv); cleared = true; }
+              if (!cleared) { bubble.innerHTML = ''; textDiv = document.createElement('div'); textDiv.className = 'msg-content'; bubble.appendChild(textDiv); cleared = true; }
               full += evt.delta;
               textDiv.innerHTML = renderMarkdown(full);
               pane.scrollTop = pane.scrollHeight;
@@ -3630,6 +3633,7 @@ async function sendCompare() {
       if (e.name !== 'AbortError') bubble.innerHTML = `<span style="color:var(--orange)">❌ ${escHtml(e.message)}</span>`;
       else if (full) bubble.innerHTML = renderMarkdown(full) + '<div class="stopped-marker">⏹ Stopped</div>';
     }
+    wrap.dataset.rawText = full;
     compareActiveCount--;
     if (compareActiveCount <= 0) setCompareLoadingState(false);
     highlightNewCode();
@@ -3662,6 +3666,7 @@ function getLastAssistantText(paneEl) {
   const msgs = paneEl.querySelectorAll('.msg-wrap[data-role="assistant"]');
   if (!msgs.length) return null;
   const last = msgs[msgs.length - 1];
+  if (last.dataset.rawText) return last.dataset.rawText;
   const content = last.querySelector('.msg-content');
   return content ? content.innerText.trim() : null;
 }
@@ -3716,13 +3721,17 @@ function renderDiff(parts) {
 }
 
 function updateCompareDiffBtn() {
-  const btn = document.getElementById('compare-diff-btn');
+  const btn     = document.getElementById('compare-diff-btn');
+  const saveBtn = document.getElementById('compare-save-btn');
   if (!btn) return;
   const paneA = document.getElementById('compare-msgs-a');
   const paneB = document.getElementById('compare-msgs-b');
-  const hasA = paneA && paneA.querySelector('.msg-wrap[data-role="assistant"]');
-  const hasB = paneB && paneB.querySelector('.msg-wrap[data-role="assistant"]');
-  btn.disabled = !(hasA && hasB);
+  const doneA = paneA ? [...paneA.querySelectorAll('.msg-wrap[data-role="assistant"]')]
+    .some(w => w.dataset.rawText !== undefined && w.dataset.rawText.trim()) : false;
+  const doneB = paneB ? [...paneB.querySelectorAll('.msg-wrap[data-role="assistant"]')]
+    .some(w => w.dataset.rawText !== undefined && w.dataset.rawText.trim()) : false;
+  btn.disabled = !(doneA && doneB);
+  if (saveBtn) saveBtn.disabled = !(doneA || doneB);
 }
 
 function showCompareDiff() {
@@ -3762,6 +3771,75 @@ function showCompareDiff() {
 
 function closeCompareDiff() {
   document.getElementById('compare-diff-modal').classList.remove('active');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § COMPARE REPORT EXPORT
+// ─────────────────────────────────────────────────────────────────────────────
+
+function saveCompareReport() {
+  const paneA  = document.getElementById('compare-msgs-a');
+  const paneB  = document.getElementById('compare-msgs-b');
+  const modelA = document.getElementById('compare-model-a')?.value || 'Model A';
+  const modelB = document.getElementById('compare-model-b')?.value || 'Model B';
+
+  const userWraps = [...(paneA?.querySelectorAll('.msg-wrap[data-role="user"]')  || [])];
+  const aWraps    = [...(paneA?.querySelectorAll('.msg-wrap[data-role="assistant"]') || [])];
+  const bWraps    = [...(paneB?.querySelectorAll('.msg-wrap[data-role="assistant"]') || [])];
+
+  if (!aWraps.length && !bWraps.length) {
+    return toast('Nothing to save — send a prompt to both models first', 'error');
+  }
+
+  const winsA  = aWraps.filter(w => w.dataset.cmpGrade === 'up').length;
+  const winsB  = bWraps.filter(w => w.dataset.cmpGrade === 'up').length;
+  const rounds = Math.max(aWraps.length, bWraps.length);
+  const now    = new Date().toISOString().slice(0, 19).replace('T', ' ') + ' UTC';
+
+  let md = `# Model Comparison Report\n\n`;
+  md += `**Date:** ${now}  \n`;
+  md += `**Model A:** \`${modelA}\`  \n`;
+  md += `**Model B:** \`${modelB}\`  \n`;
+  md += `**Rounds:** ${rounds}  \n`;
+  if (winsA + winsB > 0) {
+    const winner = winsA > winsB ? modelA : winsB > winsA ? modelB : 'Tie';
+    md += `**Score:** A ${winsA} 👍 : B ${winsB} 👍  \n`;
+    md += `**Winner:** ${winner}  \n`;
+  }
+  md += `\n---\n\n`;
+
+  for (let i = 0; i < rounds; i++) {
+    const prompt = userWraps[i]?.dataset.rawText || '';
+    const textA  = aWraps[i]?.dataset.rawText || '_No response_';
+    const textB  = bWraps[i]?.dataset.rawText || '_No response_';
+    const gradeA = aWraps[i]?.dataset.cmpGrade;
+    const gradeB = bWraps[i]?.dataset.cmpGrade;
+    const metaA  = aWraps[i]?.querySelector('.msg-meta')?.innerText?.replace(/👍|👎/g, '').trim() || '';
+    const metaB  = bWraps[i]?.querySelector('.msg-meta')?.innerText?.replace(/👍|👎/g, '').trim() || '';
+
+    md += `## Round ${i + 1}\n\n`;
+    if (prompt) md += `**Prompt:** ${prompt}\n\n`;
+
+    md += `### Model A — \`${modelA}\`${gradeA === 'up' ? ' 👍' : gradeA === 'down' ? ' 👎' : ''}\n\n`;
+    if (metaA) md += `*${metaA}*\n\n`;
+    md += `${textA}\n\n`;
+
+    md += `### Model B — \`${modelB}\`${gradeB === 'up' ? ' 👍' : gradeB === 'down' ? ' 👎' : ''}\n\n`;
+    if (metaB) md += `*${metaB}*\n\n`;
+    md += `${textB}\n\n`;
+
+    if (i < rounds - 1) md += `---\n\n`;
+  }
+
+  const slug = (s) => s.replace(/[^a-z0-9]/gi, '-').toLowerCase().slice(0, 40);
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `compare-${slug(modelA)}-vs-${slug(modelB)}-${Date.now()}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Report saved', 'success');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
