@@ -5,7 +5,7 @@
    search, theme, hotkeys, token counter.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-const PROXY = 'http://localhost:8765';
+const PROXY = localStorage.getItem('general_proxy_url') || 'http://localhost:8765';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § STATE
@@ -2563,7 +2563,7 @@ function openApiKeySettings() {
 }
 
 function switchSettingsTab(tab) {
-  ['config', 'apikeys', 'appearance', 'backup', 'voice', 'tools', 'rag'].forEach(t => {
+  ['general', 'config', 'apikeys', 'appearance', 'backup', 'voice', 'tools', 'rag'].forEach(t => {
     document.getElementById(`settings-panel-${t}`).style.display = t === tab ? '' : 'none';
     document.getElementById(`settings-footer-${t}`).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById(`tab-${t}`);
@@ -2575,6 +2575,58 @@ function switchSettingsTab(tab) {
   if (tab === 'voice')      initTtsVoiceSelect();
   if (tab === 'tools')      loadToolsSettings();
   if (tab === 'rag')        loadRagSettings();
+  if (tab === 'general')    loadGeneralSettings();
+}
+
+function openGeneralSettings() {
+  switchSettingsTab('general');
+  openModal('config-modal');
+}
+
+function loadGeneralSettings() {
+  const el = id => document.getElementById(id);
+  if (el('general-proxy-url')) el('general-proxy-url').value = localStorage.getItem('general_proxy_url') || '';
+  if (el('general-current-proxy')) el('general-current-proxy').textContent = PROXY;
+  if (el('general-auto-connect')) el('general-auto-connect').checked = localStorage.getItem('general_auto_connect') !== '0';
+  try {
+    let total = 0;
+    for (const k of Object.keys(localStorage)) total += (localStorage.getItem(k) || '').length;
+    if (el('general-storage-used')) el('general-storage-used').textContent = `${(total / 1024).toFixed(1)} KB`;
+  } catch { /* quota api not available */ }
+}
+
+function saveGeneralSettings() {
+  const proxyUrl = document.getElementById('general-proxy-url')?.value?.trim();
+  if (proxyUrl) localStorage.setItem('general_proxy_url', proxyUrl);
+  else localStorage.removeItem('general_proxy_url');
+  closeModal('config-modal');
+  if (proxyUrl && proxyUrl !== PROXY) {
+    toast('Proxy URL saved — reload the page to connect to the new address.', 'info');
+  } else {
+    toast('General settings saved.', 'success');
+  }
+}
+
+function saveGeneralAutoConnect(checked) {
+  localStorage.setItem('general_auto_connect', checked ? '1' : '0');
+}
+
+async function testGeneralProxyUrl() {
+  const url = (document.getElementById('general-proxy-url')?.value?.trim()) || PROXY;
+  try {
+    const res = await fetch(`${url}/health`, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) toast(`Connected to proxy at ${url}`, 'success');
+    else         toast(`Proxy replied with HTTP ${res.status}`, 'warn');
+  } catch (e) {
+    toast(`Cannot reach ${url}: ${e.message}`, 'error');
+  }
+}
+
+function confirmClearAllData() {
+  if (!confirm('Clear ALL data including conversations, settings, and API keys? This cannot be undone.')) return;
+  localStorage.clear();
+  toast('All data cleared — reloading…', 'info');
+  setTimeout(() => location.reload(), 1500);
 }
 
 function renderBackupSummary() {
@@ -4046,6 +4098,7 @@ function buildPaletteCommands() {
     { group: 'Models',    icon: '📦',  label: 'Model Manager',                           action: () => openModelManager() },
     { group: 'Models',    icon: '🔄',  label: 'Reload Models',                           action: () => loadModels() },
     { group: 'Settings',  icon: '⚙️',  label: 'Open Settings',                           action: () => openConfigEditor() },
+    { group: 'Settings',  icon: '🖥',  label: 'General — proxy URL, storage, startup',  action: () => openGeneralSettings() },
     { group: 'Settings',  icon: '📥',  label: 'Import Conversations (merge)',             action: () => { openConfigEditor(); setTimeout(() => { switchSettingsTab('backup'); document.getElementById('conv-import-file-input')?.click(); }, 300); } },
     { group: 'Settings',  icon: '🔑',  label: 'API Keys',                                action: () => openApiKeySettings() },
     { group: 'Settings',  icon: '🎨',  label: 'Appearance — accent color, font, density', action: () => openAppearanceSettings() },
