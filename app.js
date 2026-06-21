@@ -451,6 +451,27 @@ function estimateCost(provider, modelName, promptTokens, completionTokens) {
 }
 
 
+function parseModelSizeBytes(sizeLabel) {
+  if (!sizeLabel) return null;
+  const m = sizeLabel.match(/^([\d.]+)\s*(TB|GB|MB|KB|B)$/i);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  const units = { tb: 1e12, gb: 1e9, mb: 1e6, kb: 1e3, b: 1 };
+  return n * (units[m[2].toLowerCase()] || 1);
+}
+
+function getHardwareFit(m) {
+  if (!systemInfo) return null;
+  const meta = modelMetadata[m.id] || {};
+  const sizeBytes = parseModelSizeBytes(meta.size_label);
+  if (!sizeBytes) return null;
+  if (!['ollama', 'lmstudio'].includes(m.owned_by)) return null;
+  const freeBytes = systemInfo.memory.free;
+  if (sizeBytes <= freeBytes * 0.85) return 'fit';
+  if (sizeBytes <= freeBytes * 1.1)  return 'warn';
+  return 'no';
+}
+
 function buildModelOption(m) {
   const o = document.createElement('option');
   o.value = m.id;
@@ -462,13 +483,29 @@ function buildModelOption(m) {
   if (meta.size_label)     parts.push(`[${meta.size_label}]`);
   if (meta.context_length) parts.push(`ctx:${(meta.context_length/1024).toFixed(0)}K`);
   if (caps.length)         parts.push(caps.map(c => CAP_ICONS[c] || c).join(''));
+  const fit = getHardwareFit(m);
+  if (fit === 'fit')  parts.unshift('🟢');
+  else if (fit === 'warn') parts.unshift('🟡');
+  else if (fit === 'no')   parts.unshift('🔴');
   o.text = parts.join(' ');
   return o;
 }
 
 function fillModelSelect(sel) {
   if (!sel) return;
+  const prevVal = sel.value;
   sel.innerHTML = '<option value="">— select model —</option>';
+
+  // Hardware-fit group — local models that fit in available RAM
+  if (systemInfo && availableModels.length) {
+    const fitModels = availableModels.filter(m => getHardwareFit(m) === 'fit');
+    if (fitModels.length) {
+      const ogFit = document.createElement('optgroup');
+      ogFit.label = `🖥 Fits your system (${systemInfo.memory.free_label} free RAM)`;
+      fitModels.forEach(m => ogFit.appendChild(buildModelOption(m)));
+      sel.appendChild(ogFit);
+    }
+  }
 
   // Pinned models at the top
   const pinnedAvailable = favoriteModels.map(id => availableModels.find(x => x.id === id)).filter(Boolean);
@@ -498,6 +535,7 @@ function fillModelSelect(sel) {
     }
     sel.appendChild(og);
   }
+  if (prevVal) sel.value = prevVal;
 }
 
 async function loadTools() {
@@ -4852,6 +4890,13 @@ async function loadSystemInfo() {
     runningModels = runningModelsDetailed.map(m => m.id || `ollama/${m.name}`);
     updateSystemDisplay();
     updateModelInfoCard();
+    // Refresh model selects so hardware-fit indicators and optgroup reflect current RAM
+    if (availableModels.length) {
+      for (const id of ['model-select', 'compare-model-a', 'compare-model-b']) {
+        const sel = document.getElementById(id);
+        if (sel) fillModelSelect(sel);
+      }
+    }
   } catch {
     systemInfo = null;
   }
