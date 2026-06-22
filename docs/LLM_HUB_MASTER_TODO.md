@@ -160,7 +160,6 @@
 - [x] Appearance settings — accent color, font size, chat density
 - [x] Plan mode — model thinks in `<plan>` tags before answering
 - [x] Message timestamps on hover (T to pin)
-- [x] **General Settings tab** — proxy URL, storage stats, startup options *(new)*
 - [ ] 🔥 Fully responsive mobile layout — hamburger nav, touch-friendly
 - [ ] 🔥 Multi-tab chat UI — tab bar above chat area
 - [ ] Inline message diff view for edited messages
@@ -297,7 +296,7 @@
 | Chat & Conversation | 22 | 1 | 3 |
 | Agent & Tools | 5 | 3 | 6 |
 | Code Features | 6 | 4 | 5 |
-| UI & Design | **15** | 2 | 6 |
+| UI & Design | **14** | 2 | 6 |
 | RAG / Knowledge Base | 8 | 1 | 6 |
 | Voice & Multimodal | 6 | 0 | 3 |
 | Model Comparison | 7 | 1 | 3 |
@@ -305,9 +304,9 @@
 | Security & Privacy | 5 | 0 | 5 |
 | Deployment | 8 | 1 | 4 |
 | Developer & Integration | 7 | 1 | 4 |
-| **Total** | **134** | **17** | **60** |
+| **Total** | **133** | **17** | **60** |
 
-**~65% complete toward the full LM Studio + OpenCode + Modern UI vision.**
+**~63% complete toward the full LM Studio + OpenCode + Modern UI vision.**
 
 ---
 

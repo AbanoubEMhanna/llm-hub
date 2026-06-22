@@ -2595,10 +2595,28 @@ function loadGeneralSettings() {
   } catch { /* quota api not available */ }
 }
 
+function normalizeProxyUrl(raw) {
+  const parsed = new URL(raw.trim());
+  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Proxy URL must use http or https');
+  return parsed.href.replace(/\/+$/, '');
+}
+
 function saveGeneralSettings() {
-  const proxyUrl = document.getElementById('general-proxy-url')?.value?.trim();
-  if (proxyUrl) localStorage.setItem('general_proxy_url', proxyUrl);
-  else localStorage.removeItem('general_proxy_url');
+  const rawProxyUrl = document.getElementById('general-proxy-url')?.value?.trim();
+  let proxyUrl = '';
+  if (rawProxyUrl) {
+    try {
+      proxyUrl = normalizeProxyUrl(rawProxyUrl);
+      localStorage.setItem('general_proxy_url', proxyUrl);
+    } catch (e) {
+      toast(e.message, 'warn');
+      return;
+    }
+  } else {
+    localStorage.removeItem('general_proxy_url');
+  }
+  const autoConnect = !!document.getElementById('general-auto-connect')?.checked;
+  localStorage.setItem('general_auto_connect', autoConnect ? '1' : '0');
   closeModal('config-modal');
   if (proxyUrl && proxyUrl !== PROXY) {
     toast('Proxy URL saved — reload the page to connect to the new address.', 'info');
@@ -2607,18 +2625,15 @@ function saveGeneralSettings() {
   }
 }
 
-function saveGeneralAutoConnect(checked) {
-  localStorage.setItem('general_auto_connect', checked ? '1' : '0');
-}
-
 async function testGeneralProxyUrl() {
-  const url = (document.getElementById('general-proxy-url')?.value?.trim()) || PROXY;
+  const rawUrl = (document.getElementById('general-proxy-url')?.value?.trim()) || PROXY;
   try {
+    const url = normalizeProxyUrl(rawUrl);
     const res = await fetch(`${url}/health`, { signal: AbortSignal.timeout(5000) });
     if (res.ok) toast(`Connected to proxy at ${url}`, 'success');
     else         toast(`Proxy replied with HTTP ${res.status}`, 'warn');
   } catch (e) {
-    toast(`Cannot reach ${url}: ${e.message}`, 'error');
+    toast(`Cannot reach ${rawUrl}: ${e.message}`, 'error');
   }
 }
 
