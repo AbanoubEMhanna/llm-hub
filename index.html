@@ -309,6 +309,8 @@
       </div>
       <div class="compare-header-actions">
         <span class="compare-score" id="compare-score"></span>
+        <button class="ghost-btn" id="compare-ab-btn" onclick="toggleAbMode()" title="A/B test mode — model names hidden until you click Reveal">🎲 A/B</button>
+        <button class="ghost-btn" id="compare-reveal-btn" onclick="revealAbModels()" title="Reveal which model produced each response" disabled style="display:none">👁 Reveal</button>
         <button class="ghost-btn" onclick="swapCompareModels()" title="Swap left and right models">↔ Swap</button>
         <button class="ghost-btn" id="compare-diff-btn" onclick="showCompareDiff()" title="Show word-level diff between the two latest responses" disabled>⬍ Diff</button>
         <button class="ghost-btn" id="compare-save-btn" onclick="saveCompareReport()" title="Save comparison as Markdown report" disabled>⬇ Report</button>
@@ -321,6 +323,7 @@
       <div class="compare-pane">
         <div class="compare-pane-header">
           <select id="compare-model-a" onchange="onCompareModelChange()"></select>
+          <span class="compare-ab-label" id="compare-ab-label-a" style="display:none;font-weight:600;color:var(--accent);font-size:13px">Model A</span>
           <span class="compare-wins" id="compare-wins-a"></span>
         </div>
         <div class="compare-messages" id="compare-msgs-a"></div>
@@ -329,6 +332,7 @@
       <div class="compare-pane">
         <div class="compare-pane-header">
           <select id="compare-model-b" onchange="onCompareModelChange()"></select>
+          <span class="compare-ab-label" id="compare-ab-label-b" style="display:none;font-weight:600;color:var(--accent);font-size:13px">Model B</span>
           <span class="compare-wins" id="compare-wins-b"></span>
         </div>
         <div class="compare-messages" id="compare-msgs-b"></div>
