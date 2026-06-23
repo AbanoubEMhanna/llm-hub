@@ -131,6 +131,7 @@ body {
 .anthropic-badge  { background: color-mix(in srgb, #d97706 15%, transparent); color: #d97706; }
 .groq-badge       { background: color-mix(in srgb, #6366f1 15%, transparent); color: #6366f1; }
 .openrouter-badge { background: color-mix(in srgb, #ec4899 15%, transparent); color: #ec4899; }
+.mistral-badge    { background: color-mix(in srgb, #fa7c17 15%, transparent); color: #fa7c17; }
 .provider-hint { font-size: 10px; color: var(--muted); font-family: var(--mono); }
 .api-key-input {
   width: 100%; background: var(--s2); border: 1px solid var(--border);

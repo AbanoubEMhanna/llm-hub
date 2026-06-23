@@ -255,6 +255,7 @@ async function checkHealth() {
     setCloudStatus('b-anthropic',  data.providers?.anthropic);
     setCloudStatus('b-groq',       data.providers?.groq);
     setCloudStatus('b-openrouter', data.providers?.openrouter);
+    setCloudStatus('b-mistral',    data.providers?.mistral);
     document.getElementById('proxy-alert').style.display = 'none';
   } catch {
     document.getElementById('proxy-alert').style.display = 'block';
@@ -316,10 +317,10 @@ async function checkRunningModels() {
   }
 }
 
-const MODEL_ID_PREFIX_RE = /^(ollama|lmstudio|openai|anthropic|groq|openrouter|custom_[^/]+)\//;
+const MODEL_ID_PREFIX_RE = /^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|custom_[^/]+)\//;
 
 function parseModelId(modelId) {
-  const match    = (modelId || '').match(/^(ollama|lmstudio|openai|anthropic|groq|openrouter|custom_[^/]+)\//);
+  const match    = (modelId || '').match(/^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|custom_[^/]+)\//);
   const provider = match ? match[1] : (modelId?.split('/')[0] || null);
   const name     = (modelId || '').replace(MODEL_ID_PREFIX_RE, '');
   return { provider, name };
@@ -332,6 +333,7 @@ const PROVIDER_LABELS = {
   anthropic:  '🟡 Anthropic',
   groq:       '🔵 Groq',
   openrouter: '🔴 OpenRouter',
+  mistral:    '🟤 Mistral',
 };
 
 function getProviderLabel(provider) {
@@ -523,7 +525,7 @@ function fillModelSelect(sel) {
   for (const m of availableModels) {
     (groups[m.owned_by] = groups[m.owned_by] || []).push(m);
   }
-  const ORDER = ['ollama', 'lmstudio', 'openai', 'anthropic', 'groq', 'openrouter'];
+  const ORDER = ['ollama', 'lmstudio', 'openai', 'anthropic', 'groq', 'openrouter', 'mistral'];
   const sorted = ORDER.filter(p => groups[p]).concat(Object.keys(groups).filter(p => !ORDER.includes(p)));
   for (const p of sorted) {
     const og = document.createElement('optgroup');
@@ -2556,7 +2558,7 @@ async function openConfigEditor() {
 function openApiKeySettings() {
   switchSettingsTab('apikeys');
   const keys = getStoredApiKeys();
-  ['openai', 'anthropic', 'groq', 'openrouter'].forEach(p => {
+  ['openai', 'anthropic', 'groq', 'openrouter', 'mistral'].forEach(p => {
     const el = document.getElementById(`key-${p}`);
     if (el) el.value = keys[p] || '';
   });
@@ -2855,7 +2857,7 @@ function toggleKeyVisibility(inputId, btn) {
 
 async function saveApiKeys() {
   const keys = {};
-  ['openai', 'anthropic', 'groq', 'openrouter'].forEach(p => {
+  ['openai', 'anthropic', 'groq', 'openrouter', 'mistral'].forEach(p => {
     const v = (document.getElementById(`key-${p}`)?.value || '').trim();
     if (v) keys[p] = v;
   });
@@ -2889,7 +2891,7 @@ async function saveApiKeys() {
 
 function clearAllApiKeys() {
   localStorage.removeItem('llm-api-keys');
-  ['openai', 'anthropic', 'groq', 'openrouter'].forEach(p => {
+  ['openai', 'anthropic', 'groq', 'openrouter', 'mistral'].forEach(p => {
     const el = document.getElementById(`key-${p}`);
     if (el) el.value = '';
     const st = document.getElementById(`test-status-${p}`);
