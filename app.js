@@ -56,6 +56,9 @@ let compareModelB        = null;
 let compareActiveCount   = 0;
 let compareAbortA        = null;
 let compareAbortB        = null;
+let compareAbMode        = false;   // blind A/B test — hides model names until revealed
+let compareAbActualA     = null;    // which model ended up in pane A this round
+let compareAbActualB     = null;    // which model ended up in pane B this round
 
 // Compare grading (reset on clearCompare / mode toggle)
 // Grades are stored as data-cmp-grade attributes on each assistant msg-wrap
@@ -3593,9 +3596,57 @@ function clearCompare() {
   if (da) da.textContent = '';
   if (db) db.textContent = '';
   if (sc) sc.textContent = '';
+  // Reset A/B reveal state on clear
+  compareAbActualA = compareAbActualB = null;
+  const revealBtn = document.getElementById('compare-reveal-btn');
+  if (revealBtn) revealBtn.disabled = true;
+  // Reset AB label text to generic names
+  const labA = document.getElementById('compare-ab-label-a');
+  const labB = document.getElementById('compare-ab-label-b');
+  if (labA) labA.textContent = 'Model A';
+  if (labB) labB.textContent = 'Model B';
   updateCompareEmptyState();
   updateCompareDiffBtn();
   closeCompareDiff();
+}
+
+function toggleAbMode() {
+  compareAbMode = !compareAbMode;
+  document.getElementById('compare-ab-btn').classList.toggle('active', compareAbMode);
+  const revealBtn = document.getElementById('compare-reveal-btn');
+  revealBtn.style.display = compareAbMode ? '' : 'none';
+  revealBtn.disabled = true;
+  // In AB mode: hide the model selects inside pane headers, show static labels instead
+  document.getElementById('compare-model-a').style.display = compareAbMode ? 'none' : '';
+  document.getElementById('compare-model-b').style.display = compareAbMode ? 'none' : '';
+  const labA = document.getElementById('compare-ab-label-a');
+  const labB = document.getElementById('compare-ab-label-b');
+  if (labA) { labA.textContent = 'Model A'; labA.style.display = compareAbMode ? '' : 'none'; }
+  if (labB) { labB.textContent = 'Model B'; labB.style.display = compareAbMode ? '' : 'none'; }
+  if (!compareAbMode) { compareAbActualA = compareAbActualB = null; }
+}
+
+function revealAbModels() {
+  if (!compareAbActualA && !compareAbActualB) return;
+  const fmt = m => (m || 'Model A/B').replace(/^(ollama|lmstudio)\//, '');
+  const nameA = fmt(compareAbActualA);
+  const nameB = fmt(compareAbActualB);
+  // Update pane A/B header labels
+  const labA = document.getElementById('compare-ab-label-a');
+  const labB = document.getElementById('compare-ab-label-b');
+  if (labA) labA.textContent = nameA;
+  if (labB) labB.textContent = nameB;
+  // Update model name spans in all assistant msg-meta bubbles
+  document.getElementById('compare-msgs-a').querySelectorAll('.msg-wrap[data-role="assistant"] .msg-meta').forEach(m => {
+    const s = m.querySelector('span:first-child');
+    if (s && (s.textContent === 'Model A' || s.textContent.startsWith('?'))) s.textContent = nameA;
+  });
+  document.getElementById('compare-msgs-b').querySelectorAll('.msg-wrap[data-role="assistant"] .msg-meta').forEach(m => {
+    const s = m.querySelector('span:first-child');
+    if (s && (s.textContent === 'Model B' || s.textContent.startsWith('?'))) s.textContent = nameB;
+  });
+  document.getElementById('compare-reveal-btn').disabled = true;
+  toast(`🔍 Revealed — Left: ${nameA} · Right: ${nameB}`, 'success');
 }
 
 function gradeCompareMsg(wrap, grade) {
@@ -3667,12 +3718,19 @@ async function sendCompare() {
     pane.appendChild(u);
   }
 
+  // A/B mode: randomly assign which actual model goes to each pane
+  let modelForPaneA = compareModelA;
+  let modelForPaneB = compareModelB;
+  if (compareAbMode && Math.random() < 0.5) [modelForPaneA, modelForPaneB] = [modelForPaneB, modelForPaneA];
+  if (compareAbMode) { compareAbActualA = modelForPaneA; compareAbActualB = modelForPaneB; }
+
   setCompareLoadingState(true);
   compareActiveCount = 2;
   compareAbortA = new AbortController();
   compareAbortB = new AbortController();
 
   const runOne = async (model, pane, controller, side) => {
+    const displayName = compareAbMode ? (side === 'a' ? 'Model A' : 'Model B') : escHtml(model.replace(/^(ollama|lmstudio)\//, ''));
     const wrap = document.createElement('div');
     wrap.className = 'msg-wrap';
     wrap.dataset.role = 'assistant';
@@ -3681,7 +3739,7 @@ async function sendCompare() {
         <div class="avatar">🤖</div>
         <div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>
       </div>
-      <div class="msg-meta"><span>${escHtml(model.replace(/^(ollama|lmstudio)\//, ''))}</span></div>`;
+      <div class="msg-meta"><span>${displayName}</span></div>`;
     pane.appendChild(wrap);
     const bubble = wrap.querySelector('.bubble');
 
@@ -3740,7 +3798,13 @@ async function sendCompare() {
     }
     wrap.dataset.rawText = full;
     compareActiveCount--;
-    if (compareActiveCount <= 0) setCompareLoadingState(false);
+    if (compareActiveCount <= 0) {
+      setCompareLoadingState(false);
+      if (compareAbMode) {
+        const revealBtn = document.getElementById('compare-reveal-btn');
+        if (revealBtn) revealBtn.disabled = false;
+      }
+    }
     highlightNewCode();
     // Grade buttons appear once generation is complete (only when there's content)
     if (full) {
@@ -3759,8 +3823,8 @@ async function sendCompare() {
     updateCompareDiffBtn();
   };
 
-  runOne(compareModelA, paneA, compareAbortA, 'a');
-  runOne(compareModelB, paneB, compareAbortB, 'b');
+  runOne(modelForPaneA, paneA, compareAbortA, 'a');
+  runOne(modelForPaneB, paneB, compareAbortB, 'b');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -4118,6 +4182,8 @@ function buildPaletteCommands() {
     { group: 'Settings',  icon: '🔑',  label: 'API Keys',                                action: () => openApiKeySettings() },
     { group: 'Settings',  icon: '🎨',  label: 'Appearance — accent color, font, density', action: () => openAppearanceSettings() },
     { group: 'Settings',  icon: '💰',  label: 'Reset session cost total',                action: () => resetSessionCost() },
+    { group: 'Tools',     icon: '⚖️',  label: 'Compare Models',                          action: () => { if (!compareMode) toggleCompareMode(); } },
+    { group: 'Tools',     icon: '🎲',  label: 'Compare — A/B Test Mode',                  action: () => { if (!compareMode) toggleCompareMode(); toggleAbMode(); } },
     { group: 'Tools',     icon: '🔧',  label: 'Toggle Agent Tools',        kbd: '⌘/',   action: () => document.getElementById('tools-toggle').click() },
     { group: 'Tools',     icon: '📄',  label: 'Prompt Templates',                        action: () => openTemplates() },
     { group: 'Tools',     icon: '📚',  label: 'Add to Knowledge Base',                   action: () => openRagUpload() },
