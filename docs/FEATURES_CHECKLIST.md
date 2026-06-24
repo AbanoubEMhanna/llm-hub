@@ -52,7 +52,7 @@
 - [x] OpenRouter (200+ models via one key)
 - [x] Custom OpenAI-compatible endpoint (vLLM, LocalAI, Koboldcpp…)
 - [x] Per-provider connection test button
-- [ ] 🔥 Mistral AI provider
+- [x] Mistral AI provider
 - [ ] ⚡ Together AI provider
 - [ ] ⚡ Fireworks AI provider
 - [ ] ⚡ Cohere provider
@@ -259,7 +259,7 @@
 |----------|---------|------------|-----------|
 | Local Model Management | 10 | 2 | 3 |
 | Hardware Awareness | 7 | 1 | 4 |
-| Providers | 8 | 4 | 2 |
+| Providers | 9 | 3 | 2 |
 | Code & Context | 5 | 4 | 5 |
 | Agent & Tools | 5 | 3 | 6 |
 | Modern UI | 13 | 2 | 6 |
@@ -271,13 +271,13 @@
 | Security | 5 | 0 | 5 |
 | Deployment | 8 | 1 | 3 |
 | Developer | 5 | 1 | 4 |
-| **Total** | **112** | **21** | **54** |
+| **Total** | **113** | **20** | **54** |
 
-**~60% of planned features shipped. Focus areas to close the gap with LM Studio + OpenCode:**
+**~61% of planned features shipped. Focus areas to close the gap with LM Studio + OpenCode:**
 1. Code-first workflow (file tree, multi-file context, diff viewer, git integration)
 2. Mobile-responsive layout
 3. Agent tooling (shell tool, tool builder, run history)
-4. More cloud providers (Mistral, Together, Fireworks)
+4. More cloud providers (Together, Fireworks, Cohere)
 5. Published Docker image for one-click deployment
 
 ---

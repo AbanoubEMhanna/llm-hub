@@ -49,6 +49,7 @@
       <div class="status-dot cloud-dot" id="b-anthropic" title="Anthropic — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>Anthropic</span></div>
       <div class="status-dot cloud-dot" id="b-groq" title="Groq — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>Groq</span></div>
       <div class="status-dot cloud-dot" id="b-openrouter" title="OpenRouter — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>OpenRouter</span></div>
+      <div class="status-dot cloud-dot" id="b-mistral" title="Mistral — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>Mistral</span></div>
     </div>
   </div>
 
@@ -771,6 +772,16 @@
           <button class="btn btn-sm" onclick="toggleKeyVisibility('key-openrouter', this)">Show</button>
           <button class="btn btn-sm provider-test-btn" id="test-openrouter" onclick="testProvider('openrouter')" title="Ping OpenRouter with the current key">Test</button>
           <span class="provider-test-status" id="test-status-openrouter" role="status" aria-live="polite" aria-atomic="true"></span>
+        </div>
+        <div class="api-key-row">
+          <label class="api-key-label">
+            <span class="provider-badge mistral-badge">Mistral</span>
+            <span class="provider-hint">mistral-large, codestral, pixtral…</span>
+          </label>
+          <input class="api-key-input" id="key-mistral" type="password" placeholder="…" autocomplete="off"/>
+          <button class="btn btn-sm" onclick="toggleKeyVisibility('key-mistral', this)">Show</button>
+          <button class="btn btn-sm provider-test-btn" id="test-mistral" onclick="testProvider('mistral')" title="Ping Mistral with the current key">Test</button>
+          <span class="provider-test-status" id="test-status-mistral" role="status" aria-live="polite" aria-atomic="true"></span>
         </div>
       </div>
       <div id="apikey-status" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
