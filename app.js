@@ -256,6 +256,8 @@ async function checkHealth() {
     setCloudStatus('b-groq',       data.providers?.groq);
     setCloudStatus('b-openrouter', data.providers?.openrouter);
     setCloudStatus('b-mistral',    data.providers?.mistral);
+    setCloudStatus('b-together',   data.providers?.together);
+    setCloudStatus('b-fireworks',  data.providers?.fireworks);
     document.getElementById('proxy-alert').style.display = 'none';
   } catch {
     document.getElementById('proxy-alert').style.display = 'block';
@@ -297,6 +299,8 @@ async function loadModels() {
     fillModelSelect(document.getElementById('compare-model-b'));
     document.getElementById('model-loading').style.display = 'none';
     document.getElementById('model-select').style.display  = 'block';
+    const mSearch = document.getElementById('model-search');
+    if (mSearch) mSearch.style.display = 'block';
     updateFavModelBtn();
 
     // Also check running models
@@ -317,10 +321,10 @@ async function checkRunningModels() {
   }
 }
 
-const MODEL_ID_PREFIX_RE = /^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|custom_[^/]+)\//;
+const MODEL_ID_PREFIX_RE = /^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|together|fireworks|custom_[^/]+)\//;
 
 function parseModelId(modelId) {
-  const match    = (modelId || '').match(/^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|custom_[^/]+)\//);
+  const match    = (modelId || '').match(/^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|together|fireworks|custom_[^/]+)\//);
   const provider = match ? match[1] : (modelId?.split('/')[0] || null);
   const name     = (modelId || '').replace(MODEL_ID_PREFIX_RE, '');
   return { provider, name };
@@ -334,6 +338,8 @@ const PROVIDER_LABELS = {
   groq:       '🔵 Groq',
   openrouter: '🔴 OpenRouter',
   mistral:    '🟤 Mistral',
+  together:   '🟣 Together AI',
+  fireworks:  '🔶 Fireworks',
 };
 
 function getProviderLabel(provider) {
@@ -525,7 +531,7 @@ function fillModelSelect(sel) {
   for (const m of availableModels) {
     (groups[m.owned_by] = groups[m.owned_by] || []).push(m);
   }
-  const ORDER = ['ollama', 'lmstudio', 'openai', 'anthropic', 'groq', 'openrouter', 'mistral'];
+  const ORDER = ['ollama', 'lmstudio', 'openai', 'anthropic', 'groq', 'openrouter', 'mistral', 'together', 'fireworks'];
   const sorted = ORDER.filter(p => groups[p]).concat(Object.keys(groups).filter(p => !ORDER.includes(p)));
   for (const p of sorted) {
     const og = document.createElement('optgroup');
@@ -541,6 +547,26 @@ function fillModelSelect(sel) {
     sel.appendChild(og);
   }
   if (prevVal) sel.value = prevVal;
+}
+
+function filterModels(query) {
+  const sel = document.getElementById('model-select');
+  if (!sel) return;
+  const q = (query || '').trim().toLowerCase();
+  for (const og of sel.querySelectorAll('optgroup')) {
+    let visible = 0;
+    for (const opt of og.querySelectorAll('option')) {
+      const match = !q || opt.text.toLowerCase().includes(q) || opt.value.toLowerCase().includes(q);
+      opt.style.display = match ? '' : 'none';
+      if (match) visible++;
+    }
+    og.style.display = visible ? '' : 'none';
+  }
+  for (const opt of sel.children) {
+    if (opt.tagName === 'OPTION') {
+      opt.style.display = !q || opt.text.toLowerCase().includes(q) ? '' : 'none';
+    }
+  }
 }
 
 async function loadTools() {
@@ -2558,7 +2584,7 @@ async function openConfigEditor() {
 function openApiKeySettings() {
   switchSettingsTab('apikeys');
   const keys = getStoredApiKeys();
-  ['openai', 'anthropic', 'groq', 'openrouter', 'mistral'].forEach(p => {
+  ['openai', 'anthropic', 'groq', 'openrouter', 'mistral', 'together', 'fireworks'].forEach(p => {
     const el = document.getElementById(`key-${p}`);
     if (el) el.value = keys[p] || '';
   });
@@ -2857,7 +2883,7 @@ function toggleKeyVisibility(inputId, btn) {
 
 async function saveApiKeys() {
   const keys = {};
-  ['openai', 'anthropic', 'groq', 'openrouter', 'mistral'].forEach(p => {
+  ['openai', 'anthropic', 'groq', 'openrouter', 'mistral', 'together', 'fireworks'].forEach(p => {
     const v = (document.getElementById(`key-${p}`)?.value || '').trim();
     if (v) keys[p] = v;
   });
@@ -2891,7 +2917,7 @@ async function saveApiKeys() {
 
 function clearAllApiKeys() {
   localStorage.removeItem('llm-api-keys');
-  ['openai', 'anthropic', 'groq', 'openrouter', 'mistral'].forEach(p => {
+  ['openai', 'anthropic', 'groq', 'openrouter', 'mistral', 'together', 'fireworks'].forEach(p => {
     const el = document.getElementById(`key-${p}`);
     if (el) el.value = '';
     const st = document.getElementById(`test-status-${p}`);
