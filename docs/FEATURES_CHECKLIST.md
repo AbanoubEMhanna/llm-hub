@@ -273,7 +273,7 @@
 | Developer | 5 | 1 | 4 |
 | **Total** | **116** | **18** | **53** |
 
-**~64% of planned features shipped. Focus areas to close the gap with LM Studio + OpenCode:**
+**~62% of planned features shipped. Focus areas to close the gap with LM Studio + OpenCode:**
 1. Code-first workflow (file tree, multi-file context, diff viewer, git integration)
 2. Mobile-responsive layout
 3. Agent tooling (shell tool, tool builder, run history)
@@ -282,4 +282,4 @@
 
 ---
 
-*Last updated: 2026-06-22. See `docs/LLM_HUB_MASTER_TODO.md` for the full historical checklist including all completed items.*
+*Last updated: 2026-06-25. See `docs/LLM_HUB_MASTER_TODO.md` for the full historical checklist including all completed items.*
