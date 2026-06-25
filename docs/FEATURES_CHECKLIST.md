@@ -25,7 +25,7 @@
 - [x] Favorite / pin models to top of selector
 - [ ] 🔥 GGUF file drag-and-drop import — load any `.gguf` directly
 - [ ] 🔥 Model update notifications — alert when a newer version exists
-- [ ] ⚡ Model search in the main selector (filter as you type)
+- [x] Model search in the main selector (filter as you type)
 - [ ] Model tags and friendly aliases (rename `llama3.2:3b` → `"Fast Llama"`)
 - [ ] Model comparison spec sheet — side-by-side parameter table
 
@@ -53,8 +53,8 @@
 - [x] Custom OpenAI-compatible endpoint (vLLM, LocalAI, Koboldcpp…)
 - [x] Per-provider connection test button
 - [x] Mistral AI provider
-- [ ] ⚡ Together AI provider
-- [ ] ⚡ Fireworks AI provider
+- [x] Together AI provider
+- [x] Fireworks AI provider
 - [ ] ⚡ Cohere provider
 - [ ] Provider health monitoring with auto-reconnect
 - [ ] Per-provider timeout and retry configuration
@@ -257,9 +257,9 @@
 
 | Category | ✅ Done | 🔥 Priority | ⬜ Backlog |
 |----------|---------|------------|-----------|
-| Local Model Management | 10 | 2 | 3 |
+| Local Model Management | 11 | 2 | 2 |
 | Hardware Awareness | 7 | 1 | 4 |
-| Providers | 9 | 3 | 2 |
+| Providers | 11 | 1 | 2 |
 | Code & Context | 5 | 4 | 5 |
 | Agent & Tools | 5 | 3 | 6 |
 | Modern UI | 13 | 2 | 6 |
@@ -271,15 +271,15 @@
 | Security | 5 | 0 | 5 |
 | Deployment | 8 | 1 | 3 |
 | Developer | 5 | 1 | 4 |
-| **Total** | **113** | **20** | **54** |
+| **Total** | **116** | **18** | **53** |
 
-**~61% of planned features shipped. Focus areas to close the gap with LM Studio + OpenCode:**
+**~62% of planned features shipped. Focus areas to close the gap with LM Studio + OpenCode:**
 1. Code-first workflow (file tree, multi-file context, diff viewer, git integration)
 2. Mobile-responsive layout
 3. Agent tooling (shell tool, tool builder, run history)
-4. More cloud providers (Together, Fireworks, Cohere)
+4. More cloud providers (Cohere, AI21, Perplexity)
 5. Published Docker image for one-click deployment
 
 ---
 
-*Last updated: 2026-06-22. See `docs/LLM_HUB_MASTER_TODO.md` for the full historical checklist including all completed items.*
+*Last updated: 2026-06-25. See `docs/LLM_HUB_MASTER_TODO.md` for the full historical checklist including all completed items.*

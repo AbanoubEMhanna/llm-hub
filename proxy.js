@@ -744,7 +744,9 @@ const CLOUD_PROVIDERS = {
   anthropic:  { hostname: 'api.anthropic.com', modelsPath: '/v1/models',          chatPath: '/v1/messages',               keyProp: 'anthropic' },
   groq:       { hostname: 'api.groq.com',     modelsPath: '/openai/v1/models',   chatPath: '/openai/v1/chat/completions', keyProp: 'groq' },
   openrouter: { hostname: 'openrouter.ai',    modelsPath: '/api/v1/models',      chatPath: '/api/v1/chat/completions',    keyProp: 'openrouter' },
-  mistral:    { hostname: 'api.mistral.ai',   modelsPath: '/v1/models',          chatPath: '/v1/chat/completions',        keyProp: 'mistral' },
+  mistral:    { hostname: 'api.mistral.ai',         modelsPath: '/v1/models',                chatPath: '/v1/chat/completions',                  keyProp: 'mistral' },
+  together:   { hostname: 'api.together.xyz',       modelsPath: '/v1/models',                chatPath: '/v1/chat/completions',                  keyProp: 'together' },
+  fireworks:  { hostname: 'api.fireworks.ai',        modelsPath: '/inference/v1/models',      chatPath: '/inference/v1/chat/completions',         keyProp: 'fireworks' },
 };
 
 
@@ -855,11 +857,13 @@ function resolveProvider(m) {
   if (m?.startsWith('groq/'))       return 'groq';
   if (m?.startsWith('openrouter/')) return 'openrouter';
   if (m?.startsWith('mistral/'))    return 'mistral';
+  if (m?.startsWith('together/'))   return 'together';
+  if (m?.startsWith('fireworks/'))  return 'fireworks';
   const customMatch = m?.match(/^(custom_[^/]+)\//);
   if (customMatch && customProviderConfigs.has(customMatch[1])) return customMatch[1];
   return modelRegistry.get(m) || null;
 }
-function stripPrefix(m) { return m?.replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|custom_[^/]+)\//, '') || m; }
+function stripPrefix(m) { return m?.replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|together|fireworks|custom_[^/]+)\//, '') || m; }
 
 async function fetchAllModels(apiKeys = {}, customProviders = []) {
   modelRegistry.clear();
