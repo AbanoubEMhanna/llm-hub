@@ -747,6 +747,7 @@ const CLOUD_PROVIDERS = {
   mistral:    { hostname: 'api.mistral.ai',         modelsPath: '/v1/models',                chatPath: '/v1/chat/completions',                  keyProp: 'mistral' },
   together:   { hostname: 'api.together.xyz',       modelsPath: '/v1/models',                chatPath: '/v1/chat/completions',                  keyProp: 'together' },
   fireworks:  { hostname: 'api.fireworks.ai',        modelsPath: '/inference/v1/models',      chatPath: '/inference/v1/chat/completions',         keyProp: 'fireworks' },
+  cohere:     { hostname: 'api.cohere.com',          modelsPath: '/compatibility/v1/models',  chatPath: '/compatibility/v1/chat/completions',     keyProp: 'cohere' },
 };
 
 
@@ -859,11 +860,12 @@ function resolveProvider(m) {
   if (m?.startsWith('mistral/'))    return 'mistral';
   if (m?.startsWith('together/'))   return 'together';
   if (m?.startsWith('fireworks/'))  return 'fireworks';
+  if (m?.startsWith('cohere/'))     return 'cohere';
   const customMatch = m?.match(/^(custom_[^/]+)\//);
   if (customMatch && customProviderConfigs.has(customMatch[1])) return customMatch[1];
   return modelRegistry.get(m) || null;
 }
-function stripPrefix(m) { return m?.replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|together|fireworks|custom_[^/]+)\//, '') || m; }
+function stripPrefix(m) { return m?.replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|together|fireworks|cohere|custom_[^/]+)\//, '') || m; }
 
 async function fetchAllModels(apiKeys = {}, customProviders = []) {
   modelRegistry.clear();
