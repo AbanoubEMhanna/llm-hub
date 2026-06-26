@@ -18,6 +18,8 @@ let showTimestamps = localStorage.getItem('llm-show-ts') === '1';
 let userPresets    = JSON.parse(localStorage.getItem('llm-presets')   || '{}');
 let templates      = JSON.parse(localStorage.getItem('llm-templates') || 'null') || defaultTemplates();
 let userSettings   = JSON.parse(localStorage.getItem('llm-settings')  || '{"theme":"dark"}');
+let toastHistory = [];
+let toastHistoryOpen = false;
 
 // ── API key helpers (stored in localStorage, sent to proxy via header only)
 function getStoredApiKeys() {
@@ -243,6 +245,7 @@ async function init() {
   setInterval(checkHealth, 30000);
   setInterval(loadSystemInfo, 15000);  // Refresh system RAM + running models
   setInterval(refreshTimestamps, 60000);
+  if (!localStorage.getItem('llm-onboarded')) openOnboardingWizard();
 }
 
 async function checkHealth() {
@@ -4353,6 +4356,9 @@ function initHotkeys() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function toast(msg, kind = '') {
+  toastHistory.unshift({ msg, kind, ts: Date.now() });
+  if (toastHistory.length > 100) toastHistory.pop();
+  if (toastHistoryOpen) renderToastHistory();
   const el = document.createElement('div');
   el.className = `toast ${kind}`;
   el.textContent = msg;
@@ -4360,6 +4366,117 @@ function toast(msg, kind = '') {
   setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 200); }, 2500);
 }
 function showToast(msg, kind = '') { return toast(msg, kind); }
+
+// ─── Toast History Panel ────────────────────────────────────────────────────
+function toggleToastHistory() {
+  toastHistoryOpen ? closeToastHistory() : openToastHistory();
+}
+function openToastHistory() {
+  toastHistoryOpen = true;
+  document.getElementById('toast-history-drawer').classList.add('open');
+  document.getElementById('notif-btn')?.classList.add('active');
+  renderToastHistory();
+}
+function closeToastHistory() {
+  toastHistoryOpen = false;
+  document.getElementById('toast-history-drawer').classList.remove('open');
+  document.getElementById('notif-btn')?.classList.remove('active');
+}
+function renderToastHistory() {
+  const list = document.getElementById('toast-history-list');
+  if (!list) return;
+  if (!toastHistory.length) {
+    list.innerHTML = '<div class="toast-history-empty">No notifications yet</div>';
+    return;
+  }
+  list.innerHTML = toastHistory.map(t => {
+    const d = new Date(t.ts);
+    const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return `<div class="toast-history-item ${t.kind || ''}">
+      <div class="th-msg">${escHtml(t.msg)}</div>
+      <div class="th-time">${time}</div>
+    </div>`;
+  }).join('');
+}
+function clearToastHistory() {
+  toastHistory = [];
+  renderToastHistory();
+}
+
+// ─── Onboarding Wizard ──────────────────────────────────────────────────────
+let _wizardStep = 1;
+const _WIZARD_STEPS = 3;
+
+function openOnboardingWizard() {
+  _wizardStep = 1;
+  document.getElementById('onboarding-wizard').classList.add('active');
+  _renderWizardStep();
+}
+function closeOnboardingWizard() {
+  document.getElementById('onboarding-wizard').classList.remove('active');
+  localStorage.setItem('llm-onboarded', '1');
+}
+function wizardNext() {
+  if (_wizardStep < _WIZARD_STEPS) {
+    _wizardStep++;
+    _renderWizardStep();
+    if (_wizardStep === 2) _runWizardDetection();
+  } else {
+    closeOnboardingWizard();
+  }
+}
+function wizardBack() {
+  if (_wizardStep > 1) { _wizardStep--; _renderWizardStep(); }
+}
+function _renderWizardStep() {
+  document.querySelectorAll('.wizard-step-dot').forEach((d, i) => {
+    d.classList.toggle('active', i < _wizardStep);
+  });
+  for (let i = 1; i <= _WIZARD_STEPS; i++) {
+    const el = document.getElementById(`wizard-step-${i}`);
+    if (el) el.style.display = i === _wizardStep ? 'block' : 'none';
+  }
+  const backBtn = document.getElementById('wizard-back-btn');
+  const nextBtn = document.getElementById('wizard-next-btn');
+  const skipBtn = document.getElementById('wizard-skip-btn');
+  if (backBtn) backBtn.style.display = _wizardStep > 1 ? 'inline-flex' : 'none';
+  if (nextBtn) {
+    if (_wizardStep === 1) nextBtn.textContent = 'Get Started →';
+    else if (_wizardStep === _WIZARD_STEPS) nextBtn.textContent = 'Start Chatting →';
+    else nextBtn.textContent = 'Continue →';
+  }
+  if (skipBtn) skipBtn.style.display = _wizardStep === _WIZARD_STEPS ? 'none' : 'inline-block';
+}
+async function _runWizardDetection() {
+  const status = document.getElementById('wizard-detect-status');
+  if (!status) return;
+  const providers = [
+    { key: 'ollama',    label: '🖥️ Ollama', hint: 'local' },
+    { key: 'lmstudio', label: '🖥️ LM Studio', hint: 'local' },
+    { key: 'openai',   label: '☁️ OpenAI', hint: 'cloud' },
+    { key: 'anthropic',label: '☁️ Anthropic', hint: 'cloud' },
+    { key: 'groq',     label: '☁️ Groq', hint: 'cloud' },
+    { key: 'cohere',   label: '☁️ Cohere', hint: 'cloud' },
+  ];
+  status.innerHTML = providers.map(p =>
+    `<div class="wizard-detect-row" id="wdr-${p.key}">
+      <span>${p.label}</span><span class="wizard-detect-status checking">…</span>
+    </div>`
+  ).join('');
+  try {
+    const res  = await fetch(`${PROXY}/health`, { headers: apiKeyHeader() });
+    const data = await res.json();
+    providers.forEach(p => {
+      const row = document.getElementById(`wdr-${p.key}`);
+      if (!row) return;
+      const online = data.providers?.[p.key] === 'online';
+      row.querySelector('.wizard-detect-status').className = `wizard-detect-status ${online ? 'online' : 'offline'}`;
+      row.querySelector('.wizard-detect-status').textContent = online ? '✓ Connected' : '○ Not found';
+    });
+  } catch {
+    status.innerHTML = `<p style="color:var(--red);font-size:13px">Could not reach proxy. Make sure <code>node proxy.js</code> is running.</p>`;
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § UTILS

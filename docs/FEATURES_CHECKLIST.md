@@ -112,8 +112,8 @@
 - [ ] 🔥 🏗️ Fully responsive mobile layout — hamburger nav, touch-friendly
 - [ ] 🔥 🏗️ Multi-tab chat — tab bar, multiple conversations side-by-side
 - [ ] Keyboard shortcut remapping
-- [ ] Onboarding wizard for first-time setup (provider config, model pull)
-- [ ] Notification / toast history panel
+- [x] Onboarding wizard for first-time setup (provider config, model pull)
+- [x] Notification / toast history panel
 - [ ] Custom welcome screen configuration
 
 ### Chat Experience
@@ -262,7 +262,7 @@
 | Providers | 12 | 0 | 2 |
 | Code & Context | 5 | 4 | 5 |
 | Agent & Tools | 5 | 3 | 6 |
-| Modern UI | 13 | 2 | 6 |
+| Modern UI | 15 | 2 | 4 |
 | Chat Experience | 19 | 1 | 3 |
 | Model Comparison | 6 | 1 | 2 |
 | RAG / Knowledge | 7 | 1 | 6 |
@@ -271,9 +271,9 @@
 | Security | 5 | 0 | 5 |
 | Deployment | 8 | 1 | 3 |
 | Developer | 5 | 1 | 4 |
-| **Total** | **117** | **17** | **53** |
+| **Total** | **119** | **17** | **51** |
 
-**~63% of planned features shipped. Focus areas to close the gap with LM Studio + OpenCode:**
+**~64% of planned features shipped. Focus areas to close the gap with LM Studio + OpenCode:**
 1. Code-first workflow (file tree, multi-file context, diff viewer, git integration)
 2. Mobile-responsive layout
 3. Agent tooling (shell tool, tool builder, run history)
