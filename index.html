@@ -52,6 +52,7 @@
       <div class="status-dot cloud-dot" id="b-mistral" title="Mistral — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>Mistral</span></div>
       <div class="status-dot cloud-dot" id="b-together" title="Together AI — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>Together</span></div>
       <div class="status-dot cloud-dot" id="b-fireworks" title="Fireworks — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>Fireworks</span></div>
+      <div class="status-dot cloud-dot" id="b-cohere" title="Cohere — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>Cohere</span></div>
     </div>
   </div>
 
@@ -805,6 +806,16 @@
           <button class="btn btn-sm" onclick="toggleKeyVisibility('key-fireworks', this)">Show</button>
           <button class="btn btn-sm provider-test-btn" id="test-fireworks" onclick="testProvider('fireworks')" title="Ping Fireworks with the current key">Test</button>
           <span class="provider-test-status" id="test-status-fireworks" role="status" aria-live="polite" aria-atomic="true"></span>
+        </div>
+        <div class="api-key-row">
+          <label class="api-key-label">
+            <span class="provider-badge cohere-badge">Cohere</span>
+            <span class="provider-hint">Command R+, Aya, Embed, Rerank…</span>
+          </label>
+          <input class="api-key-input" id="key-cohere" type="password" placeholder="…" autocomplete="off"/>
+          <button class="btn btn-sm" onclick="toggleKeyVisibility('key-cohere', this)">Show</button>
+          <button class="btn btn-sm provider-test-btn" id="test-cohere" onclick="testProvider('cohere')" title="Ping Cohere with the current key">Test</button>
+          <span class="provider-test-status" id="test-status-cohere" role="status" aria-live="polite" aria-atomic="true"></span>
         </div>
       </div>
       <div id="apikey-status" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>

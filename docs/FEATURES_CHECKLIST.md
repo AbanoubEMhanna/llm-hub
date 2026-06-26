@@ -55,7 +55,7 @@
 - [x] Mistral AI provider
 - [x] Together AI provider
 - [x] Fireworks AI provider
-- [ ] ⚡ Cohere provider
+- [x] Cohere provider
 - [ ] Provider health monitoring with auto-reconnect
 - [ ] Per-provider timeout and retry configuration
 
@@ -259,7 +259,7 @@
 |----------|---------|------------|-----------|
 | Local Model Management | 11 | 2 | 2 |
 | Hardware Awareness | 7 | 1 | 4 |
-| Providers | 11 | 1 | 2 |
+| Providers | 12 | 0 | 2 |
 | Code & Context | 5 | 4 | 5 |
 | Agent & Tools | 5 | 3 | 6 |
 | Modern UI | 13 | 2 | 6 |
@@ -271,9 +271,9 @@
 | Security | 5 | 0 | 5 |
 | Deployment | 8 | 1 | 3 |
 | Developer | 5 | 1 | 4 |
-| **Total** | **116** | **18** | **53** |
+| **Total** | **117** | **17** | **53** |
 
-**~62% of planned features shipped. Focus areas to close the gap with LM Studio + OpenCode:**
+**~63% of planned features shipped. Focus areas to close the gap with LM Studio + OpenCode:**
 1. Code-first workflow (file tree, multi-file context, diff viewer, git integration)
 2. Mobile-responsive layout
 3. Agent tooling (shell tool, tool builder, run history)
