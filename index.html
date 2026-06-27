@@ -90,6 +90,9 @@
     <button class="topbar-btn" onclick="toggleTimestamps()" id="ts-btn" title="Toggle message timestamps (T)">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     </button>
+    <button class="topbar-btn" onclick="toggleToastHistory()" title="Notification history" id="notif-btn" aria-label="Notification history">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+    </button>
     <div class="topbar-divider"></div>
     <button class="topbar-btn" onclick="toggleTheme()" title="Toggle theme" id="theme-btn">🌙</button>
     <button class="topbar-btn mobile-menu-btn" id="sidebar-right-btn" onclick="toggleMobileSidebar('right')" title="Settings &amp; Model" aria-label="Toggle settings panel">
@@ -1308,6 +1311,72 @@
       <kbd>⌘P</kbd>
     </div>
     <div class="palette-results" id="palette-results"></div>
+  </div>
+</div>
+
+<!-- Onboarding Wizard -->
+<div class="wizard-overlay" id="onboarding-wizard">
+  <div class="wizard" role="dialog" aria-modal="true" aria-label="LLM Hub onboarding wizard">
+    <div class="wizard-steps">
+      <div class="wizard-step-dot" id="ws-1"></div>
+      <div class="wizard-step-dot" id="ws-2"></div>
+      <div class="wizard-step-dot" id="ws-3"></div>
+    </div>
+    <!-- Step 1: Welcome -->
+    <div class="wizard-body" id="wizard-step-1">
+      <div class="wizard-icon">⚡</div>
+      <div class="wizard-title">Welcome to LLM Hub</div>
+      <div class="wizard-desc">Your local-first AI workbench — model management of <strong>LM Studio</strong>, developer workflow of <strong>OpenCode</strong>, wrapped in a modern Linear/Vercel-inspired UI.</div>
+      <div class="wizard-features">
+        <div class="wizard-feature-row"><span>🖥️</span><span>Local models via Ollama or LM Studio — private, offline-capable</span></div>
+        <div class="wizard-feature-row"><span>☁️</span><span>Cloud APIs — OpenAI, Anthropic, Groq, Cohere and more</span></div>
+        <div class="wizard-feature-row"><span>🔧</span><span>Built-in RAG, tools, agent loops, and MCP client</span></div>
+        <div class="wizard-feature-row"><span>🎨</span><span>Keyboard-first UI — ⌘K search, ⌘P palette, ? shortcuts</span></div>
+      </div>
+    </div>
+    <!-- Step 2: Detect -->
+    <div class="wizard-body" id="wizard-step-2" style="display:none">
+      <div class="wizard-icon">🔍</div>
+      <div class="wizard-title">Checking your setup…</div>
+      <div class="wizard-desc">Detecting which AI providers are available on your system.</div>
+      <div id="wizard-detect-status" class="wizard-detect-list"></div>
+      <p class="wizard-setup-hint">No provider yet? <button type="button" class="btn-link" onclick="closeOnboardingWizard(false);openApiKeySettings()">Add an API key in Settings → Providers</button></p>
+    </div>
+    <!-- Step 3: Ready -->
+    <div class="wizard-body" id="wizard-step-3" style="display:none">
+      <div class="wizard-icon">🎉</div>
+      <div class="wizard-title">You're all set!</div>
+      <div class="wizard-desc">LLM Hub is ready. A few tips to get you started:</div>
+      <div class="wizard-tips">
+        <div class="wizard-tip-row"><kbd>⌘K</kbd><span>Search conversations</span></div>
+        <div class="wizard-tip-row"><kbd>⌘P</kbd><span>Open command palette</span></div>
+        <div class="wizard-tip-row"><kbd>?</kbd><span>Show all keyboard shortcuts</span></div>
+        <div class="wizard-tip-row"><kbd>⌘⇧F</kbd><span>Toggle focus mode</span></div>
+        <div class="wizard-tip-row"><kbd>T</kbd><span>Toggle message timestamps</span></div>
+      </div>
+    </div>
+    <div class="wizard-footer">
+      <button class="btn wizard-skip-btn" onclick="closeOnboardingWizard()" id="wizard-skip-btn">Skip</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-ghost" id="wizard-back-btn" onclick="wizardBack()" style="display:none">← Back</button>
+        <button class="btn btn-primary" id="wizard-next-btn" onclick="wizardNext()">Get Started →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast History Drawer -->
+<div class="toast-history-drawer" id="toast-history-drawer">
+  <div class="toast-history-header">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+    <span class="toast-history-title">Notifications</span>
+    <button class="btn btn-sm" onclick="clearToastHistory()">Clear all</button>
+    <button class="topbar-btn" onclick="closeToastHistory()" title="Close" style="flex-shrink:0">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="toast-history-list" id="toast-history-list">
+    <div class="toast-history-empty">No notifications yet</div>
   </div>
 </div>
 
