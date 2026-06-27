@@ -2238,7 +2238,8 @@ del.diff-del {
 .wizard-detect-status.offline { color: var(--muted); }
 .wizard-detect-status.checking { color: var(--accent); }
 .wizard-setup-hint { font-size: 12px; color: var(--muted); margin-top: 12px; }
-.wizard-setup-hint a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+.wizard-setup-hint a, .wizard-setup-hint .btn-link { color: var(--accent); cursor: pointer; text-decoration: underline; }
+.btn-link { background: none; border: none; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; }
 .wizard-tips { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
 .wizard-tip-row {
   display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text);

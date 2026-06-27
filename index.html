@@ -1316,7 +1316,7 @@
 
 <!-- Onboarding Wizard -->
 <div class="wizard-overlay" id="onboarding-wizard">
-  <div class="wizard">
+  <div class="wizard" role="dialog" aria-modal="true" aria-label="LLM Hub onboarding wizard">
     <div class="wizard-steps">
       <div class="wizard-step-dot" id="ws-1"></div>
       <div class="wizard-step-dot" id="ws-2"></div>
@@ -1340,7 +1340,7 @@
       <div class="wizard-title">Checking your setup…</div>
       <div class="wizard-desc">Detecting which AI providers are available on your system.</div>
       <div id="wizard-detect-status" class="wizard-detect-list"></div>
-      <p class="wizard-setup-hint">No provider yet? <a onclick="closeOnboardingWizard();openApiKeySettings()">Add an API key in Settings → Providers</a></p>
+      <p class="wizard-setup-hint">No provider yet? <button type="button" class="btn-link" onclick="closeOnboardingWizard(false);openApiKeySettings()">Add an API key in Settings → Providers</button></p>
     </div>
     <!-- Step 3: Ready -->
     <div class="wizard-body" id="wizard-step-3" style="display:none">

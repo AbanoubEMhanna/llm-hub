@@ -4406,15 +4406,23 @@ function clearToastHistory() {
 // ─── Onboarding Wizard ──────────────────────────────────────────────────────
 let _wizardStep = 1;
 const _WIZARD_STEPS = 3;
+let _wizardPrevFocus = null;
 
 function openOnboardingWizard() {
   _wizardStep = 1;
-  document.getElementById('onboarding-wizard').classList.add('active');
+  _wizardPrevFocus = document.activeElement;
+  const overlay = document.getElementById('onboarding-wizard');
+  overlay.classList.add('active');
   _renderWizardStep();
+  const firstBtn = overlay.querySelector('button, [href], input, [tabindex]:not([tabindex="-1"])');
+  if (firstBtn) firstBtn.focus();
 }
-function closeOnboardingWizard() {
+// persist=false when the user is merely navigating away mid-wizard (e.g. to Settings);
+// persist=true (default) for an intentional skip or completion.
+function closeOnboardingWizard(persist = true) {
   document.getElementById('onboarding-wizard').classList.remove('active');
-  localStorage.setItem('llm-onboarded', '1');
+  if (persist) localStorage.setItem('llm-onboarded', '1');
+  if (_wizardPrevFocus) { _wizardPrevFocus.focus(); _wizardPrevFocus = null; }
 }
 function wizardNext() {
   if (_wizardStep < _WIZARD_STEPS) {
@@ -4450,29 +4458,31 @@ function _renderWizardStep() {
 async function _runWizardDetection() {
   const status = document.getElementById('wizard-detect-status');
   if (!status) return;
-  const providers = [
-    { key: 'ollama',    label: '🖥️ Ollama', hint: 'local' },
-    { key: 'lmstudio', label: '🖥️ LM Studio', hint: 'local' },
-    { key: 'openai',   label: '☁️ OpenAI', hint: 'cloud' },
-    { key: 'anthropic',label: '☁️ Anthropic', hint: 'cloud' },
-    { key: 'groq',     label: '☁️ Groq', hint: 'cloud' },
-    { key: 'cohere',   label: '☁️ Cohere', hint: 'cloud' },
-  ];
-  status.innerHTML = providers.map(p =>
-    `<div class="wizard-detect-row" id="wdr-${p.key}">
-      <span>${p.label}</span><span class="wizard-detect-status checking">…</span>
-    </div>`
-  ).join('');
+  const KNOWN_LABELS = {
+    ollama: '🖥️ Ollama', lmstudio: '🖥️ LM Studio',
+    openai: '☁️ OpenAI', anthropic: '☁️ Anthropic',
+    groq: '☁️ Groq', cohere: '☁️ Cohere',
+    mistral: '☁️ Mistral', together: '☁️ Together AI',
+    fireworks: '☁️ Fireworks', openrouter: '☁️ OpenRouter',
+  };
+  status.innerHTML = `<p style="color:var(--muted);font-size:13px">Checking providers…</p>`;
   try {
     const res  = await fetch(`${PROXY}/health`, { headers: apiKeyHeader() });
     const data = await res.json();
-    providers.forEach(p => {
-      const row = document.getElementById(`wdr-${p.key}`);
-      if (!row) return;
-      const online = data.providers?.[p.key] === 'online';
-      row.querySelector('.wizard-detect-status').className = `wizard-detect-status ${online ? 'online' : 'offline'}`;
-      row.querySelector('.wizard-detect-status').textContent = online ? '✓ Connected' : '○ Not found';
-    });
+    const providerData = data.providers || {};
+    const keys = Object.keys(providerData);
+    if (!keys.length) {
+      status.innerHTML = `<p style="color:var(--muted);font-size:13px">No providers reported. Start Ollama or add an API key.</p>`;
+      return;
+    }
+    status.innerHTML = keys.map(key => {
+      const label = KNOWN_LABELS[key] || `🔌 ${escHtml(key)}`;
+      const online = providerData[key] === 'online';
+      return `<div class="wizard-detect-row">
+        <span>${label}</span>
+        <span class="wizard-detect-status ${online ? 'online' : 'offline'}">${online ? '✓ Connected' : '○ Not found'}</span>
+      </div>`;
+    }).join('');
   } catch {
     status.innerHTML = `<p style="color:var(--red);font-size:13px">Could not reach proxy. Make sure <code>node proxy.js</code> is running.</p>`;
   }
