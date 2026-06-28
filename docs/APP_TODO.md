@@ -77,7 +77,7 @@
 - [x] JSON mode — force `response_format: json_object`
 - [x] JSON Schema mode — enforce structured output with editor + presets
 - [ ] 🔥 🏗️ File tree sidebar — browse local files via MCP filesystem server
-- [ ] 🔥 Multi-file context — select and attach multiple files as context
+- [x] Multi-file context — attach `.js`, `.py`, `.ts`, `.md`, and 30+ code/text formats directly in chat
 - [ ] 🔥 Diff viewer — before/after code comparison with syntax highlighting
 - [ ] 🔥 Git integration — show diff, stage, commit, PR review in-app
 - [ ] ⚡ Copy code → file save dialog (write directly to disk via MCP)
