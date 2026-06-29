@@ -841,6 +841,49 @@ function closeMobileSidebars() {
 // § ATTACHMENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─── Text / code file support ────────────────────────────────────────────────
+const TEXT_EXTS = new Set([
+  'js','mjs','cjs','ts','tsx','jsx','py','rb','php','java','kt','swift',
+  'go','rs','c','cpp','h','hpp','cs','m','sh','zsh','bash','fish',
+  'md','mdx','txt','csv','json','yaml','yml','toml','xml','html','htm',
+  'css','scss','sass','less','sql','graphql','gql','lua','r','jl',
+  'ex','exs','hs','elm','clj','erl','dart','vue','svelte',
+  'env','gitignore','eslintrc','prettierrc','babelrc','editorconfig',
+]);
+
+function detectLanguage(filename) {
+  const name = filename.toLowerCase();
+  const ext  = name.split('.').pop();
+  if (name === 'dockerfile' || name.startsWith('dockerfile.')) return 'dockerfile';
+  if (name === 'makefile' || name === 'rakefile') return 'makefile';
+  const map = {
+    js:'javascript', mjs:'javascript', cjs:'javascript',
+    ts:'typescript', tsx:'tsx', jsx:'jsx',
+    py:'python', rb:'ruby', php:'php',
+    java:'java', kt:'kotlin', swift:'swift',
+    go:'go', rs:'rust', c:'c', cpp:'cpp', h:'c', hpp:'cpp', cs:'csharp',
+    m:'objc', sh:'bash', zsh:'bash', bash:'bash', fish:'fish',
+    md:'markdown', mdx:'markdown', txt:'text', csv:'csv',
+    json:'json', yaml:'yaml', yml:'yaml', toml:'toml', xml:'xml',
+    html:'html', htm:'html', css:'css', scss:'scss', sass:'sass', less:'less',
+    sql:'sql', graphql:'graphql', gql:'graphql',
+    lua:'lua', r:'r', jl:'julia', ex:'elixir', exs:'elixir',
+    hs:'haskell', elm:'elm', clj:'clojure', erl:'erlang', dart:'dart',
+    vue:'vue', svelte:'svelte', env:'dotenv',
+  };
+  return map[ext] || 'text';
+}
+
+const SPECIAL_TEXT_FILENAMES = new Set(['dockerfile', 'makefile', 'rakefile']);
+
+function isTextFile(file) {
+  const name = file.name.toLowerCase();
+  if (file.type.startsWith('text/')) return true;
+  if (SPECIAL_TEXT_FILENAMES.has(name)) return true;
+  const ext = name.includes('.') ? name.split('.').pop() : '';
+  return TEXT_EXTS.has(ext) || TEXT_EXTS.has(name);
+}
+
 function handleFiles(files) {
   for (const file of files) {
     if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
@@ -852,6 +895,18 @@ function handleFiles(files) {
         renderAttachments();
       };
       reader.readAsDataURL(file);
+    } else if (isTextFile(file)) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        attachments.push({
+          type: 'text',
+          name: file.name,
+          content: reader.result,
+          language: detectLanguage(file.name),
+        });
+        renderAttachments();
+      };
+      reader.readAsText(file, 'utf-8');
     }
   }
 }
@@ -926,6 +981,17 @@ function renderAttachments() {
       return `<div class="att-doc${a.loading ? ' att-doc-loading' : ''}">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         <span>${label}</span>
+        <button class="att-remove" style="position:static;width:14px;height:14px" onclick="removeAttachment(${i})" title="Remove">×</button>
+      </div>`;
+    }
+    if (a.type === 'text') {
+      const lines = (a.content || '').split('\n').length;
+      const size  = a.content ? (a.content.length > 1024
+        ? `${Math.round(a.content.length / 1024)}k chars`
+        : `${a.content.length} chars`) : '';
+      return `<div class="att-doc att-code">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        <span>${escHtml(a.name)} <em class="att-meta">${lines} lines · ${a.language} · ${size}</em></span>
         <button class="att-remove" style="position:static;width:14px;height:14px" onclick="removeAttachment(${i})" title="Remove">×</button>
       </div>`;
     }
@@ -1460,6 +1526,18 @@ async function send() {
         userContent.push({ type: 'text', text: `📄 Document: ${a.name} (${a.pageCount} pages)\n\n${body}` });
       }
     }
+    // Code/text files as fenced code blocks
+    for (const a of attachments) {
+      if (a.type === 'text' && a.content) {
+        const MAX_CHARS = 100000;
+        const body = a.content.length > MAX_CHARS
+          ? a.content.slice(0, MAX_CHARS) + '\n\n[… file truncated at 100 000 characters]'
+          : a.content;
+        const backtickRuns = body.match(/`+/g) || [];
+        const fence = '`'.repeat(Math.max(3, ...backtickRuns.map(run => run.length + 1)));
+        userContent.push({ type: 'text', text: `💻 File: ${a.name}\n${fence}${a.language}\n${body}\n${fence}` });
+      }
+    }
     if (text) userContent.push({ type: 'text', text });
     for (const a of attachments) {
       if (a.type === 'image') userContent.push({ type: 'image_url', image_url: { url: a.dataUrl } });
@@ -1478,9 +1556,10 @@ async function send() {
   saveConvs();
   renderConvList();
 
-  const imgsForBubble = attachments.filter(a => a.type === 'image' && a.dataUrl);
-  const pdfsForBubble = attachments.filter(a => a.type === 'pdf' && a.text && !a.loading);
-  appendUserBubble(conv.messages.length - 1, text, imgsForBubble, pdfsForBubble, msgTs);
+  const imgsForBubble  = attachments.filter(a => a.type === 'image' && a.dataUrl);
+  const pdfsForBubble  = attachments.filter(a => a.type === 'pdf' && a.text && !a.loading);
+  const codeForBubble  = attachments.filter(a => a.type === 'text' && a.content);
+  appendUserBubble(conv.messages.length - 1, text, imgsForBubble, pdfsForBubble, msgTs, codeForBubble);
   attachments = []; renderAttachments();
 
   await streamAssistantReply(conv);
@@ -1821,13 +1900,17 @@ function renderMessages(msgs) {
       let text = '';
       const imgs = [];
       const pdfs = [];
+      const codeFiles = [];
       if (typeof m.content === 'string') text = m.content;
       else if (Array.isArray(m.content)) {
         for (const p of m.content) {
           if (p.type === 'text') {
-            const pdfMatch = p.text.match(/^📄 Document: (.+) \((\d+) pages?\)\n/);
+            const pdfMatch  = p.text.match(/^📄 Document: (.+) \((\d+) pages?\)\n/);
+            const codeMatch = p.text.match(/^💻 File: (.+)\n```(\w+)\n/);
             if (pdfMatch) {
               pdfs.push({ name: pdfMatch[1], pageCount: parseInt(pdfMatch[2]) });
+            } else if (codeMatch) {
+              codeFiles.push({ name: codeMatch[1], language: codeMatch[2] });
             } else {
               text = p.text;
             }
@@ -1836,7 +1919,7 @@ function renderMessages(msgs) {
           }
         }
       }
-      appendUserBubble(i, text, imgs, pdfs, m.ts || 0);
+      appendUserBubble(i, text, imgs, pdfs, m.ts || 0, codeFiles);
     } else if (m.role === 'assistant') {
       const w = buildAssistantWrap(i, m.content || '', m.stopped, m.ts || 0);
       container.appendChild(w);
@@ -1872,13 +1955,18 @@ function applyCollapse(wrap) {
   });
 }
 
-function appendUserBubble(idx, text, imgs = [], pdfs = [], ts = 0) {
+function appendUserBubble(idx, text, imgs = [], pdfs = [], ts = 0, codeFiles = []) {
   const container = document.getElementById('messages');
   const wrap = document.createElement('div');
   wrap.className = 'msg-wrap';
   const pdfsHtml = pdfs.length
     ? `<div class="bubble-docs">${pdfs.map(p =>
         `<div class="bubble-doc"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>${escHtml(p.name)}${p.pageCount ? ` (${p.pageCount}p)` : ''}</span></div>`
+      ).join('')}</div>`
+    : '';
+  const codeFilesHtml = codeFiles.length
+    ? `<div class="bubble-docs">${codeFiles.map(f =>
+        `<div class="bubble-doc bubble-code"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span>${escHtml(f.name)}${f.language ? ` <em class="att-meta">${f.language}</em>` : ''}</span></div>`
       ).join('')}</div>`
     : '';
   const imagesHtml = imgs.length
@@ -1890,6 +1978,7 @@ function appendUserBubble(idx, text, imgs = [], pdfs = [], ts = 0) {
       <div class="avatar">👤</div>
       <div class="bubble">
         ${pdfsHtml}
+        ${codeFilesHtml}
         ${imagesHtml}
         ${text ? `<div>${renderMarkdown(text)}</div>` : ''}
       </div>
