@@ -874,10 +874,14 @@ function detectLanguage(filename) {
   return map[ext] || 'text';
 }
 
+const SPECIAL_TEXT_FILENAMES = new Set(['dockerfile', 'makefile', 'rakefile']);
+
 function isTextFile(file) {
+  const name = file.name.toLowerCase();
   if (file.type.startsWith('text/')) return true;
-  const ext = file.name.split('.').pop().toLowerCase();
-  return TEXT_EXTS.has(ext) || TEXT_EXTS.has(file.name.toLowerCase());
+  if (SPECIAL_TEXT_FILENAMES.has(name)) return true;
+  const ext = name.includes('.') ? name.split('.').pop() : '';
+  return TEXT_EXTS.has(ext) || TEXT_EXTS.has(name);
 }
 
 function handleFiles(files) {
@@ -1529,7 +1533,9 @@ async function send() {
         const body = a.content.length > MAX_CHARS
           ? a.content.slice(0, MAX_CHARS) + '\n\n[… file truncated at 100 000 characters]'
           : a.content;
-        userContent.push({ type: 'text', text: `💻 File: ${a.name}\n\`\`\`${a.language}\n${body}\n\`\`\`` });
+        const backtickRuns = body.match(/`+/g) || [];
+        const fence = '`'.repeat(Math.max(3, ...backtickRuns.map(run => run.length + 1)));
+        userContent.push({ type: 'text', text: `💻 File: ${a.name}\n${fence}${a.language}\n${body}\n${fence}` });
       }
     }
     if (text) userContent.push({ type: 'text', text });
