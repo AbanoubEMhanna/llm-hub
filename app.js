@@ -242,10 +242,26 @@ async function init() {
   if (!conversations.length) newConversation();
   else loadConversation(conversations[0].id);
   updateInputTokenCount();
-  setInterval(checkHealth, 30000);
+  scheduleHealthCheck();
   setInterval(loadSystemInfo, 15000);  // Refresh system RAM + running models
   setInterval(refreshTimestamps, 60000);
   if (!localStorage.getItem('llm-onboarded')) openOnboardingWizard();
+}
+
+// ── Health check with exponential backoff + reconnect detection ──────────────
+let _healthCheckTimer   = null;
+let _healthRetryDelay   = 30000;   // ms; doubles on failure, caps at 60s
+let _proxyWasOffline    = false;
+const HEALTH_NORMAL_MS  = 30000;
+const HEALTH_RETRY_BASE = 5000;
+const HEALTH_RETRY_MAX  = 60000;
+
+function scheduleHealthCheck(delayMs = 0) {
+  clearTimeout(_healthCheckTimer);
+  _healthCheckTimer = setTimeout(async () => {
+    await checkHealth();
+    scheduleHealthCheck(_healthRetryDelay);
+  }, delayMs);
 }
 
 async function checkHealth() {
@@ -263,13 +279,43 @@ async function checkHealth() {
     setCloudStatus('b-fireworks',  data.providers?.fireworks);
     setCloudStatus('b-cohere',     data.providers?.cohere);
     document.getElementById('proxy-alert').style.display = 'none';
+    if (_proxyWasOffline) {
+      toast('Proxy reconnected ✓', 'success');
+      _proxyWasOffline = false;
+    }
+    _healthRetryDelay = HEALTH_NORMAL_MS;
   } catch {
     document.getElementById('proxy-alert').style.display = 'block';
+    _proxyWasOffline = true;
+    _healthRetryDelay = Math.min(_healthRetryDelay * 2, HEALTH_RETRY_MAX);
   }
 }
 function setStatus(id, online) {
   const el = document.getElementById(id);
   if (el) el.className = `status-dot ${online ? 'online' : 'offline'}`;
+}
+
+// ── Desktop notifications ────────────────────────────────────────────────────
+function notifyGenerationComplete(conv, text) {
+  if (!document.hidden) return;
+  if (localStorage.getItem('general_desktop_notif') === '0') return;
+  if (Notification.permission !== 'granted') return;
+  const title = conv.title || 'LLM Hub';
+  const body  = text.replace(/```[\s\S]*?```/g, '[code]').replace(/[#*`_~[\]]/g, '').trim().slice(0, 120);
+  new Notification(title, { body: body || 'Response ready', icon: '/favicon.ico' });
+}
+
+async function requestDesktopNotifPermission() {
+  if (!('Notification' in window)) { toast('Desktop notifications not supported in this browser.', 'warn'); return; }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    localStorage.setItem('general_desktop_notif', '1');
+    document.getElementById('general-desktop-notif')?.setAttribute('checked', true);
+    document.getElementById('general-desktop-notif').checked = true;
+    toast('Desktop notifications enabled ✓', 'success');
+  } else {
+    toast('Notification permission denied — check browser settings.', 'warn');
+  }
 }
 function setCloudStatus(id, status) {
   const el = document.getElementById(id);
@@ -1698,6 +1744,7 @@ async function streamAssistantReply(conv) {
             conv.messages.push({ role: 'assistant', content: fullText, ts: Date.now() });
             saveConvs();
             reRenderLastAssistant(conv, fullText);
+            notifyGenerationComplete(conv, fullText);
             // Refresh running models + system info (model is now loaded)
             checkRunningModels().then(() => { updateModelHeader(); updateModelInfoCard(); });
             loadSystemInfo();
@@ -2713,6 +2760,13 @@ function loadGeneralSettings() {
   if (el('general-proxy-url')) el('general-proxy-url').value = localStorage.getItem('general_proxy_url') || '';
   if (el('general-current-proxy')) el('general-current-proxy').textContent = PROXY;
   if (el('general-auto-connect')) el('general-auto-connect').checked = localStorage.getItem('general_auto_connect') !== '0';
+  if (el('general-desktop-notif')) {
+    el('general-desktop-notif').checked = localStorage.getItem('general_desktop_notif') !== '0';
+    // Reflect browser permission state
+    const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+    const hint = el('general-notif-hint');
+    if (hint) hint.textContent = perm === 'denied' ? '⚠ Blocked in browser — allow in site settings.' : perm === 'default' ? 'Click "Request" to enable.' : '';
+  }
   try {
     let total = 0;
     for (const k of Object.keys(localStorage)) total += (localStorage.getItem(k) || '').length;
@@ -2742,6 +2796,11 @@ function saveGeneralSettings() {
   }
   const autoConnect = !!document.getElementById('general-auto-connect')?.checked;
   localStorage.setItem('general_auto_connect', autoConnect ? '1' : '0');
+  const desktopNotif = !!document.getElementById('general-desktop-notif')?.checked;
+  localStorage.setItem('general_desktop_notif', desktopNotif ? '1' : '0');
+  if (desktopNotif && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
   closeModal('config-modal');
   if (proxyUrl && proxyUrl !== PROXY) {
     toast('Proxy URL saved — reload the page to connect to the new address.', 'info');

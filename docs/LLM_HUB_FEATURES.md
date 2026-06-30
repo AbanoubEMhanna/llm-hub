@@ -20,7 +20,7 @@
 - [x] LM Studio (local, OpenAI-compatible endpoint)
 - [x] Custom OpenAI-compatible endpoint (vLLM, LocalAI, Koboldcpp, etc.)
 - [x] Per-provider connection test button
-- [ ] 🔥 Provider health monitoring with auto-reconnect + retry backoff
+- [x] 🔥 Provider health monitoring with auto-reconnect + exponential backoff
 - [ ] Per-provider timeout and retry configuration
 
 ### Cloud Providers
@@ -255,7 +255,7 @@
 ### Notifications & Feedback
 - [x] Toast notifications for all key actions
 - [x] Toast / notification history panel
-- [ ] ⚡ Desktop notifications when long generation completes (background tab)
+- [x] ⚡ Desktop notifications when long generation completes (background tab)
 - [ ] Sound effects (opt-in) on message send / receive
 
 ---

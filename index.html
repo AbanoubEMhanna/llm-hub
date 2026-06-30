@@ -713,6 +713,18 @@
       </div>
 
       <div class="settings-section" style="margin-top:22px">
+        <div class="settings-section-title" style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Notifications</div>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;margin-bottom:8px">
+          <input type="checkbox" id="general-desktop-notif" style="width:16px;height:16px;accent-color:var(--accent)"/>
+          Desktop notification when generation finishes (background tab)
+        </label>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="btn btn-sm" onclick="requestDesktopNotifPermission()">Request Permission</button>
+          <span id="general-notif-hint" style="font-size:11px;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <div class="settings-section" style="margin-top:22px">
         <div class="settings-section-title" style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Storage</div>
         <p style="color:var(--muted);font-size:12px;margin-bottom:10px">
           All conversations, settings, and API keys are stored in your browser's localStorage — nothing is sent to any server.
