@@ -33,7 +33,7 @@
 - [x] Fireworks AI
 - [x] Cohere
 - [ ] AI21 / Perplexity / DeepSeek / Cerebras
-- [ ] ⚡ Provider usage cost estimator (token price × message count)
+- [x] ⚡ Provider usage cost estimator (token price × message count)
 
 ---
 
@@ -51,7 +51,7 @@
 - [x] Model search in the main selector (filter as you type)
 - [ ] 🔥 GGUF drag-and-drop import — load any `.gguf` directly without CLI
 - [ ] 🔥 Model update notifications — alert when a newer version is available
-- [ ] ⚡ Model tags & friendly aliases — rename `llama3.2:3b` → `"Fast Llama"`
+- [x] ⚡ Model tags & friendly aliases — rename `llama3.2:3b` → `"Fast Llama"`
 - [ ] Model comparison spec sheet — side-by-side table (ctx, quant, size, license)
 - [ ] Auto-recommend models based on detected hardware at first launch
 
