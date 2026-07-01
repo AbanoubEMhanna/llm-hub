@@ -242,7 +242,7 @@ async function init() {
   if (!conversations.length) newConversation();
   else loadConversation(conversations[0].id);
   updateInputTokenCount();
-  scheduleHealthCheck();
+  scheduleHealthCheck(_healthRetryDelay);
   setInterval(loadSystemInfo, 15000);  // Refresh system RAM + running models
   setInterval(refreshTimestamps, 60000);
   if (!localStorage.getItem('llm-onboarded')) openOnboardingWizard();
@@ -286,8 +286,11 @@ async function checkHealth() {
     _healthRetryDelay = HEALTH_NORMAL_MS;
   } catch {
     document.getElementById('proxy-alert').style.display = 'block';
+    const wasOffline = _proxyWasOffline;
     _proxyWasOffline = true;
-    _healthRetryDelay = Math.min(_healthRetryDelay * 2, HEALTH_RETRY_MAX);
+    _healthRetryDelay = wasOffline
+      ? Math.min(_healthRetryDelay * 2, HEALTH_RETRY_MAX)
+      : HEALTH_RETRY_BASE;
   }
 }
 function setStatus(id, online) {
@@ -299,6 +302,7 @@ function setStatus(id, online) {
 function notifyGenerationComplete(conv, text) {
   if (!document.hidden) return;
   if (localStorage.getItem('general_desktop_notif') === '0') return;
+  if (!('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
   const title = conv.title || 'LLM Hub';
   const body  = text.replace(/```[\s\S]*?```/g, '[code]').replace(/[#*`_~[\]]/g, '').trim().slice(0, 120);
@@ -2761,7 +2765,7 @@ function loadGeneralSettings() {
   if (el('general-current-proxy')) el('general-current-proxy').textContent = PROXY;
   if (el('general-auto-connect')) el('general-auto-connect').checked = localStorage.getItem('general_auto_connect') !== '0';
   if (el('general-desktop-notif')) {
-    el('general-desktop-notif').checked = localStorage.getItem('general_desktop_notif') !== '0';
+    el('general-desktop-notif').checked = localStorage.getItem('general_desktop_notif') === '1';
     // Reflect browser permission state
     const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
     const hint = el('general-notif-hint');
@@ -2798,7 +2802,7 @@ function saveGeneralSettings() {
   localStorage.setItem('general_auto_connect', autoConnect ? '1' : '0');
   const desktopNotif = !!document.getElementById('general-desktop-notif')?.checked;
   localStorage.setItem('general_desktop_notif', desktopNotif ? '1' : '0');
-  if (desktopNotif && Notification.permission === 'default') {
+  if (desktopNotif && 'Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission();
   }
   closeModal('config-modal');

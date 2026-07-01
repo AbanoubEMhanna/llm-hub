@@ -255,7 +255,7 @@
 ### Notifications & Feedback
 - [x] Toast notifications for all key actions
 - [x] Toast / notification history panel
-- [x] ⚡ Desktop notifications when long generation completes (background tab)
+- [x] ⚡ Desktop notifications when a generation completes in a background tab (opt-in)
 - [ ] Sound effects (opt-in) on message send / receive
 
 ---
