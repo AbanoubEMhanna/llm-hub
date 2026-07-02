@@ -14,6 +14,7 @@ const PROXY = localStorage.getItem('general_proxy_url') || 'http://localhost:876
 let conversations  = JSON.parse(localStorage.getItem('llm-convs')     || '[]');
 let folders        = JSON.parse(localStorage.getItem('llm-folders')   || '[]');
 let favoriteModels = JSON.parse(localStorage.getItem('llm-fav-models') || '[]');
+let modelAliases   = JSON.parse(localStorage.getItem('llm-model-aliases') || '{}');
 let showTimestamps = localStorage.getItem('llm-show-ts') === '1';
 let userPresets    = JSON.parse(localStorage.getItem('llm-presets')   || '{}');
 let templates      = JSON.parse(localStorage.getItem('llm-templates') || 'null') || defaultTemplates();
@@ -356,6 +357,7 @@ async function loadModels() {
     const mSearch = document.getElementById('model-search');
     if (mSearch) mSearch.style.display = 'block';
     updateFavModelBtn();
+    updateAliasModelBtn();
 
     // Also check running models
     await checkRunningModels();
@@ -541,7 +543,7 @@ function getHardwareFit(m) {
 function buildModelOption(m) {
   const o = document.createElement('option');
   o.value = m.id;
-  const name = m.id.replace(MODEL_ID_PREFIX_RE, '');
+  const name = modelAliases[m.id] || m.id.replace(MODEL_ID_PREFIX_RE, '');
   const meta = modelMetadata[m.id] || {};
   const caps = detectModelCapabilities(m.id, meta);
   const parts = [name];
@@ -658,6 +660,7 @@ async function onModelChange() {
   loadModelParams(selectedModel);
   updateParamProfileBadge();
   updateFavModelBtn();
+  updateAliasModelBtn();
   document.getElementById('send-btn').disabled = !selectedModel || isLoading;
   updateInputTokenCount();
 }
@@ -671,8 +674,9 @@ function updateModelHeader() {
   const { provider: prov, name } = parseModelId(selectedModel);
   const meta = modelMetadata[selectedModel] || {};
   const isLoaded = runningModels.some(r => r === selectedModel || r === `ollama/${name}` || r.includes(name));
+  const alias = modelAliases[selectedModel];
 
-  let infoHtml = `<span style="font-weight:500">${escHtml(name)}</span>`;
+  let infoHtml = `<span style="font-weight:500" title="${escHtml(name)}">${escHtml(alias || name)}</span>`;
   infoHtml += `<span class="provider-pill" data-p="${prov}">${prov}</span>`;
 
   // Show model info badges
@@ -1089,13 +1093,9 @@ function initDragDrop() {
 
 function saveFolders()        { localStorage.setItem('llm-folders',    JSON.stringify(folders)); }
 function saveFavoriteModels() { localStorage.setItem('llm-fav-models', JSON.stringify(favoriteModels)); }
+function saveModelAliases()   { localStorage.setItem('llm-model-aliases', JSON.stringify(modelAliases)); }
 
-function toggleFavoriteModel() {
-  if (!selectedModel) return;
-  const idx = favoriteModels.indexOf(selectedModel);
-  if (idx === -1) favoriteModels.push(selectedModel);
-  else            favoriteModels.splice(idx, 1);
-  saveFavoriteModels();
+function refreshModelSelects() {
   for (const id of ['model-select', 'compare-model-a', 'compare-model-b']) {
     const sel = document.getElementById(id);
     if (!sel) continue;
@@ -1103,6 +1103,41 @@ function toggleFavoriteModel() {
     fillModelSelect(sel);
     sel.value = prev;
   }
+}
+
+function renameModelAlias() {
+  if (!selectedModel) return;
+  const current = modelAliases[selectedModel] || '';
+  const input = prompt('Friendly name for this model (leave blank to reset):', current);
+  if (input === null) return;
+  const trimmed = input.trim().slice(0, 40);
+  if (trimmed) modelAliases[selectedModel] = trimmed;
+  else         delete modelAliases[selectedModel];
+  saveModelAliases();
+  refreshModelSelects();
+  updateModelHeader();
+  updateAliasModelBtn();
+  showToast(trimmed ? `Renamed to "${trimmed}"` : 'Alias reset', 'success');
+}
+
+function updateAliasModelBtn() {
+  const btn = document.getElementById('alias-model-btn');
+  if (!btn) return;
+  if (!selectedModel) { btn.style.display = 'none'; return; }
+  btn.style.display = 'flex';
+  const alias = modelAliases[selectedModel];
+  btn.textContent = alias ? `✏️ ${alias}` : '✏️ Rename';
+  btn.classList.toggle('is-fav', !!alias);
+  btn.title = alias ? 'Click to change or clear the friendly name' : 'Give this model a friendly name';
+}
+
+function toggleFavoriteModel() {
+  if (!selectedModel) return;
+  const idx = favoriteModels.indexOf(selectedModel);
+  if (idx === -1) favoriteModels.push(selectedModel);
+  else            favoriteModels.splice(idx, 1);
+  saveFavoriteModels();
+  refreshModelSelects();
   updateFavModelBtn();
 }
 
