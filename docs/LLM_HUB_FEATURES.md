@@ -339,5 +339,4 @@
 
 ---
 
-*Last updated: 2026-06-29. Canonical source of truth: `docs/LLM_HUB_FEATURES.md`.*
-*Cross-references: `docs/APP_TODO.md` (detailed per-feature notes), `docs/APP_ROADMAP.md` (timeline).*
+*Last updated: 2026-07-02. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
