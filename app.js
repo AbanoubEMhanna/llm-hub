@@ -753,7 +753,23 @@ const SAMPLING_PROFILES = {
   balanced: { temp: 0.7, topP: 0.9,  topK: 40,  repeat: 1.0, freq: 0.0 },
   creative: { temp: 1.2, topP: 0.95, topK: 80,  repeat: 0.9, freq: 0.1 },
 };
-const DEFAULT_PARAMS = { ...SAMPLING_PROFILES.balanced, maxTok: 2048 };
+const DEFAULT_PARAMS = { ...SAMPLING_PROFILES.balanced, maxTok: 2048, stop: '' };
+const MAX_STOP_SEQUENCES = 4;
+
+// Mirrors lib/stop-sequences.js — kept in sync manually since the frontend
+// runs in the browser and can't require() the Node module.
+function parseStopSequences(input) {
+  const seen = new Set();
+  const out = [];
+  for (const raw of String(input || '').split(',')) {
+    const s = raw.trim();
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+    if (out.length >= MAX_STOP_SEQUENCES) break;
+  }
+  return out;
+}
 
 function applySamplingPreset(name) {
   const p = SAMPLING_PROFILES[name];
@@ -799,6 +815,7 @@ function readCurrentParams() {
     topK:   n(parseInt(document.getElementById('top-k-slider')?.value, 10),DEFAULT_PARAMS.topK),
     repeat: n(parseFloat(document.getElementById('repeat-slider')?.value), DEFAULT_PARAMS.repeat),
     freq:   n(parseFloat(document.getElementById('freq-slider')?.value),   DEFAULT_PARAMS.freq),
+    stop:   document.getElementById('stop-sequences')?.value ?? DEFAULT_PARAMS.stop,
   };
 }
 
@@ -812,6 +829,7 @@ function applyParams(p) {
   if (p.topK   !== undefined) { setVal('top-k-slider',  p.topK);   setTxt('top-k-val',  p.topK); }
   if (p.repeat !== undefined) { setVal('repeat-slider', p.repeat); setTxt('repeat-val', p.repeat.toFixed(2)); }
   if (p.freq   !== undefined) { setVal('freq-slider',   p.freq);   setTxt('freq-val',   p.freq.toFixed(1)); }
+  setVal('stop-sequences', p.stop ?? '');
 
   document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('active'));
   const match = Object.entries(SAMPLING_PROFILES).find(([, v]) =>
@@ -1669,6 +1687,7 @@ async function streamAssistantReply(conv) {
   const topK      = parseInt(document.getElementById('top-k-slider').value);
   const repeatPen = parseFloat(document.getElementById('repeat-slider').value);
   const freqPen   = parseFloat(document.getElementById('freq-slider').value);
+  const stopSeqs  = parseStopSequences(document.getElementById('stop-sequences')?.value);
 
   setLoadingState(true);
 
@@ -1710,6 +1729,7 @@ async function streamAssistantReply(conv) {
       temperature: temp, max_tokens: maxTok, use_tools: useTools,
       top_p: topP, top_k: topK, repeat_penalty: repeatPen, frequency_penalty: freqPen,
     };
+    if (stopSeqs.length) chatBody.stop = stopSeqs;
     const rf = _buildResponseFormat();
     if (rf) chatBody.response_format = rf;
 
