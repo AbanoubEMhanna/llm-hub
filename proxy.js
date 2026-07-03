@@ -1605,7 +1605,8 @@ const server = http.createServer(async (req, res) => {
           if (system)                          anthBody.system      = system;
           if (upstreamBody.temperature != null) anthBody.temperature = upstreamBody.temperature;
           if (upstreamBody.top_p       != null) anthBody.top_p       = upstreamBody.top_p;
-          if (Array.isArray(upstreamBody.stop) && upstreamBody.stop.length) anthBody.stop_sequences = upstreamBody.stop;
+          const passthroughStop = parseStopSequences(upstreamBody.stop);
+          if (passthroughStop.length) anthBody.stop_sequences = passthroughStop;
           if (Array.isArray(upstreamBody.tools) && upstreamBody.tools.length) {
             anthBody.tools = upstreamBody.tools.map(t => ({
               name: t.function.name,
