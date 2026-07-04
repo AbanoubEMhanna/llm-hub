@@ -28,6 +28,7 @@ const { chunkText, cosine: cosineSimilarity } = require('./lib/rag-utils');
 const { evaluate: calcEvaluate } = require('./lib/calculator');
 const { buildSpec }        = require('./lib/openapi');
 const { parseStopSequences } = require('./lib/stop-sequences');
+const { parseSeed }        = require('./lib/seed');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § CONFIG & STORAGE
@@ -1169,7 +1170,7 @@ function streamCustom(baseUrl, body, extraHeaders, { onChunk, onDone, onError, s
 // § AGENT LOOP
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, stop = [], useTools, apiKeys = {}, customProviders = [], emit, signal }) {
+async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, stop = [], seed, useTools, apiKeys = {}, customProviders = [], emit, signal }) {
   const provider = resolveProvider(model);
   if (!provider) { emit('error', { message: `Model "${model}" not found` }); return; }
 
@@ -1195,6 +1196,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
       if (repeat_penalty !== undefined) body.repeat_penalty = repeat_penalty;
       if (frequency_penalty !== undefined) body.frequency_penalty = frequency_penalty;
       if (stop.length > 0) body.stop = stop;
+      if (seed !== undefined) body.seed = seed;
       if (tools.length > 0) body.tools = tools;
       const roundResult = await new Promise((resolve) => {
         let content = '';
@@ -1276,6 +1278,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
         };
         if (top_p !== undefined)  body.top_p  = top_p;
         if (stop.length > 0)      body.stop   = stop;
+        if (seed !== undefined)   body.seed   = seed;
         if (tools.length > 0)     body.tools  = tools;
         streamFn = (cb) => streamHTTPS(cfg.hostname, cfg.chatPath, body, headers, cb);
       }
@@ -1352,6 +1355,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
     if (repeat_penalty !== undefined)    body.repeat_penalty    = repeat_penalty;
     if (frequency_penalty !== undefined) body.frequency_penalty = frequency_penalty;
     if (stop.length > 0) body.stop = stop;
+    if (seed !== undefined) body.seed = seed;
     if (tools.length > 0) body.tools = tools;
 
     const roundResult = await new Promise((resolve) => {
@@ -1533,10 +1537,11 @@ const server = http.createServer(async (req, res) => {
       const apiKeys = getApiKeys(req);
       const customProviders = getCustomProviders(req);
       const body = await readBody(req);
-      const { model, messages, temperature, max_tokens, use_tools = true, top_p, top_k, repeat_penalty, frequency_penalty, stop } = body;
+      const { model, messages, temperature, max_tokens, use_tools = true, top_p, top_k, repeat_penalty, frequency_penalty, stop, seed } = body;
       if (!model || !messages) { sendJSON(res, 400, { error: 'model and messages required' }); return; }
       if (!resolveProvider(model)) await fetchAllModels(apiKeys, customProviders);
       const stopSequences = parseStopSequences(stop);
+      const seedValue = parseSeed(seed);
 
       setCORS(res);
       res.writeHead(200, {
@@ -1552,7 +1557,7 @@ const server = http.createServer(async (req, res) => {
         try { res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`); } catch {}
       };
       console.log(`[Chat] ${model} | provider:${resolveProvider(model)} | tools:${use_tools} | msgs:${messages.length}`);
-      await runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, stop: stopSequences, useTools: use_tools, apiKeys, customProviders, emit, signal });
+      await runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, stop: stopSequences, seed: seedValue, useTools: use_tools, apiKeys, customProviders, emit, signal });
       try { res.end(); } catch {}
       return;
     }
