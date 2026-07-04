@@ -753,8 +753,8 @@ const SAMPLING_PROFILES = {
   balanced: { temp: 0.7, topP: 0.9,  topK: 40,  repeat: 1.0, freq: 0.0 },
   creative: { temp: 1.2, topP: 0.95, topK: 80,  repeat: 0.9, freq: 0.1 },
 };
-const DEFAULT_PARAMS = { ...SAMPLING_PROFILES.balanced, maxTok: 2048, stop: '' };
-// parseStopSequences() comes from lib/stop-sequences.js, loaded via <script> before this file.
+const DEFAULT_PARAMS = { ...SAMPLING_PROFILES.balanced, maxTok: 2048, stop: '', seed: '' };
+// parseStopSequences() comes from lib/stop-sequences.js, parseSeed() from lib/seed.js — both loaded via <script> before this file.
 
 function applySamplingPreset(name) {
   const p = SAMPLING_PROFILES[name];
@@ -801,6 +801,7 @@ function readCurrentParams() {
     repeat: n(parseFloat(document.getElementById('repeat-slider')?.value), DEFAULT_PARAMS.repeat),
     freq:   n(parseFloat(document.getElementById('freq-slider')?.value),   DEFAULT_PARAMS.freq),
     stop:   document.getElementById('stop-sequences')?.value ?? DEFAULT_PARAMS.stop,
+    seed:   document.getElementById('seed-input')?.value ?? DEFAULT_PARAMS.seed,
   };
 }
 
@@ -815,6 +816,7 @@ function applyParams(p) {
   if (p.repeat !== undefined) { setVal('repeat-slider', p.repeat); setTxt('repeat-val', p.repeat.toFixed(2)); }
   if (p.freq   !== undefined) { setVal('freq-slider',   p.freq);   setTxt('freq-val',   p.freq.toFixed(1)); }
   setVal('stop-sequences', p.stop ?? '');
+  setVal('seed-input', p.seed ?? '');
 
   document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('active'));
   const match = Object.entries(SAMPLING_PROFILES).find(([, v]) =>
@@ -1673,6 +1675,7 @@ async function streamAssistantReply(conv) {
   const repeatPen = parseFloat(document.getElementById('repeat-slider').value);
   const freqPen   = parseFloat(document.getElementById('freq-slider').value);
   const stopSeqs  = parseStopSequences(document.getElementById('stop-sequences')?.value);
+  const seedVal   = parseSeed(document.getElementById('seed-input')?.value);
 
   setLoadingState(true);
 
@@ -1715,6 +1718,7 @@ async function streamAssistantReply(conv) {
       top_p: topP, top_k: topK, repeat_penalty: repeatPen, frequency_penalty: freqPen,
     };
     if (stopSeqs.length) chatBody.stop = stopSeqs;
+    if (seedVal !== undefined) chatBody.seed = seedVal;
     const rf = _buildResponseFormat();
     if (rf) chatBody.response_format = rf;
 

@@ -487,6 +487,11 @@
           </div>
           <input class="param-num" type="text" id="stop-sequences" placeholder="e.g. ###, END"
             title="Comma-separated strings that stop generation immediately when produced (max 4)"/>
+          <div class="param-row">
+            <span class="param-label">Seed</span>
+          </div>
+          <input class="param-num" type="number" id="seed-input" placeholder="random" min="0" step="1"
+            title="Optional integer seed for reproducible outputs. Leave blank for a random seed. Not supported by Anthropic Claude models."/>
         </details>
       </div>
     </div>
@@ -1408,6 +1413,7 @@
 <div id="toast-container"></div>
 
 <script src="lib/stop-sequences.js"></script>
+<script src="lib/seed.js"></script>
 <script src="app.js"></script>
 <script>
 function applySamplingPreset(name) {
