@@ -29,6 +29,10 @@ test('returns undefined for non-integer or negative values', () => {
   assert.equal(parseSeed('not a number'), undefined);
 });
 
+test('rejects fractional numeric strings instead of truncating them', () => {
+  assert.equal(parseSeed('7.5'), undefined);
+});
+
 test('returns undefined for NaN', () => {
   assert.equal(parseSeed(NaN), undefined);
 });
