@@ -27,6 +27,7 @@ const { isPrivateHost }    = require('./lib/ssrf');
 const { chunkText, cosine: cosineSimilarity } = require('./lib/rag-utils');
 const { evaluate: calcEvaluate } = require('./lib/calculator');
 const { buildSpec }        = require('./lib/openapi');
+const { parseStopSequences } = require('./lib/stop-sequences');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § CONFIG & STORAGE
@@ -1168,7 +1169,7 @@ function streamCustom(baseUrl, body, extraHeaders, { onChunk, onDone, onError, s
 // § AGENT LOOP
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, useTools, apiKeys = {}, customProviders = [], emit, signal }) {
+async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, stop = [], useTools, apiKeys = {}, customProviders = [], emit, signal }) {
   const provider = resolveProvider(model);
   if (!provider) { emit('error', { message: `Model "${model}" not found` }); return; }
 
@@ -1193,6 +1194,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
       if (top_k !== undefined) body.top_k = top_k;
       if (repeat_penalty !== undefined) body.repeat_penalty = repeat_penalty;
       if (frequency_penalty !== undefined) body.frequency_penalty = frequency_penalty;
+      if (stop.length > 0) body.stop = stop;
       if (tools.length > 0) body.tools = tools;
       const roundResult = await new Promise((resolve) => {
         let content = '';
@@ -1256,6 +1258,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
         body = { model: actualModel, messages: anthropicMsgs, max_tokens: max_tokens ?? 2048 };
         if (system) body.system = system;
         if (temperature !== undefined) body.temperature = temperature;
+        if (stop.length > 0) body.stop_sequences = stop;
         if (tools.length > 0) {
           body.tools = tools.map(t => ({
             name: t.function.name,
@@ -1272,6 +1275,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
           max_tokens:  max_tokens  ?? 2048,
         };
         if (top_p !== undefined)  body.top_p  = top_p;
+        if (stop.length > 0)      body.stop   = stop;
         if (tools.length > 0)     body.tools  = tools;
         streamFn = (cb) => streamHTTPS(cfg.hostname, cfg.chatPath, body, headers, cb);
       }
@@ -1347,6 +1351,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
     if (top_k !== undefined)             body.top_k             = top_k;
     if (repeat_penalty !== undefined)    body.repeat_penalty    = repeat_penalty;
     if (frequency_penalty !== undefined) body.frequency_penalty = frequency_penalty;
+    if (stop.length > 0) body.stop = stop;
     if (tools.length > 0) body.tools = tools;
 
     const roundResult = await new Promise((resolve) => {
@@ -1528,9 +1533,10 @@ const server = http.createServer(async (req, res) => {
       const apiKeys = getApiKeys(req);
       const customProviders = getCustomProviders(req);
       const body = await readBody(req);
-      const { model, messages, temperature, max_tokens, use_tools = true, top_p, top_k, repeat_penalty, frequency_penalty } = body;
+      const { model, messages, temperature, max_tokens, use_tools = true, top_p, top_k, repeat_penalty, frequency_penalty, stop } = body;
       if (!model || !messages) { sendJSON(res, 400, { error: 'model and messages required' }); return; }
       if (!resolveProvider(model)) await fetchAllModels(apiKeys, customProviders);
+      const stopSequences = parseStopSequences(stop);
 
       setCORS(res);
       res.writeHead(200, {
@@ -1546,7 +1552,7 @@ const server = http.createServer(async (req, res) => {
         try { res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`); } catch {}
       };
       console.log(`[Chat] ${model} | provider:${resolveProvider(model)} | tools:${use_tools} | msgs:${messages.length}`);
-      await runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, useTools: use_tools, apiKeys, customProviders, emit, signal });
+      await runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, stop: stopSequences, useTools: use_tools, apiKeys, customProviders, emit, signal });
       try { res.end(); } catch {}
       return;
     }
@@ -1599,6 +1605,8 @@ const server = http.createServer(async (req, res) => {
           if (system)                          anthBody.system      = system;
           if (upstreamBody.temperature != null) anthBody.temperature = upstreamBody.temperature;
           if (upstreamBody.top_p       != null) anthBody.top_p       = upstreamBody.top_p;
+          const passthroughStop = parseStopSequences(upstreamBody.stop);
+          if (passthroughStop.length) anthBody.stop_sequences = passthroughStop;
           if (Array.isArray(upstreamBody.tools) && upstreamBody.tools.length) {
             anthBody.tools = upstreamBody.tools.map(t => ({
               name: t.function.name,

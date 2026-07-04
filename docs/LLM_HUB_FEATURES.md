@@ -122,7 +122,7 @@
 - [x] JSON mode — force `response_format: json_object`
 - [x] JSON Schema mode — enforce structured output with editor + presets
 - [x] Plan mode — model thinks step-by-step before responding
-- [ ] Stop sequences configuration UI
+- [x] Stop sequences configuration UI
 - [ ] Context length override per conversation
 - [ ] Seed control — reproducible outputs
 - [ ] Grammar-constrained generation (GBNF / regex)
@@ -318,7 +318,7 @@
 | Local Model Management | 9 | 6 |
 | Hardware Awareness | 7 | 5 |
 | Chat Interface | 16 | 8 |
-| Model Parameters | 8 | 5 |
+| Model Parameters | 9 | 4 |
 | AI Agent & Tools | 5 | 9 |
 | Code-First Workflow | 4 | 11 |
 | Attachments & Multimodal | 7 | 4 |
@@ -328,7 +328,7 @@
 | Security & Privacy | 5 | 5 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
-| **Total** | **~119** | **~85** |
+| **Total** | **~120** | **~84** |
 
 **~58% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
@@ -339,4 +339,4 @@
 
 ---
 
-*Last updated: 2026-07-02. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-03. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*

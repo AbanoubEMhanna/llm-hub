@@ -482,6 +482,11 @@
           </div>
           <input type="range" min="-2" max="2" step="0.1" value="0" id="freq-slider"
             oninput="document.getElementById('freq-val').textContent=parseFloat(this.value).toFixed(1)"/>
+          <div class="param-row">
+            <span class="param-label">Stop Sequences</span>
+          </div>
+          <input class="param-num" type="text" id="stop-sequences" placeholder="e.g. ###, END"
+            title="Comma-separated strings that stop generation immediately when produced (max 4)"/>
         </details>
       </div>
     </div>
@@ -1402,6 +1407,7 @@
 <!-- Toast -->
 <div id="toast-container"></div>
 
+<script src="lib/stop-sequences.js"></script>
 <script src="app.js"></script>
 <script>
 function applySamplingPreset(name) {
