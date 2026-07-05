@@ -1357,7 +1357,9 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
     if (frequency_penalty !== undefined) body.frequency_penalty = frequency_penalty;
     if (stop.length > 0) body.stop = stop;
     if (seed !== undefined) body.seed = seed;
-    if (numCtx !== undefined) body.options = { num_ctx: numCtx };
+    // num_ctx is an Ollama-specific runtime option; LM Studio treats context length
+    // as a load-time setting, so sending it there would be a silent no-op.
+    if (numCtx !== undefined && provider === 'ollama') body.options = { num_ctx: numCtx };
     if (tools.length > 0) body.tools = tools;
 
     const roundResult = await new Promise((resolve) => {

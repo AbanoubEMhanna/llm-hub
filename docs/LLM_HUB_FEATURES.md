@@ -318,7 +318,7 @@
 | Local Model Management | 9 | 6 |
 | Hardware Awareness | 7 | 5 |
 | Chat Interface | 16 | 8 |
-| Model Parameters | 11 | 2 |
+| Model Parameters | 11 | 1 |
 | AI Agent & Tools | 5 | 9 |
 | Code-First Workflow | 4 | 11 |
 | Attachments & Multimodal | 7 | 4 |
@@ -328,7 +328,7 @@
 | Security & Privacy | 5 | 5 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
-| **Total** | **~122** | **~82** |
+| **Total** | **~122** | **~81** |
 
 **~59% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
