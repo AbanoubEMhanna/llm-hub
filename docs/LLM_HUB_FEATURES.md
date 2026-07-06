@@ -159,7 +159,7 @@
 - [x] Syntax highlighting — 14+ languages via Prism.js
 - [x] Artifact rendering — HTML, SVG, JSX, TSX in sandboxed iframe
 - [x] Live code editing inside artifact preview — edit + re-render inline
-- [-] Code / text file attachment — drag-and-drop or click to attach `.js`, `.py`, `.ts`, etc. (PR #58)
+- [x] Code / text file attachment — drag-and-drop or click to attach `.js`, `.py`, `.ts`, etc.
 - [ ] 🔥 🏗️ File tree sidebar — browse local files via MCP filesystem server
 - [ ] 🔥 Diff viewer — before/after code comparison with syntax highlighting
 - [ ] 🔥 Git integration — show diff, stage, commit, PR review in-app
@@ -170,8 +170,8 @@
 - [ ] Linter / formatter auto-suggestions on code paste
 
 ### Multi-file Context
-- [-] Single file attachment with language detection and line count badge (PR #58)
-- [ ] 🔥 Multi-file context picker — select and attach multiple files at once
+- [x] Single file attachment with language detection and line count badge
+- [x] Multi-file context picker — select and attach multiple files at once
 - [ ] Project context — attach an entire directory tree as context
 - [ ] `.gitignore`-aware file picker (exclude build artifacts, node_modules)
 - [ ] File diff as context — attach `git diff` output directly
@@ -183,11 +183,11 @@
 - [x] Image attachments — paste (⌘V), drag-drop, file picker
 - [x] Vision model support — llava, qwen2-vl, llama3.2-vision
 - [x] PDF attachments — client-side text extraction via PDF.js
-- [-] Code / text file attachments — `.js`, `.py`, `.ts`, `.md`, `.json`, etc. (PR #58)
+- [x] Code / text file attachments — `.js`, `.py`, `.ts`, `.md`, `.json`, etc.
 - [x] Voice input — browser Web Speech API
 - [x] Whisper server integration — local speech-to-text transcription
 - [x] Text-to-speech output — 🔊 Read button, voice / rate / pitch controls
-- [ ] ⚡ Audio file transcription by drag-and-drop
+- [x] ⚡ Audio file transcription by drag-and-drop
 - [ ] Video frame extraction for vision models
 - [ ] Screen capture / screenshot attach from clipboard (desktop app)
 
@@ -220,7 +220,7 @@
 - [x] Response quality grading — 👍 / 👎 with win counter
 - [x] Word-level diff view between model responses
 - [x] Save comparison as downloadable Markdown report
-- [ ] 🔥 ⚡ A/B test mode — random model assignment, reveal after response
+- [x] 🔥 ⚡ A/B test mode — random model assignment, reveal after response
 - [ ] 🏗️ Multi-model tournament — bracket-style 3+ model comparison
 - [ ] Comparison history — browse and replay past comparison sessions
 
@@ -320,17 +320,17 @@
 | Chat Interface | 16 | 8 |
 | Model Parameters | 11 | 1 |
 | AI Agent & Tools | 5 | 9 |
-| Code-First Workflow | 4 | 11 |
-| Attachments & Multimodal | 7 | 4 |
+| Code-First Workflow | 6 | 11 |
+| Attachments & Multimodal | 8 | 2 |
 | RAG / Knowledge Base | 7 | 7 |
-| Model Comparison | 6 | 3 |
+| Model Comparison | 7 | 2 |
 | Modern UI | 12 | 8 |
 | Security & Privacy | 5 | 5 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
-| **Total** | **~122** | **~81** |
+| **Total** | **~126** | **~78** |
 
-**~59% complete. Top priorities to close the gap:**
+**~62% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell tool, tool builder, run history)
@@ -339,4 +339,4 @@
 
 ---
 
-*Last updated: 2026-07-05. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-06. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
