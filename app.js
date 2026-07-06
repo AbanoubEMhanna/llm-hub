@@ -1251,10 +1251,11 @@ function newConversation() {
 }
 
 function loadConversation(id) {
-  // Persist system prompt to the conversation we're leaving
+  // Persist system prompt and context length override to the conversation we're leaving
   const prev = currentConv();
   if (prev) {
     prev.sysPrompt = document.getElementById('sys-input').value;
+    prev.ctxLen    = document.getElementById('ctx-length-input')?.value ?? '';
     saveConvs();
   }
 
@@ -1265,6 +1266,8 @@ function loadConversation(id) {
 
   // Restore this conversation's system prompt (empty string is valid)
   document.getElementById('sys-input').value = conv.sysPrompt ?? '';
+  const ctxLenInput = document.getElementById('ctx-length-input');
+  if (ctxLenInput) ctxLenInput.value = conv.ctxLen ?? '';
 
   renderMessages(conv.messages);
   renderConvList();
@@ -1313,6 +1316,7 @@ function branchFromMessage(idx) {
     ts: Date.now(),
     pinned: false,
     sysPrompt: conv.sysPrompt || '',
+    ctxLen: conv.ctxLen || '',
     folderId: conv.folderId || null,
     label: conv.label || null,
     parentId: conv.id,
@@ -1676,6 +1680,7 @@ async function streamAssistantReply(conv) {
   const freqPen   = parseFloat(document.getElementById('freq-slider').value);
   const stopSeqs  = parseStopSequences(document.getElementById('stop-sequences')?.value);
   const seedVal   = parseSeed(document.getElementById('seed-input')?.value);
+  const ctxLenVal = parseContextLength(document.getElementById('ctx-length-input')?.value);
 
   setLoadingState(true);
 
@@ -1719,6 +1724,7 @@ async function streamAssistantReply(conv) {
     };
     if (stopSeqs.length) chatBody.stop = stopSeqs;
     if (seedVal !== undefined) chatBody.seed = seedVal;
+    if (ctxLenVal !== undefined) chatBody.ctx_len = ctxLenVal;
     const rf = _buildResponseFormat();
     if (rf) chatBody.response_format = rf;
 
@@ -4761,6 +4767,13 @@ document.addEventListener('DOMContentLoaded', () => {
     updateInputTokenCount();
     const conv = currentConv();
     if (conv) { conv.sysPrompt = sys.value; debouncedSaveConvs(); }
+  });
+
+  // Context length override — auto-save to current conversation
+  const ctxLenInput = document.getElementById('ctx-length-input');
+  if (ctxLenInput) ctxLenInput.addEventListener('input', () => {
+    const conv = currentConv();
+    if (conv) { conv.ctxLen = ctxLenInput.value; debouncedSaveConvs(); }
   });
 });
 
