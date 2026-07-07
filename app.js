@@ -3643,20 +3643,41 @@ async function uploadRagFiles() {
 // § EXPORT
 // ─────────────────────────────────────────────────────────────────────────────
 
+function convMessagesMarkdown(conv) {
+  let md = '';
+  for (const m of conv.messages) {
+    const role = m.role === 'user' ? '👤 You' : m.role === 'assistant' ? '🤖 Assistant' : m.role;
+    const txt = typeof m.content === 'string' ? m.content
+              : Array.isArray(m.content) ? m.content.filter(p => p.type === 'text').map(p => p.text).join('\n') +
+                  (m.content.some(p => p.type === 'image_url') ? '\n\n_[images attached]_' : '')
+              : JSON.stringify(m.content);
+    md += `### ${role}\n\n${txt}\n\n`;
+  }
+  return md;
+}
+
+function yamlFrontmatterString(value) {
+  return `"${String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
 function exportConv(format) {
   const conv = currentConv();
   if (!conv) return;
   let blob, ext;
-  if (format === 'md') {
-    let md = `# ${conv.title}\n\n_${new Date(conv.ts).toISOString()}_\n\n---\n\n`;
-    for (const m of conv.messages) {
-      const role = m.role === 'user' ? '👤 You' : m.role === 'assistant' ? '🤖 Assistant' : m.role;
-      const txt = typeof m.content === 'string' ? m.content
-                : Array.isArray(m.content) ? m.content.filter(p => p.type === 'text').map(p => p.text).join('\n') +
-                    (m.content.some(p => p.type === 'image_url') ? '\n\n_[images attached]_' : '')
-                : JSON.stringify(m.content);
-      md += `### ${role}\n\n${txt}\n\n`;
-    }
+  if (format === 'obsidian') {
+    const frontmatter = [
+      '---',
+      `title: ${yamlFrontmatterString(conv.title)}`,
+      `created: ${new Date(conv.ts).toISOString()}`,
+      `tags: [llm-hub, ai-chat]`,
+      '---',
+      '',
+    ].join('\n');
+    const md = `${frontmatter}\n# ${conv.title}\n\n---\n\n${convMessagesMarkdown(conv)}`;
+    blob = new Blob([md], { type: 'text/markdown' });
+    ext  = 'md';
+  } else if (format === 'md') {
+    const md = `# ${conv.title}\n\n_${new Date(conv.ts).toISOString()}_\n\n---\n\n${convMessagesMarkdown(conv)}`;
     blob = new Blob([md], { type: 'text/markdown' });
     ext  = 'md';
   } else {
@@ -4464,6 +4485,7 @@ function buildPaletteCommands() {
     { group: 'Actions',   icon: '🎨',  label: 'Toggle Theme',                            action: () => toggleTheme() },
     ...(conv ? [
       { group: 'Chat',    icon: '📋',  label: 'Export Chat as Markdown',                 action: () => exportConv('md') },
+      { group: 'Chat',    icon: '📋',  label: 'Export Chat for Obsidian',                action: () => exportConv('obsidian') },
       { group: 'Chat',    icon: '📋',  label: 'Export Chat as JSON',                     action: () => exportConv('json') },
     ] : []),
     { group: 'Models',    icon: '📦',  label: 'Model Manager',                           action: () => openModelManager() },
