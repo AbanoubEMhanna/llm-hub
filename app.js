@@ -953,9 +953,15 @@ function isAudioFile(file) {
   return AUDIO_EXTS.has(ext);
 }
 
-async function transcribeAudioFile(file) {
+let audioTranscribeQueue = Promise.resolve();
+
+function transcribeAudioFile(file) {
+  audioTranscribeQueue = audioTranscribeQueue.then(() => doTranscribeAudioFile(file));
+  return audioTranscribeQueue;
+}
+
+async function doTranscribeAudioFile(file) {
   const input = document.getElementById('msg-input');
-  const baseText = input.value;
   toast(`Transcribing ${file.name}…`, '');
 
   try {
@@ -978,6 +984,7 @@ async function transcribeAudioFile(file) {
     const text = (data.text || '').trim();
 
     if (text) {
+      const baseText = input.value;
       input.value = baseText + (baseText && !baseText.endsWith(' ') && !baseText.endsWith('\n') ? ' ' : '') + text;
       autoResize(input);
       updateInputTokenCount();
