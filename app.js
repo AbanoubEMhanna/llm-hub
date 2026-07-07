@@ -943,6 +943,61 @@ function isTextFile(file) {
   return TEXT_EXTS.has(ext) || TEXT_EXTS.has(name);
 }
 
+// ─── Audio file transcription (drag-and-drop) ────────────────────────────────
+const AUDIO_EXTS = new Set(['mp3', 'wav', 'm4a', 'ogg', 'oga', 'flac', 'webm', 'mp4', 'mpeg', 'mpga']);
+
+function isAudioFile(file) {
+  if (file.type.startsWith('audio/')) return true;
+  const name = file.name.toLowerCase();
+  const ext = name.includes('.') ? name.split('.').pop() : '';
+  return AUDIO_EXTS.has(ext);
+}
+
+let audioTranscribeQueue = Promise.resolve();
+
+function transcribeAudioFile(file) {
+  audioTranscribeQueue = audioTranscribeQueue.then(() => doTranscribeAudioFile(file));
+  return audioTranscribeQueue;
+}
+
+async function doTranscribeAudioFile(file) {
+  const input = document.getElementById('msg-input');
+  toast(`Transcribing ${file.name}…`, '');
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    formData.append('model', 'large-v3'); // Overridden by server config
+    formData.append('response_format', 'json');
+
+    const res = await fetch(`${PROXY}/v1/audio/transcribe`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+      throw new Error(err.error || `Transcription failed: ${res.status}`);
+    }
+
+    const data = await res.json();
+    const text = (data.text || '').trim();
+
+    if (text) {
+      const baseText = input.value;
+      input.value = baseText + (baseText && !baseText.endsWith(' ') && !baseText.endsWith('\n') ? ' ' : '') + text;
+      autoResize(input);
+      updateInputTokenCount();
+      toast(`Transcribed ${file.name} ✓`, 'success');
+    } else {
+      toast(`No speech detected in ${file.name}`, 'error');
+    }
+  } catch (e) {
+    toast('Transcription: ' + e.message, 'error');
+    console.error('[Audio transcribe]', e);
+  }
+}
+
 function handleFiles(files) {
   for (const file of files) {
     if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
@@ -966,6 +1021,8 @@ function handleFiles(files) {
         renderAttachments();
       };
       reader.readAsText(file, 'utf-8');
+    } else if (isAudioFile(file)) {
+      transcribeAudioFile(file);
     }
   }
 }
