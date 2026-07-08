@@ -107,7 +107,7 @@
 - [x] Chat export — Markdown, JSON, standalone offline HTML
 - [x] Backup & restore — all settings + conversations as single JSON
 - [x] Import conversations — ChatGPT export format, LLM Hub backup
-- [ ] ⚡ Notion / Obsidian export format
+- [x] ⚡ Notion / Obsidian export format
 - [ ] Sync conversations across devices (E2E encrypted, opt-in)
 
 ---
@@ -317,7 +317,7 @@
 | Providers & Connectivity | 10 | 4 |
 | Local Model Management | 9 | 6 |
 | Hardware Awareness | 7 | 5 |
-| Chat Interface | 16 | 8 |
+| Chat Interface | 17 | 7 |
 | Model Parameters | 11 | 1 |
 | AI Agent & Tools | 5 | 9 |
 | Code-First Workflow | 6 | 11 |
@@ -328,7 +328,7 @@
 | Security & Privacy | 5 | 5 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
-| **Total** | **~126** | **~78** |
+| **Total** | **~127** | **~77** |
 
 **~62% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
@@ -339,4 +339,4 @@
 
 ---
 
-*Last updated: 2026-07-06. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-07. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
