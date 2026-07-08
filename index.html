@@ -148,6 +148,9 @@
       <div class="chat-model-tag" id="chat-model-tag">
         <span style="color:var(--muted);font-family:var(--mono);font-size:12px">No model selected</span>
       </div>
+      <div class="rag-active-badge" id="rag-active-badge" style="display:none" onclick="setActiveRagCollection(null)" title="Auto-injecting context from this collection into every message. Click to stop.">
+        📚 <span id="rag-active-badge-name"></span> <span class="rag-active-badge-x">×</span>
+      </div>
       <div class="header-actions">
         <div class="export-drop" id="export-drop">
           <button class="ghost-btn" onclick="toggleExportMenu()" title="Export conversation">Export ▾</button>
@@ -1067,6 +1070,14 @@
         <span>
           <strong>RAG enabled</strong>
           <span style="color:var(--muted);font-size:11px;display:block">Allow the model to search your local knowledge base via <code style="font-family:var(--mono)">rag_search</code></span>
+        </span>
+      </label>
+
+      <label class="tool-toggle" style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+        <div class="toggle" id="rag-auto-inject-toggle" onclick="this.classList.toggle('on')"></div>
+        <span>
+          <strong>Auto-inject relevant chunks</strong>
+          <span style="color:var(--muted);font-size:11px;display:block">When a conversation has an active knowledge collection (📚 in the sidebar), automatically search it and add the top matches as context to every message — no tool call needed.</span>
         </span>
       </label>
 

@@ -1331,6 +1331,8 @@ function loadConversation(id) {
   document.getElementById('stats-bar').style.display = 'none';
   updateInputTokenCount();
   closeMobileSidebars();
+  updateRagActiveBadge();
+  renderRagList();
 }
 
 function deleteConversation(id, e) {
@@ -1716,6 +1718,37 @@ async function send() {
   await streamAssistantReply(conv);
 }
 
+function messageTextContent(msg) {
+  if (typeof msg.content === 'string') return msg.content;
+  if (Array.isArray(msg.content)) return msg.content.filter(p => p.type === 'text').map(p => p.text).join('\n');
+  return '';
+}
+
+async function autoInjectRagContext(conv) {
+  if (!conv.ragCollectionId) return null;
+  const lastUserMsg = [...conv.messages].reverse().find(m => m.role === 'user');
+  const query = lastUserMsg ? messageTextContent(lastUserMsg).trim() : '';
+  if (!query) return null;
+  try {
+    const cfgRes = await fetch(`${PROXY}/v1/config`);
+    const cfg    = await cfgRes.json();
+    if (!cfg.rag?.auto_inject) return null;
+    const res = await fetch(`${PROXY}/v1/rag/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ collection_id: conv.ragCollectionId, query, top_k: cfg.rag?.top_k || 5 }),
+    });
+    if (!res.ok) return null;
+    const data    = await res.json();
+    const results = data.results || [];
+    if (!results.length) return null;
+    const context = results.map(r => `Source: ${r.source} (relevance ${r.score.toFixed(3)})\n${r.text}`).join('\n\n---\n\n');
+    return `The following excerpts were automatically retrieved from the active knowledge base collection and may help answer the user's latest message. Use them if relevant; ignore them if not.\n\n${context}`;
+  } catch {
+    return null;
+  }
+}
+
 async function streamAssistantReply(conv) {
   let sysPrompt = document.getElementById('sys-input').value.trim();
   // Inject plan mode instructions if active
@@ -1724,9 +1757,11 @@ async function streamAssistantReply(conv) {
       ? sysPrompt + '\n\n' + PLAN_SYSTEM_PROMPT
       : PLAN_SYSTEM_PROMPT;
   }
-  const apiMsgs   = sysPrompt
-    ? [{ role: 'system', content: sysPrompt }, ...conv.messages]
-    : [...conv.messages];
+  const ragContext = await autoInjectRagContext(conv);
+  const apiMsgs = [];
+  if (sysPrompt)   apiMsgs.push({ role: 'system', content: sysPrompt });
+  if (ragContext)  apiMsgs.push({ role: 'system', content: ragContext });
+  apiMsgs.push(...conv.messages);
 
   const useTools  = document.getElementById('tools-toggle').classList.contains('on');
   const temp      = parseFloat(document.getElementById('temp-slider').value);
@@ -3386,6 +3421,9 @@ async function loadRagSettings() {
     const toggle = document.getElementById('rag-enabled-toggle');
     if (toggle) toggle.classList.toggle('on', rag.enabled !== false);
 
+    const autoInjectToggle = document.getElementById('rag-auto-inject-toggle');
+    if (autoInjectToggle) autoInjectToggle.classList.toggle('on', rag.auto_inject === true);
+
     const setVal = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.value = val; };
     setVal('rag-embed-provider', rag.embedding_provider || 'ollama');
     setVal('rag-embed-model',    rag.embedding_model    || 'nomic-embed-text');
@@ -3407,6 +3445,7 @@ async function saveRagSettings() {
     cfg.rag = {
       ...cfg.rag,
       enabled:            document.getElementById('rag-enabled-toggle')?.classList.contains('on') ?? true,
+      auto_inject:        document.getElementById('rag-auto-inject-toggle')?.classList.contains('on') ?? false,
       embedding_provider: document.getElementById('rag-embed-provider')?.value  || 'ollama',
       embedding_model:    document.getElementById('rag-embed-model')?.value     || 'nomic-embed-text',
       chunk_size:         parseInt(document.getElementById('rag-chunk-size')?.value    || '800',  10),
@@ -3438,23 +3477,51 @@ async function loadRagCollections() {
     const data = await res.json();
     availableRagCollections = data.collections || [];
     renderRagList();
+    updateRagActiveBadge();
   } catch {
     availableRagCollections = [];
     renderRagList();
+    updateRagActiveBadge();
   }
 }
 
 function renderRagList() {
   const el = document.getElementById('rag-list');
+  const conv = currentConv();
   if (!availableRagCollections.length) {
     el.innerHTML = '<div style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-bottom:6px">No collections yet</div>';
   } else {
     el.innerHTML = availableRagCollections.map(c => `
-      <div class="rag-item" title="${escHtml(c.name)}">
+      <div class="rag-item${conv?.ragCollectionId === c.id ? ' active' : ''}" title="${escHtml(c.name)} — click to ${conv?.ragCollectionId === c.id ? 'deactivate' : 'auto-inject into this chat'}" onclick="setActiveRagCollection('${c.id}')">
         📚 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(c.name)}</span>
         <span class="rag-meta">${c.chunks ?? c.chunkCount ?? 0} ch</span>
-        <button class="icon-btn" onclick="deleteRag('${c.id}')" title="Delete" style="margin-left:4px">×</button>
+        <button class="icon-btn" onclick="event.stopPropagation();deleteRag('${c.id}')" title="Delete" style="margin-left:4px">×</button>
       </div>`).join('');
+  }
+}
+
+// Marks a knowledge collection as "active" for the current conversation. When RAG
+// auto-inject is enabled (Settings → RAG), the top matching chunks for the active
+// collection are silently added as context to every message sent in this chat.
+function setActiveRagCollection(id) {
+  const conv = currentConv();
+  if (!conv) return;
+  conv.ragCollectionId = conv.ragCollectionId === id ? null : id;
+  saveConvs();
+  renderRagList();
+  updateRagActiveBadge();
+}
+
+function updateRagActiveBadge() {
+  const badge = document.getElementById('rag-active-badge');
+  if (!badge) return;
+  const conv = currentConv();
+  const col  = conv?.ragCollectionId ? availableRagCollections.find(c => c.id === conv.ragCollectionId) : null;
+  if (col) {
+    document.getElementById('rag-active-badge-name').textContent = col.name;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
   }
 }
 
@@ -3462,6 +3529,9 @@ async function deleteRag(id) {
   if (!confirm('Delete this knowledge collection?')) return;
   await fetch(`${PROXY}/v1/rag/collections/${id}`, { method: 'DELETE' });
   await loadRagCollections();
+  const conv = currentConv();
+  if (conv?.ragCollectionId === id) { conv.ragCollectionId = null; saveConvs(); }
+  updateRagActiveBadge();
   toast('Collection deleted', 'success');
 }
 
