@@ -85,7 +85,7 @@
 - [x] In-conversation message search (⌘F)
 - [x] Message reactions — 👍 👎 persisted per message
 - [x] Message timestamps — hover to peek, `T` key to pin permanently
-- [ ] ⚡ Context window timeline — visualize which messages fit in active context
+- [x] ⚡ Context window timeline — visualize which messages fit in active context
 - [ ] Inline message threading / replies
 - [ ] Inline diff view for edited messages
 - [ ] Message bookmarks / starring
@@ -317,7 +317,7 @@
 | Providers & Connectivity | 10 | 4 |
 | Local Model Management | 9 | 6 |
 | Hardware Awareness | 7 | 5 |
-| Chat Interface | 17 | 7 |
+| Chat Interface | 18 | 6 |
 | Model Parameters | 11 | 1 |
 | AI Agent & Tools | 5 | 9 |
 | Code-First Workflow | 6 | 11 |
@@ -328,7 +328,7 @@
 | Security & Privacy | 5 | 5 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
-| **Total** | **~128** | **~76** |
+| **Total** | **~129** | **~75** |
 
 **~62% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
@@ -339,4 +339,4 @@
 
 ---
 
-*Last updated: 2026-07-08. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-09. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*

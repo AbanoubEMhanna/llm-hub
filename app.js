@@ -5679,6 +5679,53 @@ function updateContextBar(promptTokens, completionTokens) {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// § CONTEXT WINDOW TIMELINE
+// ─────────────────────────────────────────────────────────────────────────────
+
+function openContextTimeline() {
+  const conv = currentConv();
+  if (!conv) return;
+
+  const sysPrompt   = document.getElementById('sys-input')?.value || '';
+  const meta        = modelMetadata[selectedModel] || {};
+  const ctxOverride = parseContextLength(document.getElementById('ctx-length-input')?.value);
+  const ctxLimit    = ctxOverride || meta.context_length || 8192;
+  const reserved    = approxTokens(sysPrompt);
+  const msgTokens   = conv.messages.map(m => approxTokens(messageTextContent(m)));
+
+  const result = computeContextTimeline(msgTokens, ctxLimit, reserved);
+
+  document.getElementById('ctx-timeline-summary').innerHTML =
+    `<strong>${result.usedTokens.toLocaleString()}</strong> / ${result.ctxLimit.toLocaleString()} tokens in context` +
+    (result.droppedCount > 0
+      ? ` &middot; <span class="ctx-timeline-dropped">${result.droppedCount} older message${result.droppedCount === 1 ? '' : 's'} would be dropped</span>`
+      : ` &middot; all ${conv.messages.length} messages fit`) +
+    (reserved > 0 ? ` &middot; ${reserved.toLocaleString()} reserved for system prompt` : '');
+
+  const pct = result.ctxLimit > 0 ? Math.min(100, Math.round((result.usedTokens / result.ctxLimit) * 100)) : 0;
+  document.getElementById('ctx-timeline-bar').innerHTML =
+    `<div class="ctx-timeline-bar-fill${pct > 90 ? ' danger' : pct > 75 ? ' warn' : ''}" style="width:${pct}%"></div>`;
+
+  const list = document.getElementById('ctx-timeline-list');
+  if (conv.messages.length === 0) {
+    list.innerHTML = '<div class="ctx-timeline-empty">No messages yet.</div>';
+  } else {
+    list.innerHTML = conv.messages.map((m, i) => {
+      const included = result.included[i];
+      const preview = escHtml(messageTextContent(m).slice(0, 140).replace(/\s+/g, ' '));
+      return `<div class="ctx-timeline-row${included ? '' : ' dropped'}">
+        <span class="ctx-timeline-role">${escHtml(m.role)}</span>
+        <span class="ctx-timeline-preview">${preview}</span>
+        <span class="ctx-timeline-tokens">${msgTokens[i].toLocaleString()} tok</span>
+        <span class="ctx-timeline-status">${included ? '✓ in context' : '✕ dropped'}</span>
+      </div>`;
+    }).join('');
+  }
+
+  openModal('context-timeline-modal');
+}
+
 // Show/hide model loading banner with smart progress
 let loadingProgress = null; // { interval, pollInterval, startTime, estimatedMs, modelName }
 
