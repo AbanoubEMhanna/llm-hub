@@ -792,6 +792,10 @@
         Keys are stored in your browser's localStorage — never written to disk or sent anywhere except the provider's own API over HTTPS.
         Cloud models appear in the model selector once a valid key is saved.
       </p>
+      <label class="api-key-ephemeral-toggle" style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:12px;color:var(--muted)">
+        <input type="checkbox" id="apikey-ephemeral-toggle"/>
+        Keep keys in memory only for this browser session (sessionStorage, cleared when the tab closes — never written to localStorage)
+      </label>
       <div class="api-key-fields">
         <div class="api-key-row">
           <label class="api-key-label">
@@ -1448,6 +1452,7 @@
 <script src="lib/seed.js"></script>
 <script src="lib/context-length.js"></script>
 <script src="lib/context-timeline.js"></script>
+<script src="lib/key-storage.js"></script>
 <script src="app.js"></script>
 <script>
 function applySamplingPreset(name) {

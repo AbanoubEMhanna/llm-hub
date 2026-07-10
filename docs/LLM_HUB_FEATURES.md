@@ -267,7 +267,7 @@
 - [x] VM sandbox for `run_javascript` tool
 - [x] CORS locked to localhost
 - [x] API keys in localStorage only — never written to disk by the proxy
-- [ ] ⚡ Per-session ephemeral API key (never persisted)
+- [x] ⚡ Per-session ephemeral API key (never persisted)
 - [ ] Request / response logging toggle (opt-in, stored locally)
 - [ ] Prompt injection warning detection
 - [ ] Conversation data encryption at rest (opt-in, local key)
@@ -325,10 +325,10 @@
 | RAG / Knowledge Base | 8 | 6 |
 | Model Comparison | 7 | 2 |
 | Modern UI | 12 | 8 |
-| Security & Privacy | 5 | 5 |
+| Security & Privacy | 6 | 4 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
-| **Total** | **~129** | **~75** |
+| **Total** | **~130** | **~74** |
 
 **~62% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
@@ -339,4 +339,4 @@
 
 ---
 
-*Last updated: 2026-07-09. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-10. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
