@@ -246,7 +246,7 @@
 
     <div class="stats-bar" id="stats-bar" style="display:none">
       <div class="stat">Model: <span class="v" id="stat-model">—</span></div>
-      <div class="stat" id="stat-ctx-wrap">Context: <span class="v" id="stat-ctx">—</span></div>
+      <div class="stat stat-clickable" id="stat-ctx-wrap" role="button" tabindex="0" onclick="openContextTimeline()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openContextTimeline();}" title="Click to see which messages fit in the context window">Context: <span class="v" id="stat-ctx">—</span></div>
       <div class="stat">Tokens: <span class="v" id="stat-tokens">—</span></div>
       <div class="stat">Speed: <span class="v" id="stat-speed">—</span></div>
       <div class="stat">Time: <span class="v" id="stat-time">—</span></div>
@@ -629,6 +629,21 @@
         <kbd>Esc</kbd>
       </div>
       <div class="search-results" id="search-results"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Context window timeline modal -->
+<div class="modal-overlay" id="context-timeline-modal">
+  <div class="modal modal-ctx-timeline">
+    <div class="modal-header">
+      <div class="modal-title">Context Window Timeline</div>
+      <button class="icon-btn" onclick="closeModal('context-timeline-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="ctx-timeline-summary" id="ctx-timeline-summary"></div>
+      <div class="ctx-timeline-bar" id="ctx-timeline-bar"></div>
+      <div class="ctx-timeline-list" id="ctx-timeline-list"></div>
     </div>
   </div>
 </div>
@@ -1432,6 +1447,7 @@
 <script src="lib/stop-sequences.js"></script>
 <script src="lib/seed.js"></script>
 <script src="lib/context-length.js"></script>
+<script src="lib/context-timeline.js"></script>
 <script src="app.js"></script>
 <script>
 function applySamplingPreset(name) {
