@@ -22,9 +22,16 @@ let userSettings   = JSON.parse(localStorage.getItem('llm-settings')  || '{"them
 let toastHistory = [];
 let toastHistoryOpen = false;
 
-// ── API key helpers (stored in localStorage, sent to proxy via header only)
+// ── API key helpers (stored in localStorage, or sessionStorage in ephemeral
+//    mode, sent to proxy via header only — never written to disk by the proxy)
+function apiKeysEphemeral() {
+  return localStorage.getItem('llm-api-keys-ephemeral') === '1';
+}
+function apiKeyStore() {
+  return apiKeysEphemeral() ? sessionStorage : localStorage;
+}
 function getStoredApiKeys() {
-  try { return JSON.parse(localStorage.getItem('llm-api-keys') || '{}'); } catch { return {}; }
+  try { return JSON.parse(apiKeyStore().getItem('llm-api-keys') || '{}'); } catch { return {}; }
 }
 function getCustomProviders() {
   try { return JSON.parse(localStorage.getItem('llm-custom-providers') || '[]'); } catch { return []; }
@@ -2875,6 +2882,8 @@ function openApiKeySettings() {
     const el = document.getElementById(`key-${p}`);
     if (el) el.value = keys[p] || '';
   });
+  const toggle = document.getElementById('apikey-ephemeral-toggle');
+  if (toggle) toggle.checked = apiKeysEphemeral();
   document.getElementById('apikey-status').textContent = '';
   renderCustomProvidersList();
   openModal('config-modal');
@@ -3186,7 +3195,12 @@ async function saveApiKeys() {
     const v = (document.getElementById(`key-${p}`)?.value || '').trim();
     if (v) keys[p] = v;
   });
-  localStorage.setItem('llm-api-keys', JSON.stringify(keys));
+  const ephemeral = !!document.getElementById('apikey-ephemeral-toggle')?.checked;
+  localStorage.setItem('llm-api-keys-ephemeral', ephemeral ? '1' : '0');
+  const { writeTo, clearFrom } = resolveApiKeyStorageMove(ephemeral);
+  const stores = { local: localStorage, session: sessionStorage };
+  stores[writeTo].setItem('llm-api-keys', JSON.stringify(keys));
+  stores[clearFrom].removeItem('llm-api-keys');
   const count = Object.keys(keys).length;
   const cpCount = getCustomProviders().length;
   document.getElementById('apikey-status').textContent =
@@ -3216,6 +3230,7 @@ async function saveApiKeys() {
 
 function clearAllApiKeys() {
   localStorage.removeItem('llm-api-keys');
+  sessionStorage.removeItem('llm-api-keys');
   ['openai', 'anthropic', 'groq', 'openrouter', 'mistral', 'together', 'fireworks', 'cohere'].forEach(p => {
     const el = document.getElementById(`key-${p}`);
     if (el) el.value = '';
