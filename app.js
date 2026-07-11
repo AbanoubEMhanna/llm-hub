@@ -329,6 +329,29 @@ async function requestDesktopNotifPermission() {
     toast('Notification permission denied — check browser settings.', 'warn');
   }
 }
+
+// ── Sound effects ─────────────────────────────────────────────────────────
+let _sfxAudioCtx = null;
+function playSoundEffect(kind) {
+  if (localStorage.getItem('general_sound_effects') !== '1') return;
+  const cfg = getToneConfig(kind);
+  if (!cfg) return;
+  try {
+    if (!_sfxAudioCtx) _sfxAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _sfxAudioCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = cfg.type;
+    osc.frequency.value = cfg.frequency;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    gain.gain.setValueAtTime(cfg.gain, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + cfg.duration);
+    osc.start(now);
+    osc.stop(now + cfg.duration);
+  } catch { /* Web Audio unavailable or blocked — sound is a non-essential extra */ }
+}
 function setCloudStatus(id, status) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -1715,6 +1738,7 @@ async function send() {
   conv.ts = msgTs;
   saveConvs();
   renderConvList();
+  playSoundEffect('send');
 
   const imgsForBubble  = attachments.filter(a => a.type === 'image' && a.dataUrl);
   const pdfsForBubble  = attachments.filter(a => a.type === 'pdf' && a.text && !a.loading);
@@ -1898,6 +1922,7 @@ async function streamAssistantReply(conv) {
             saveConvs();
             reRenderLastAssistant(conv, fullText);
             notifyGenerationComplete(conv, fullText);
+            playSoundEffect('receive');
             // Refresh running models + system info (model is now loaded)
             checkRunningModels().then(() => { updateModelHeader(); updateModelInfoCard(); });
             loadSystemInfo();
@@ -2922,6 +2947,7 @@ function loadGeneralSettings() {
     const hint = el('general-notif-hint');
     if (hint) hint.textContent = perm === 'denied' ? '⚠ Blocked in browser — allow in site settings.' : perm === 'default' ? 'Click "Request" to enable.' : '';
   }
+  if (el('general-sound-effects')) el('general-sound-effects').checked = localStorage.getItem('general_sound_effects') === '1';
   try {
     let total = 0;
     for (const k of Object.keys(localStorage)) total += (localStorage.getItem(k) || '').length;
@@ -2956,6 +2982,8 @@ function saveGeneralSettings() {
   if (desktopNotif && 'Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission();
   }
+  const soundEffects = !!document.getElementById('general-sound-effects')?.checked;
+  localStorage.setItem('general_sound_effects', soundEffects ? '1' : '0');
   closeModal('config-modal');
   if (proxyUrl && proxyUrl !== PROXY) {
     toast('Proxy URL saved — reload the page to connect to the new address.', 'info');

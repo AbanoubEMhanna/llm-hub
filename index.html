@@ -757,6 +757,10 @@
           <button class="btn btn-sm" onclick="requestDesktopNotifPermission()">Request Permission</button>
           <span id="general-notif-hint" style="font-size:11px;color:var(--muted)"></span>
         </div>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;margin-top:12px">
+          <input type="checkbox" id="general-sound-effects" style="width:16px;height:16px;accent-color:var(--accent)"/>
+          Sound effects on message send / receive
+        </label>
       </div>
 
       <div class="settings-section" style="margin-top:22px">
@@ -1453,6 +1457,7 @@
 <script src="lib/context-length.js"></script>
 <script src="lib/context-timeline.js"></script>
 <script src="lib/key-storage.js"></script>
+<script src="lib/sound-effects.js"></script>
 <script src="app.js"></script>
 <script>
 function applySamplingPreset(name) {

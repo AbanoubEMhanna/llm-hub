@@ -256,7 +256,7 @@
 - [x] Toast notifications for all key actions
 - [x] Toast / notification history panel
 - [x] ⚡ Desktop notifications when a generation completes in a background tab (opt-in)
-- [ ] Sound effects (opt-in) on message send / receive
+- [x] ⚡ Sound effects (opt-in) on message send / receive
 
 ---
 
@@ -324,11 +324,11 @@
 | Attachments & Multimodal | 8 | 2 |
 | RAG / Knowledge Base | 8 | 6 |
 | Model Comparison | 7 | 2 |
-| Modern UI | 12 | 8 |
+| Modern UI | 13 | 7 |
 | Security & Privacy | 6 | 4 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
-| **Total** | **~130** | **~74** |
+| **Total** | **~131** | **~73** |
 
 **~62% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
@@ -339,4 +339,4 @@
 
 ---
 
-*Last updated: 2026-07-10. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-11. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
