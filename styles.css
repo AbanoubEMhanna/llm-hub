@@ -698,6 +698,10 @@ input[type=range]::-webkit-slider-thumb {
 .msg-actions .reaction-up.active { color: var(--green) !important; border-color: color-mix(in srgb, var(--green) 40%, var(--border)) !important; background: color-mix(in srgb, var(--green) 8%, transparent) !important; }
 .msg-actions .reaction-dn.active { color: var(--red) !important; border-color: color-mix(in srgb, var(--red) 40%, var(--border)) !important; background: color-mix(in srgb, var(--red) 8%, transparent) !important; }
 
+/* Bookmark / star toggle */
+.msg-actions .bookmark-btn { opacity: .6; }
+.msg-actions .bookmark-btn.active { opacity: 1; color: #f5a623 !important; border-color: color-mix(in srgb, #f5a623 40%, var(--border)) !important; background: color-mix(in srgb, #f5a623 8%, transparent) !important; }
+
 /* Message timestamps — visible on hover or when toggle is on */
 .msg-timestamp {
   font-family: var(--mono); font-size: 10px; color: var(--muted);
