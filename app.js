@@ -339,6 +339,7 @@ function playSoundEffect(kind) {
   try {
     if (!_sfxAudioCtx) _sfxAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const ctx = _sfxAudioCtx;
+    if (ctx.state === 'suspended') ctx.resume();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = cfg.type;

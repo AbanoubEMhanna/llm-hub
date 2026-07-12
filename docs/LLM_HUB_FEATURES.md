@@ -328,7 +328,7 @@
 | Security & Privacy | 6 | 4 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
-| **Total** | **~131** | **~73** |
+| **Total** | **~121** | **~73** |
 
 **~62% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
