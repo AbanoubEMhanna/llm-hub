@@ -100,7 +100,7 @@
 - [x] Bulk conversation management — checkbox select, delete & export
 - [x] Chat fuzzy search (⌘K)
 - [ ] 🔥 🏗️ Multi-tab chat — tab bar, multiple conversations open simultaneously
-- [ ] Conversation archive (hide from list without deleting)
+- [x] ⚡ Conversation archive (hide from list without deleting)
 - [ ] Smart conversation grouping by date / project
 
 ### Import & Export
@@ -317,7 +317,7 @@
 | Providers & Connectivity | 10 | 4 |
 | Local Model Management | 9 | 6 |
 | Hardware Awareness | 7 | 5 |
-| Chat Interface | 19 | 5 |
+| Chat Interface | 20 | 4 |
 | Model Parameters | 11 | 1 |
 | AI Agent & Tools | 5 | 9 |
 | Code-First Workflow | 6 | 11 |
@@ -328,9 +328,9 @@
 | Security & Privacy | 6 | 4 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
-| **Total** | **~122** | **~72** |
+| **Total** | **~123** | **~71** |
 
-**~62% complete. Top priorities to close the gap:**
+**~63% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell tool, tool builder, run history)
@@ -339,4 +339,4 @@
 
 ---
 
-*Last updated: 2026-07-12. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-13. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*

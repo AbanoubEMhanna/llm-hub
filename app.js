@@ -58,6 +58,7 @@ let isLoading            = false;
 let activeAbortController = null;
 let attachments          = [];                   // [{ dataUrl, name }]
 let activeConvFilter     = null;                 // active label filter for conv list
+let showArchived         = false;                // when true, conv list shows only archived conversations
 
 // Compare mode
 let compareMode          = false;
@@ -1332,7 +1333,7 @@ function currentConv() { return conversations.find(c => c.id === currentConvId);
 
 function newConversation() {
   const id = Date.now().toString();
-  conversations.unshift({ id, title: 'New chat', messages: [], ts: Date.now(), pinned: false });
+  conversations.unshift({ id, title: 'New chat', messages: [], ts: Date.now(), pinned: false, archived: false });
   saveConvs();
   loadConversation(id);
   renderConvList();
@@ -1387,6 +1388,26 @@ function togglePin(id, e) {
   renderConvList();
 }
 
+function toggleArchive(id, e) {
+  e?.stopPropagation();
+  const conv = conversations.find(c => c.id === id);
+  if (!conv) return;
+  conv.archived = !conv.archived;
+  if (conv.archived && currentConvId === id && !showArchived) {
+    const next = conversations.find(c => c.id !== id && !c.archived);
+    if (next) loadConversation(next.id); else newConversation();
+  }
+  saveConvs();
+  toast(conv.archived ? 'Conversation archived.' : 'Conversation restored.', 'success');
+  renderConvList();
+}
+
+function toggleArchivedView() {
+  showArchived = !showArchived;
+  document.getElementById('archive-view-btn')?.classList.toggle('active', showArchived);
+  renderConvList();
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // § CONVERSATION BRANCHING
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1405,6 +1426,7 @@ function branchFromMessage(idx) {
     messages: branchMsgs,
     ts: Date.now(),
     pinned: false,
+    archived: false,
     sysPrompt: conv.sysPrompt || '',
     ctxLen: conv.ctxLen || '',
     folderId: conv.folderId || null,
@@ -1516,7 +1538,25 @@ let _convListFirstRender = true;
 
 function renderConvList() {
   const list = document.getElementById('conv-list');
-  let sorted = [...conversations].sort((a, b) => {
+
+  if (showArchived) {
+    const archived = conversations.filter(c => c.archived).sort((a, b) => b.ts - a.ts);
+    list.innerHTML = archived.length
+      ? archived.map(c => `
+        <div class="conv-item archived ${c.id === currentConvId ? 'active' : ''}" data-id="${c.id}"
+             onclick="loadConversation('${c.id}')">
+          <div class="conv-title">${escHtml(c.title)}</div>
+          <div class="conv-meta">${c.messages.length} msgs · ${timeAgo(c.ts)}</div>
+          <div class="conv-actions">
+            <button onclick="toggleArchive('${c.id}',event)" title="Restore from archive">📤</button>
+            <button class="danger" onclick="deleteConversation('${c.id}',event)" title="Delete">×</button>
+          </div>
+        </div>`).join('')
+      : `<div class="folder-empty">No archived conversations.</div>`;
+    return;
+  }
+
+  let sorted = [...conversations].filter(c => !c.archived).sort((a, b) => {
     if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
     return b.ts - a.ts;
   });
@@ -1562,6 +1602,7 @@ function renderConvList() {
           <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
         </button>
         <button onclick="togglePin('${c.id}',event)" title="${c.pinned ? 'Unpin' : 'Pin'}">${c.pinned ? '📌' : '📍'}</button>
+        <button onclick="toggleArchive('${c.id}',event)" title="Archive">📥</button>
         <button class="danger" onclick="deleteConversation('${c.id}',event)" title="Delete">×</button>
       </div>
     </div>`;
