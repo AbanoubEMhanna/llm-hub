@@ -1393,18 +1393,22 @@ function toggleArchive(id, e) {
   const conv = conversations.find(c => c.id === id);
   if (!conv) return;
   conv.archived = !conv.archived;
+  let navigated = false;
   if (conv.archived && currentConvId === id && !showArchived) {
     const next = conversations.find(c => c.id !== id && !c.archived);
     if (next) loadConversation(next.id); else newConversation();
+    navigated = true;
   }
   saveConvs();
   toast(conv.archived ? 'Conversation archived.' : 'Conversation restored.', 'success');
-  renderConvList();
+  if (!navigated) renderConvList();
 }
 
 function toggleArchivedView() {
   showArchived = !showArchived;
-  document.getElementById('archive-view-btn')?.classList.toggle('active', showArchived);
+  const btn = document.getElementById('archive-view-btn');
+  btn?.classList.toggle('active', showArchived);
+  btn?.setAttribute('title', showArchived ? 'Show active conversations' : 'Show archived conversations');
   renderConvList();
 }
 
@@ -3211,6 +3215,23 @@ function applyConversationImport(file) {
         throw new Error('Unrecognized format. Expected LLM Hub backup/export or ChatGPT conversations.json.');
       }
 
+      // Imported IDs are attacker-controlled (crafted backup/export file) and get interpolated
+      // unescaped into onclick="..." handlers when rendering the conv list — reject anything
+      // that isn't a plain id-safe string so it can't break out of the attribute.
+      const idRemap = new Map();
+      incoming.forEach(c => {
+        if (!c || !c.id) return;
+        const idStr = String(c.id);
+        if (!isSafeImportedId(idStr)) {
+          const fresh = `import-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+          idRemap.set(c.id, fresh);
+          c.id = fresh;
+        }
+      });
+      if (idRemap.size) {
+        incoming.forEach(c => { if (c?.parentId && idRemap.has(c.parentId)) c.parentId = idRemap.get(c.parentId); });
+      }
+
       const existingIds = new Set(conversations.map(c => c.id));
       const toAdd = incoming.filter(c => c.id && Array.isArray(c.messages) && !existingIds.has(c.id));
 
@@ -3241,6 +3262,12 @@ function applyConversationImport(file) {
   reader.readAsText(file);
 }
 
+// Conversation ids are interpolated unescaped into onclick="..." attributes when rendering
+// the conv list, so anything from an imported file must be restricted to this safe charset.
+function isSafeImportedId(id) {
+  return /^[\w.:-]+$/.test(id);
+}
+
 // Iterative walk — safe against circular references in ChatGPT exports
 function convertChatGPTConv(chatGptConv) {
   if (!chatGptConv?.mapping) return null;
@@ -3260,8 +3287,10 @@ function convertChatGPTConv(chatGptConv) {
     cur = childId ? nodeMap[childId] : null;
   }
   if (!messages.length) return null;
+  const rawId = chatGptConv.id != null ? String(chatGptConv.id) : '';
+  const safeId = rawId && isSafeImportedId(rawId) ? rawId : Date.now();
   return {
-    id: `chatgpt-${chatGptConv.id || Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    id: `chatgpt-${safeId}-${Math.random().toString(36).slice(2, 7)}`,
     title: chatGptConv.title || 'Imported from ChatGPT',
     messages,
     ts: chatGptConv.create_time ? chatGptConv.create_time * 1000 : Date.now(),
