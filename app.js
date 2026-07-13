@@ -58,6 +58,7 @@ let isLoading            = false;
 let activeAbortController = null;
 let attachments          = [];                   // [{ dataUrl, name }]
 let activeConvFilter     = null;                 // active label filter for conv list
+let showArchived         = false;                // when true, conv list shows only archived conversations
 
 // Compare mode
 let compareMode          = false;
@@ -1332,7 +1333,7 @@ function currentConv() { return conversations.find(c => c.id === currentConvId);
 
 function newConversation() {
   const id = Date.now().toString();
-  conversations.unshift({ id, title: 'New chat', messages: [], ts: Date.now(), pinned: false });
+  conversations.unshift({ id, title: 'New chat', messages: [], ts: Date.now(), pinned: false, archived: false });
   saveConvs();
   loadConversation(id);
   renderConvList();
@@ -1387,6 +1388,30 @@ function togglePin(id, e) {
   renderConvList();
 }
 
+function toggleArchive(id, e) {
+  e?.stopPropagation();
+  const conv = conversations.find(c => c.id === id);
+  if (!conv) return;
+  conv.archived = !conv.archived;
+  let navigated = false;
+  if (conv.archived && currentConvId === id && !showArchived) {
+    const next = conversations.find(c => c.id !== id && !c.archived);
+    if (next) loadConversation(next.id); else newConversation();
+    navigated = true;
+  }
+  saveConvs();
+  toast(conv.archived ? 'Conversation archived.' : 'Conversation restored.', 'success');
+  if (!navigated) renderConvList();
+}
+
+function toggleArchivedView() {
+  showArchived = !showArchived;
+  const btn = document.getElementById('archive-view-btn');
+  btn?.classList.toggle('active', showArchived);
+  btn?.setAttribute('title', showArchived ? 'Show active conversations' : 'Show archived conversations');
+  renderConvList();
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // § CONVERSATION BRANCHING
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1405,6 +1430,7 @@ function branchFromMessage(idx) {
     messages: branchMsgs,
     ts: Date.now(),
     pinned: false,
+    archived: false,
     sysPrompt: conv.sysPrompt || '',
     ctxLen: conv.ctxLen || '',
     folderId: conv.folderId || null,
@@ -1516,7 +1542,25 @@ let _convListFirstRender = true;
 
 function renderConvList() {
   const list = document.getElementById('conv-list');
-  let sorted = [...conversations].sort((a, b) => {
+
+  if (showArchived) {
+    const archived = conversations.filter(c => c.archived).sort((a, b) => b.ts - a.ts);
+    list.innerHTML = archived.length
+      ? archived.map(c => `
+        <div class="conv-item archived ${c.id === currentConvId ? 'active' : ''}" data-id="${c.id}"
+             onclick="loadConversation('${c.id}')">
+          <div class="conv-title">${escHtml(c.title)}</div>
+          <div class="conv-meta">${c.messages.length} msgs · ${timeAgo(c.ts)}</div>
+          <div class="conv-actions">
+            <button onclick="toggleArchive('${c.id}',event)" title="Restore from archive">📤</button>
+            <button class="danger" onclick="deleteConversation('${c.id}',event)" title="Delete">×</button>
+          </div>
+        </div>`).join('')
+      : `<div class="folder-empty">No archived conversations.</div>`;
+    return;
+  }
+
+  let sorted = [...conversations].filter(c => !c.archived).sort((a, b) => {
     if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
     return b.ts - a.ts;
   });
@@ -1562,6 +1606,7 @@ function renderConvList() {
           <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
         </button>
         <button onclick="togglePin('${c.id}',event)" title="${c.pinned ? 'Unpin' : 'Pin'}">${c.pinned ? '📌' : '📍'}</button>
+        <button onclick="toggleArchive('${c.id}',event)" title="Archive">📥</button>
         <button class="danger" onclick="deleteConversation('${c.id}',event)" title="Delete">×</button>
       </div>
     </div>`;
@@ -3170,6 +3215,23 @@ function applyConversationImport(file) {
         throw new Error('Unrecognized format. Expected LLM Hub backup/export or ChatGPT conversations.json.');
       }
 
+      // Imported IDs are attacker-controlled (crafted backup/export file) and get interpolated
+      // unescaped into onclick="..." handlers when rendering the conv list — reject anything
+      // that isn't a plain id-safe string so it can't break out of the attribute.
+      const idRemap = new Map();
+      incoming.forEach(c => {
+        if (!c || !c.id) return;
+        const idStr = String(c.id);
+        if (!isSafeImportedId(idStr)) {
+          const fresh = `import-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+          idRemap.set(c.id, fresh);
+          c.id = fresh;
+        }
+      });
+      if (idRemap.size) {
+        incoming.forEach(c => { if (c?.parentId && idRemap.has(c.parentId)) c.parentId = idRemap.get(c.parentId); });
+      }
+
       const existingIds = new Set(conversations.map(c => c.id));
       const toAdd = incoming.filter(c => c.id && Array.isArray(c.messages) && !existingIds.has(c.id));
 
@@ -3200,6 +3262,12 @@ function applyConversationImport(file) {
   reader.readAsText(file);
 }
 
+// Conversation ids are interpolated unescaped into onclick="..." attributes when rendering
+// the conv list, so anything from an imported file must be restricted to this safe charset.
+function isSafeImportedId(id) {
+  return /^[\w.:-]+$/.test(id);
+}
+
 // Iterative walk — safe against circular references in ChatGPT exports
 function convertChatGPTConv(chatGptConv) {
   if (!chatGptConv?.mapping) return null;
@@ -3219,8 +3287,10 @@ function convertChatGPTConv(chatGptConv) {
     cur = childId ? nodeMap[childId] : null;
   }
   if (!messages.length) return null;
+  const rawId = chatGptConv.id != null ? String(chatGptConv.id) : '';
+  const safeId = rawId && isSafeImportedId(rawId) ? rawId : Date.now();
   return {
-    id: `chatgpt-${chatGptConv.id || Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    id: `chatgpt-${safeId}-${Math.random().toString(36).slice(2, 7)}`,
     title: chatGptConv.title || 'Imported from ChatGPT',
     messages,
     ts: chatGptConv.create_time ? chatGptConv.create_time * 1000 : Date.now(),
