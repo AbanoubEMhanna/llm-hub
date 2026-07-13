@@ -2027,6 +2027,20 @@ function rateMessage(idx, rating) {
   wrap.querySelector('.reaction-dn')?.classList.toggle('active', msg.reaction === 'down');
 }
 
+function toggleBookmark(idx) {
+  const conv = currentConv();
+  if (!conv || !conv.messages[idx]) return;
+  const msg = conv.messages[idx];
+  msg.bookmarked = !msg.bookmarked;
+  saveConvs();
+  const wrap = document.querySelector(`.msg-wrap[data-msg-idx="${idx}"]`);
+  const btn = wrap?.querySelector('.bookmark-btn');
+  if (!btn) return;
+  btn.classList.toggle('active', msg.bookmarked);
+  btn.textContent = msg.bookmarked ? '⭐' : '☆';
+  btn.title = msg.bookmarked ? 'Remove bookmark' : 'Bookmark this message';
+}
+
 function openEditMessage(idx) {
   const conv = currentConv();
   if (!conv) return;
@@ -2185,6 +2199,7 @@ function appendUserBubble(idx, text, imgs = [], pdfs = [], ts = 0, codeFiles = [
   const container = document.getElementById('messages');
   const wrap = document.createElement('div');
   wrap.className = 'msg-wrap';
+  if (idx >= 0) wrap.dataset.msgIdx = idx;
   const pdfsHtml = pdfs.length
     ? `<div class="bubble-docs">${pdfs.map(p =>
         `<div class="bubble-doc"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>${escHtml(p.name)}${p.pageCount ? ` (${p.pageCount}p)` : ''}</span></div>`
@@ -2199,6 +2214,8 @@ function appendUserBubble(idx, text, imgs = [], pdfs = [], ts = 0, codeFiles = [
     ? `<div class="bubble-images">${imgs.map(a =>
         `<img class="bubble-img" src="${escHtml(a.dataUrl)}" onclick="window.open(this.src)"/>`).join('')}</div>`
     : '';
+  const userConv = idx >= 0 ? currentConv() : null;
+  const userBookmarked = idx >= 0 ? !!(userConv?.messages[idx]?.bookmarked) : false;
   wrap.innerHTML = `
     <div class="msg user">
       <div class="avatar">👤</div>
@@ -2211,6 +2228,7 @@ function appendUserBubble(idx, text, imgs = [], pdfs = [], ts = 0, codeFiles = [
     </div>
     ${idx >= 0 ? `<div class="msg-actions" style="justify-content:flex-end">
       ${formatTs(ts, 'right')}
+      <button class="bookmark-btn${userBookmarked ? ' active' : ''}" onclick="toggleBookmark(${idx})" title="${userBookmarked ? 'Remove bookmark' : 'Bookmark this message'}">${userBookmarked ? '⭐' : '☆'}</button>
       <button onclick="branchFromMessage(${idx})" title="Branch conversation from here">⑂ Branch</button>
       <button onclick="openEditMessage(${idx})" title="Edit & regenerate">✏️ Edit</button>
       <button onclick="copyMessage(${idx})" title="Copy">📋 Copy</button>
@@ -2228,6 +2246,7 @@ function buildAssistantWrap(idx, content, stopped = false, ts = 0) {
 
   const conv = currentConv();
   const reaction = idx >= 0 ? (conv?.messages[idx]?.reaction || null) : null;
+  const bookmarked = idx >= 0 ? !!(conv?.messages[idx]?.bookmarked) : false;
 
   // Parse plan blocks from content
   const parsed = parsePlanFromText(content || '');
@@ -2242,6 +2261,7 @@ function buildAssistantWrap(idx, content, stopped = false, ts = 0) {
     ${idx >= 0 ? `<div class="msg-actions">
       <button class="reaction-btn reaction-up${reaction === 'up' ? ' active' : ''}" onclick="rateMessage(${idx},'up')" title="Good response">👍</button>
       <button class="reaction-btn reaction-dn${reaction === 'down' ? ' active' : ''}" onclick="rateMessage(${idx},'down')" title="Bad response">👎</button>
+      <button class="bookmark-btn${bookmarked ? ' active' : ''}" onclick="toggleBookmark(${idx})" title="${bookmarked ? 'Remove bookmark' : 'Bookmark this message'}">${bookmarked ? '⭐' : '☆'}</button>
       <button onclick="regenerateMessage(${idx})" title="Regenerate (⌘R)">🔄 Regenerate</button>
       <button onclick="continueMessage(${idx})" title="Continue">▶ Continue</button>
       <button onclick="copyMessage(${idx})" title="Copy">📋 Copy</button>
