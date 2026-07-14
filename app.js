@@ -2109,6 +2109,10 @@ async function saveEditAndRegenerate() {
   if (!newText) return;
 
   const m = conv.messages[editingMessageIdx];
+  const prevText = messageTextContent(m);
+  if (prevText !== newText) {
+    (m.editHistory = m.editHistory || []).push({ content: prevText, ts: Date.now() });
+  }
   if (Array.isArray(m.content)) {
     const pdfBlocks = m.content.filter(p =>
       p.type === 'text' && /^📄 Document: .+ \(\d+ pages?\)\n/.test(p.text || '')
@@ -2261,6 +2265,7 @@ function appendUserBubble(idx, text, imgs = [], pdfs = [], ts = 0, codeFiles = [
     : '';
   const userConv = idx >= 0 ? currentConv() : null;
   const userBookmarked = idx >= 0 ? !!(userConv?.messages[idx]?.bookmarked) : false;
+  const userEditHistory = idx >= 0 ? (userConv?.messages[idx]?.editHistory || []) : [];
   wrap.innerHTML = `
     <div class="msg user">
       <div class="avatar">👤</div>
@@ -2276,6 +2281,7 @@ function appendUserBubble(idx, text, imgs = [], pdfs = [], ts = 0, codeFiles = [
       <button class="bookmark-btn${userBookmarked ? ' active' : ''}" onclick="toggleBookmark(${idx})" title="${userBookmarked ? 'Remove bookmark' : 'Bookmark this message'}">${userBookmarked ? '⭐' : '☆'}</button>
       <button onclick="branchFromMessage(${idx})" title="Branch conversation from here">⑂ Branch</button>
       <button onclick="openEditMessage(${idx})" title="Edit & regenerate">✏️ Edit</button>
+      ${userEditHistory.length ? `<button onclick="showEditDiff(${idx})" title="View diff since last edit">📝 Edited (${userEditHistory.length})</button>` : ''}
       <button onclick="copyMessage(${idx})" title="Copy">📋 Copy</button>
       <button class="danger" onclick="deleteMessage(${idx})" title="Delete">🗑 Delete</button>
     </div>` : ''}`;
@@ -4404,6 +4410,25 @@ function renderDiff(parts) {
     if (p.type === 'add') return `<ins class="diff-add">${txt}</ins>`;
     return `<del class="diff-del">${txt}</del>`;
   }).join('');
+}
+
+function showEditDiff(idx) {
+  const conv = currentConv();
+  const m = conv?.messages[idx];
+  const history = m?.editHistory;
+  if (!m || !history?.length) return;
+  const prev = history[history.length - 1];
+  const curr = messageTextContent(m);
+  const parts = computeWordDiff(prev.content, curr);
+  const html = renderDiff(parts);
+  const meta = document.getElementById('edit-diff-meta');
+  if (meta) {
+    const n = history.length;
+    meta.textContent = `Edited ${n} time${n > 1 ? 's' : ''} · last edit ${new Date(prev.ts).toLocaleString()}`;
+  }
+  const body = document.getElementById('edit-diff-body');
+  if (body) body.innerHTML = `<p class="diff-text">${html}</p>`;
+  openModal('edit-diff-modal');
 }
 
 function updateCompareDiffBtn() {
