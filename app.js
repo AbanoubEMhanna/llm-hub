@@ -2110,7 +2110,7 @@ async function saveEditAndRegenerate() {
 
   const m = conv.messages[editingMessageIdx];
   const prevText = messageTextContent(m);
-  if (prevText !== newText) {
+  if (prevText.trim() !== newText) {
     (m.editHistory = m.editHistory || []).push({ content: prevText, ts: Date.now() });
   }
   if (Array.isArray(m.content)) {
