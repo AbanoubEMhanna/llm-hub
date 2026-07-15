@@ -1172,6 +1172,17 @@ function streamCustom(baseUrl, body, extraHeaders, { onChunk, onDone, onError, s
 // § AGENT LOOP
 // ─────────────────────────────────────────────────────────────────────────────
 
+async function executeWithCache(toolCache, toolName, toolArgs) {
+  if (toolCache.has(toolName, toolArgs)) {
+    return { result: toolCache.get(toolName, toolArgs), cached: true };
+  }
+  let result;
+  try { result = await registry.execute(toolName, toolArgs); }
+  catch (e) { result = JSON.stringify({ error: e.message }); }
+  toolCache.set(toolName, toolArgs, result);
+  return { result, cached: false };
+}
+
 async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, stop = [], seed, numCtx, useTools, apiKeys = {}, customProviders = [], emit, signal }) {
   const provider = resolveProvider(model);
   if (!provider) { emit('error', { message: `Model "${model}" not found` }); return; }
@@ -1234,14 +1245,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
           let toolArgs = {};
           try { toolArgs = JSON.parse(tc.function.arguments || '{}'); } catch {}
           emit('tool_call', { id: tc.id, name: toolName, args: toolArgs });
-          let toolResult;
-          const cached = toolCache.has(toolName, toolArgs);
-          if (cached) {
-            toolResult = toolCache.get(toolName, toolArgs);
-          } else {
-            try { toolResult = await registry.execute(toolName, toolArgs); } catch (e) { toolResult = JSON.stringify({ error: e.message }); }
-            toolCache.set(toolName, toolArgs, toolResult);
-          }
+          const { result: toolResult, cached } = await executeWithCache(toolCache, toolName, toolArgs);
           emit('tool_result', { id: tc.id, name: toolName, result: toolResult, cached });
           history.push({ role: 'tool', tool_call_id: tc.id, content: toolResult });
         }
@@ -1333,15 +1337,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
           let toolArgs = {};
           try { toolArgs = JSON.parse(tc.function.arguments || '{}'); } catch {}
           emit('tool_call', { id: tc.id, name: toolName, args: toolArgs });
-          let toolResult;
-          const cached = toolCache.has(toolName, toolArgs);
-          if (cached) {
-            toolResult = toolCache.get(toolName, toolArgs);
-          } else {
-            try { toolResult = await registry.execute(toolName, toolArgs); }
-            catch (e) { toolResult = JSON.stringify({ error: e.message }); }
-            toolCache.set(toolName, toolArgs, toolResult);
-          }
+          const { result: toolResult, cached } = await executeWithCache(toolCache, toolName, toolArgs);
           emit('tool_result', { id: tc.id, name: toolName, result: toolResult, cached });
           history.push({ role: 'tool', tool_call_id: tc.id, name: toolName, content: toolResult });
         }
@@ -1418,15 +1414,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
         let   toolArgs = {};
         try { toolArgs = JSON.parse(tc.function.arguments || '{}'); } catch {}
         emit('tool_call', { id: tc.id, name: toolName, args: toolArgs });
-        let toolResult;
-        const cached = toolCache.has(toolName, toolArgs);
-        if (cached) {
-          toolResult = toolCache.get(toolName, toolArgs);
-        } else {
-          try { toolResult = await registry.execute(toolName, toolArgs); }
-          catch (e) { toolResult = JSON.stringify({ error: e.message }); }
-          toolCache.set(toolName, toolArgs, toolResult);
-        }
+        const { result: toolResult, cached } = await executeWithCache(toolCache, toolName, toolArgs);
         emit('tool_result', { id: tc.id, name: toolName, result: toolResult, cached });
         history.push({ role: 'tool', tool_call_id: tc.id, name: toolName, content: toolResult });
       }
