@@ -139,7 +139,7 @@
 - [ ] 🔥 Shell command tool — opt-in, with confirmation prompt per execution
 - [ ] 🔥 Custom tool builder UI — define name, JSON schema, handler URL from UI
 - [ ] 🔥 Agent run history — step-by-step replay of past agent sessions
-- [ ] Tool result caching — skip re-runs for identical inputs in a session
+- [x] Tool result caching — skip re-runs for identical inputs in a session
 - [ ] Agent memory persistence across sessions (vector or key-value store)
 - [ ] 🏗️ Sub-agent spawning — parallel task execution
 - [ ] 🏗️ Agent graph visualization — node / edge view of the tool call chain
@@ -319,7 +319,7 @@
 | Hardware Awareness | 7 | 5 |
 | Chat Interface | 21 | 3 |
 | Model Parameters | 11 | 1 |
-| AI Agent & Tools | 5 | 9 |
+| AI Agent & Tools | 6 | 8 |
 | Code-First Workflow | 6 | 11 |
 | Attachments & Multimodal | 8 | 2 |
 | RAG / Knowledge Base | 8 | 6 |
@@ -328,7 +328,7 @@
 | Security & Privacy | 6 | 4 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
-| **Total** | **~124** | **~70** |
+| **Total** | **~125** | **~69** |
 
 **~64% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
@@ -339,4 +339,4 @@
 
 ---
 
-*Last updated: 2026-07-14. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-15. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
