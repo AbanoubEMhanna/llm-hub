@@ -1959,7 +1959,7 @@ async function streamAssistantReply(conv) {
             scrollBottom();
           } else if (evt.type === 'tool_result') {
             const el = toolEls[evt.id];
-            if (el) updateToolResult(el, evt.result);
+            if (el) updateToolResult(el, evt.result, evt.cached);
           } else if (evt.type === 'done') {
             if (speedInterval) { clearInterval(speedInterval); speedInterval = null; }
             if (speedEl) { speedEl.remove(); speedEl = null; }
@@ -2374,10 +2374,13 @@ function createToolBlock(name, args, id) {
   return div;
 }
 
-function updateToolResult(el, result) {
+function updateToolResult(el, result, cached) {
   const statusEl = el.querySelector('[id^="ts-"]');
   const resultEl = el.querySelector('[id^="tr-"]');
-  if (statusEl) { statusEl.textContent = 'done ✓'; statusEl.className = 'tool-status done'; }
+  if (statusEl) {
+    statusEl.textContent = cached ? 'done ✓ (cached)' : 'done ✓';
+    statusEl.className = 'tool-status done';
+  }
   if (resultEl) {
     try { resultEl.textContent = JSON.stringify(JSON.parse(result), null, 2); }
     catch { resultEl.textContent = result; }
