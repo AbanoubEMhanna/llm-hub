@@ -3634,6 +3634,7 @@ async function loadRagStats() {
   const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   try {
     const res  = await fetch(`${PROXY}/v1/rag/stats`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const data = await res.json();
     setText('rag-stat-collections', data.totalCollections ?? 0);
     setText('rag-stat-chunks',      data.totalChunks ?? 0);

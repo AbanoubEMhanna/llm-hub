@@ -1799,7 +1799,7 @@ const server = http.createServer(async (req, res) => {
       const col = rag.getCollection(id);
       if (!col) { sendJSON(res, 404, { error: 'not found' }); return; }
       sendJSON(res, 200, {
-        id: col.id, name: col.name, createdAt: col.createdAt,
+        id: col.id, name: col.name, createdAt: col.createdAt, updatedAt: col.updatedAt ?? col.createdAt,
         chunks: (col.chunks || []).map(c => ({ id: c.id, source: c.source, preview: c.text.slice(0, 200) })),
       });
       return;
