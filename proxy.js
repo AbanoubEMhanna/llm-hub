@@ -24,7 +24,7 @@ const os         = require('os');
 const { URL }    = require('url');
 
 const { isPrivateHost }    = require('./lib/ssrf');
-const { chunkText, cosine: cosineSimilarity } = require('./lib/rag-utils');
+const { chunkText, cosine: cosineSimilarity, computeStats: computeRagStats } = require('./lib/rag-utils');
 const { evaluate: calcEvaluate } = require('./lib/calculator');
 const { buildSpec }        = require('./lib/openapi');
 const { parseStopSequences } = require('./lib/stop-sequences');
@@ -290,10 +290,13 @@ class RagEngine {
       chunks:    c.chunks?.length || 0,
       sources:   [...new Set((c.chunks||[]).map(ch => ch.source))].length,
       createdAt: c.createdAt,
+      updatedAt: c.updatedAt ?? c.createdAt,
     }));
   }
 
   getCollection(id) { return this.collections.get(id); }
+
+  getStats() { return computeRagStats([...this.collections.values()]); }
 
   deleteCollection(id) {
     this.collections.delete(id);
@@ -334,6 +337,7 @@ class RagEngine {
         name: collectionName || 'Untitled',
         chunks: [],
         createdAt: Date.now(),
+        updatedAt: Date.now(),
       };
       this.collections.set(col.id, col);
     }
@@ -351,6 +355,7 @@ class RagEngine {
       done++;
       if (onProgress) onProgress({ done, total: chunks.length });
     }
+    col.updatedAt = Date.now();
     this._persist(col);
     return { collectionId: col.id, chunksAdded: chunks.length };
   }
@@ -1652,6 +1657,11 @@ const server = http.createServer(async (req, res) => {
     // ── RAG: list
     if (req.method === 'GET' && url.pathname === '/v1/rag/collections') {
       sendJSON(res, 200, { collections: rag.listCollections() }); return;
+    }
+
+    // ── RAG: knowledge-base stats
+    if (req.method === 'GET' && url.pathname === '/v1/rag/stats') {
+      sendJSON(res, 200, rag.getStats()); return;
     }
 
     // ── RAG: upload (SSE progress)
