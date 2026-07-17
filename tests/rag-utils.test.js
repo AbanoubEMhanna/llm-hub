@@ -167,3 +167,24 @@ test('rankChunks: collection with no chunks contributes nothing', () => {
   const collections = [{ id: 'a', chunks: [] }, { id: 'b', chunks: undefined }];
   assert.deepEqual(rankChunks(collections, [1, 0], 5), []);
 });
+
+test('rankChunks: skips chunks whose embedding dimension does not match the query (mixed embedding models)', () => {
+  const collections = [
+    { id: 'a', name: 'OldModel', chunks: [
+      { id: 'a1', source: 'a.md', text: 'stale dims', embedding: [1, 0, 0] }, // 3-dim, incompatible
+    ] },
+    { id: 'b', name: 'NewModel', chunks: [
+      { id: 'b1', source: 'b.md', text: 'matching dims', embedding: [1, 0] },
+    ] },
+  ];
+  const results = rankChunks(collections, [1, 0], 5); // 2-dim query
+  assert.equal(results.length, 1);
+  assert.equal(results[0].id, 'b1');
+});
+
+test('rankChunks: skips chunks with a missing or malformed embedding', () => {
+  const collections = [{ id: 'a', chunks: [{ id: '1', embedding: null }, { id: '2' }, { id: '3', embedding: [1, 0] }] }];
+  const results = rankChunks(collections, [1, 0], 5);
+  assert.equal(results.length, 1);
+  assert.equal(results[0].id, '3');
+});

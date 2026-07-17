@@ -330,7 +330,7 @@
 | Developer / Testing | 5 | 4 |
 | **Total** | **~127** | **~67** |
 
-**~64% complete. Top priorities to close the gap:**
+**~65% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell tool, tool builder, run history)

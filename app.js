@@ -3652,26 +3652,62 @@ async function loadRagStats() {
   }
 }
 
+// Builds one .rag-item row via DOM APIs (not innerHTML) so a crafted collection
+// id or name — e.g. from a client-supplied collection_id on /v1/rag/upload —
+// can't break out of an inline event-handler string and inject script.
+function buildRagItemEl({ active, icon, label, meta, title, onClick, onDelete }) {
+  const div = document.createElement('div');
+  div.className = 'rag-item' + (active ? ' active' : '');
+  div.title = title;
+  const labelSpan = document.createElement('span');
+  labelSpan.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+  labelSpan.textContent = label;
+  const metaSpan = document.createElement('span');
+  metaSpan.className = 'rag-meta';
+  metaSpan.textContent = meta;
+  div.append(`${icon} `, labelSpan, metaSpan);
+  if (onDelete) {
+    const delBtn = document.createElement('button');
+    delBtn.className = 'icon-btn';
+    delBtn.title = 'Delete';
+    delBtn.style.marginLeft = '4px';
+    delBtn.textContent = '×';
+    delBtn.addEventListener('click', (e) => { e.stopPropagation(); onDelete(); });
+    div.appendChild(delBtn);
+  }
+  div.addEventListener('click', onClick);
+  return div;
+}
+
 function renderRagList() {
   const el = document.getElementById('rag-list');
   const conv = currentConv();
+  el.innerHTML = '';
   if (!availableRagCollections.length) {
     el.innerHTML = '<div style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-bottom:6px">No collections yet</div>';
     return;
   }
   const allActive = !conv?.ragCollectionId;
-  const allItem = `
-    <div class="rag-item${allActive ? ' active' : ''}" title="Search across all collections at once — click a collection below to narrow it instead" onclick="setActiveRagCollection(null)">
-      🔍 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">All collections</span>
-      <span class="rag-meta">${availableRagCollections.length} col</span>
-    </div>`;
-  const items = availableRagCollections.map(c => `
-    <div class="rag-item${conv?.ragCollectionId === c.id ? ' active' : ''}" title="${escHtml(c.name)} — click to ${conv?.ragCollectionId === c.id ? 'search all collections again' : 'narrow auto-inject to this collection'}" onclick="setActiveRagCollection('${c.id}')">
-      📚 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(c.name)}</span>
-      <span class="rag-meta">${c.chunks ?? c.chunkCount ?? 0} ch</span>
-      <button class="icon-btn" onclick="event.stopPropagation();deleteRag('${c.id}')" title="Delete" style="margin-left:4px">×</button>
-    </div>`).join('');
-  el.innerHTML = allItem + items;
+  el.appendChild(buildRagItemEl({
+    active: allActive,
+    icon:   '🔍',
+    label:  'All collections',
+    meta:   `${availableRagCollections.length} col`,
+    title:  'Search across all collections at once — click a collection below to narrow it instead',
+    onClick: () => setActiveRagCollection(null),
+  }));
+  for (const c of availableRagCollections) {
+    const active = conv?.ragCollectionId === c.id;
+    el.appendChild(buildRagItemEl({
+      active,
+      icon:  '📚',
+      label: c.name,
+      meta:  `${c.chunks ?? c.chunkCount ?? 0} ch`,
+      title: `${c.name} — click to ${active ? 'search all collections again' : 'narrow auto-inject to this collection'}`,
+      onClick:  () => setActiveRagCollection(c.id),
+      onDelete: () => deleteRag(c.id),
+    }));
+  }
 }
 
 // Pins a single knowledge collection as "active" for the current conversation, or

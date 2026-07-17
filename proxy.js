@@ -371,9 +371,13 @@ class RagEngine {
       const col = this.collections.get(collectionId);
       if (!col) throw new Error(`Collection not found: ${collectionId}`);
       targets = [col];
-    } else if (Array.isArray(collectionIds) && collectionIds.length) {
-      targets = collectionIds.map(id => this.collections.get(id)).filter(Boolean);
-      if (!targets.length) throw new Error('No matching collections found');
+    } else if (Array.isArray(collectionIds)) {
+      if (!collectionIds.length) throw new Error('collectionIds must not be empty');
+      targets = collectionIds.map(id => {
+        const col = this.collections.get(id);
+        if (!col) throw new Error(`Collection not found: ${id}`);
+        return col;
+      });
     } else {
       targets = [...this.collections.values()];
     }
