@@ -3577,6 +3577,7 @@ async function loadRagSettings() {
   } catch (e) {
     if (statusEl) statusEl.textContent = 'Failed to load config: ' + e.message;
   }
+  loadRagStats();
 }
 
 async function saveRagSettings() {
@@ -3625,6 +3626,25 @@ async function loadRagCollections() {
     availableRagCollections = [];
     renderRagList();
     updateRagActiveBadge();
+  }
+  loadRagStats();
+}
+
+async function loadRagStats() {
+  const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  try {
+    const res  = await fetch(`${PROXY}/v1/rag/stats`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const data = await res.json();
+    setText('rag-stat-collections', data.totalCollections ?? 0);
+    setText('rag-stat-chunks',      data.totalChunks ?? 0);
+    setText('rag-stat-sources',     data.totalSources ?? 0);
+    setText('rag-stat-updated',     data.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : 'Never');
+  } catch {
+    setText('rag-stat-collections', '–');
+    setText('rag-stat-chunks',      '–');
+    setText('rag-stat-sources',     '–');
+    setText('rag-stat-updated',     '–');
   }
 }
 

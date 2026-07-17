@@ -2,7 +2,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { chunkText, cosine } = require('../lib/rag-utils.js');
+const { chunkText, cosine, computeStats } = require('../lib/rag-utils.js');
 
 // ── cosine similarity ──────────────────────────────────────────────────────
 
@@ -88,4 +88,41 @@ test('chunkText: normalises \\r\\n to \\n', () => {
   assert.equal(result.length, 1);
   assert.ok(result[0].includes('Line one'));
   assert.ok(result[0].includes('Line two'));
+});
+
+// ── computeStats ────────────────────────────────────────────────────────────
+
+test('computeStats: empty collections list', () => {
+  assert.deepEqual(computeStats([]), {
+    totalCollections: 0, totalChunks: 0, totalSources: 0, lastUpdated: null,
+  });
+});
+
+test('computeStats: sums chunks and de-dupes sources within and across collections', () => {
+  const collections = [
+    { chunks: [{ source: 'a.md' }, { source: 'a.md' }, { source: 'b.md' }], updatedAt: 100 },
+    { chunks: [{ source: 'b.md' }, { source: 'c.md' }], updatedAt: 200 },
+  ];
+  const stats = computeStats(collections);
+  assert.equal(stats.totalCollections, 2);
+  assert.equal(stats.totalChunks, 5);
+  assert.equal(stats.totalSources, 3); // a.md, b.md, c.md
+  assert.equal(stats.lastUpdated, 200);
+});
+
+test('computeStats: falls back to createdAt when updatedAt is missing', () => {
+  const collections = [{ chunks: [], createdAt: 50 }, { chunks: [], createdAt: 75 }];
+  assert.equal(computeStats(collections).lastUpdated, 75);
+});
+
+test('computeStats: collection with no chunks contributes zero, not NaN', () => {
+  const stats = computeStats([{ chunks: [] }, { chunks: undefined }]);
+  assert.equal(stats.totalChunks, 0);
+  assert.equal(stats.totalSources, 0);
+});
+
+test('computeStats: chunks without a source are not counted as sources', () => {
+  const stats = computeStats([{ chunks: [{}, { source: '' }, { source: 'x' }] }]);
+  assert.equal(stats.totalChunks, 3);
+  assert.equal(stats.totalSources, 1);
 });

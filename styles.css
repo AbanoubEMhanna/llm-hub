@@ -573,6 +573,13 @@ input[type=range]::-webkit-slider-thumb {
 .rag-item .rag-meta { margin-left: auto; font-size: 9px; opacity: .6; }
 .rag-item.active { background: var(--s2); color: var(--accent); border: 1px solid var(--accent); }
 
+.rag-stat-tile {
+  background: var(--s2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 6px; text-align: center;
+}
+.rag-stat-value { font-family: var(--mono); font-size: 16px; font-weight: 600; color: var(--text); }
+.rag-stat-label { font-size: 10px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: .02em; }
+
 .rag-active-badge {
   display: flex; align-items: center; gap: 5px;
   padding: 4px 8px; border-radius: 5px; margin-left: 8px;

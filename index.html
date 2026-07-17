@@ -1091,6 +1091,25 @@
         Configure how documents are embedded and retrieved from your knowledge base.
       </p>
 
+      <div id="rag-stats-panel" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+        <div class="rag-stat-tile">
+          <div class="rag-stat-value" id="rag-stat-collections">–</div>
+          <div class="rag-stat-label">Collections</div>
+        </div>
+        <div class="rag-stat-tile">
+          <div class="rag-stat-value" id="rag-stat-chunks">–</div>
+          <div class="rag-stat-label">Chunks</div>
+        </div>
+        <div class="rag-stat-tile">
+          <div class="rag-stat-value" id="rag-stat-sources">–</div>
+          <div class="rag-stat-label">Sources</div>
+        </div>
+        <div class="rag-stat-tile">
+          <div class="rag-stat-value" id="rag-stat-updated" style="font-size:12px">–</div>
+          <div class="rag-stat-label">Last Updated</div>
+        </div>
+      </div>
+
       <label class="tool-toggle" style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
         <div class="toggle" id="rag-enabled-toggle" onclick="this.classList.toggle('on')"></div>
         <span>
