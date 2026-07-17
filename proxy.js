@@ -24,7 +24,7 @@ const os         = require('os');
 const { URL }    = require('url');
 
 const { isPrivateHost }    = require('./lib/ssrf');
-const { chunkText, cosine: cosineSimilarity, computeStats: computeRagStats } = require('./lib/rag-utils');
+const { chunkText, cosine: cosineSimilarity, computeStats: computeRagStats, rankChunks } = require('./lib/rag-utils');
 const { evaluate: calcEvaluate } = require('./lib/calculator');
 const { buildSpec }        = require('./lib/openapi');
 const { parseStopSequences } = require('./lib/stop-sequences');
@@ -360,20 +360,27 @@ class RagEngine {
     return { collectionId: col.id, chunksAdded: chunks.length };
   }
 
-  async query({ collectionId, query, topK }) {
-    const col = this.collections.get(collectionId);
-    if (!col) throw new Error(`Collection not found: ${collectionId}`);
-    if (!col.chunks?.length) return [];
+  /**
+   * Search one collection, an explicit set of collections, or — when neither
+   * `collectionId` nor `collectionIds` is given — every collection at once,
+   * merging and re-ranking results by score across all of them.
+   */
+  async query({ collectionId, collectionIds, query, topK }) {
+    let targets;
+    if (collectionId) {
+      const col = this.collections.get(collectionId);
+      if (!col) throw new Error(`Collection not found: ${collectionId}`);
+      targets = [col];
+    } else if (Array.isArray(collectionIds) && collectionIds.length) {
+      targets = collectionIds.map(id => this.collections.get(id)).filter(Boolean);
+      if (!targets.length) throw new Error('No matching collections found');
+    } else {
+      targets = [...this.collections.values()];
+    }
+    if (!targets.some(c => c.chunks?.length)) return [];
 
     const qEmbed = await this.embed(query);
-    const scored = col.chunks.map(c => ({
-      score:  RagEngine.cosine(qEmbed, c.embedding),
-      source: c.source,
-      text:   c.text,
-      id:     c.id,
-    }));
-    scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, topK || CONFIG.rag.top_k || 5);
+    return rankChunks(targets, qEmbed, topK || CONFIG.rag.top_k || 5);
   }
 }
 
@@ -441,15 +448,16 @@ const BUILT_IN_DEFS = {
   },
   rag_search: {
     name: 'rag_search',
-    description: "Search the user's uploaded knowledge base (RAG). Returns top matching chunks with scores.",
+    description: "Search the user's uploaded knowledge base (RAG). Returns top matching chunks with scores. Omit collection_id and collection_ids to search across all collections at once.",
     input_schema: {
       type: 'object',
       properties: {
-        collection_id: { type: 'string', description: 'ID of the RAG collection to search.' },
-        query:         { type: 'string', description: 'Search query.' },
-        top_k:         { type: 'number', description: 'Number of results (default 5).' },
+        collection_id:  { type: 'string', description: 'ID of a single RAG collection to search. Omit to search all collections.' },
+        collection_ids: { type: 'array', items: { type: 'string' }, description: 'IDs of multiple RAG collections to search together. Omit along with collection_id to search all collections.' },
+        query:          { type: 'string', description: 'Search query.' },
+        top_k:          { type: 'number', description: 'Number of results (default 5).' },
       },
-      required: ['collection_id', 'query'],
+      required: ['query'],
     },
   },
 };
@@ -578,15 +586,16 @@ const builtInExecutors = {
     }
   },
 
-  async rag_search({ collection_id, query, top_k }) {
+  async rag_search({ collection_id, collection_ids, query, top_k }) {
     try {
-      const results = await rag.query({ collectionId: collection_id, query, topK: top_k });
+      const results = await rag.query({ collectionId: collection_id, collectionIds: collection_ids, query, topK: top_k });
       return JSON.stringify({
         query,
         results: results.map(r => ({
-          source: r.source,
-          score:  r.score.toFixed(3),
-          text:   r.text.slice(0, 600),
+          source:     r.source,
+          collection: r.collectionName,
+          score:      r.score.toFixed(3),
+          text:       r.text.slice(0, 600),
         })),
       });
     } catch (e) {
@@ -1815,9 +1824,9 @@ const server = http.createServer(async (req, res) => {
     // ── RAG: query
     if (req.method === 'POST' && url.pathname === '/v1/rag/query') {
       const body = await readBody(req);
-      const { collection_id, query, top_k } = body;
+      const { collection_id, collection_ids, query, top_k } = body;
       try {
-        const results = await rag.query({ collectionId: collection_id, query, topK: top_k });
+        const results = await rag.query({ collectionId: collection_id, collectionIds: collection_ids, query, topK: top_k });
         sendJSON(res, 200, { results });
       } catch (e) { sendJSON(res, 500, { error: e.message }); }
       return;

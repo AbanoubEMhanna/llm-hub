@@ -1802,7 +1802,6 @@ function messageTextContent(msg) {
 }
 
 async function autoInjectRagContext(conv) {
-  if (!conv.ragCollectionId) return null;
   const lastUserMsg = [...conv.messages].reverse().find(m => m.role === 'user');
   const query = lastUserMsg ? messageTextContent(lastUserMsg).trim() : '';
   if (!query) return null;
@@ -1810,17 +1809,22 @@ async function autoInjectRagContext(conv) {
     const cfgRes = await fetch(`${PROXY}/v1/config`);
     const cfg    = await cfgRes.json();
     if (!cfg.rag?.auto_inject) return null;
+    // A pinned collection narrows the search; otherwise search every collection at once.
+    const body = conv.ragCollectionId
+      ? { collection_id: conv.ragCollectionId, query, top_k: cfg.rag?.top_k || 5 }
+      : { query, top_k: cfg.rag?.top_k || 5 };
     const res = await fetch(`${PROXY}/v1/rag/query`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ collection_id: conv.ragCollectionId, query, top_k: cfg.rag?.top_k || 5 }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) return null;
     const data    = await res.json();
     const results = data.results || [];
     if (!results.length) return null;
-    const context = results.map(r => `Source: ${r.source} (relevance ${r.score.toFixed(3)})\n${r.text}`).join('\n\n---\n\n');
-    return `The following excerpts were automatically retrieved from the active knowledge base collection and may help answer the user's latest message. Use them if relevant; ignore them if not.\n\n${context}`;
+    const scope = conv.ragCollectionId ? 'the active knowledge base collection' : 'the knowledge base (searched across all collections)';
+    const context = results.map(r => `Source: ${r.source}${r.collectionName ? ` [${r.collectionName}]` : ''} (relevance ${r.score.toFixed(3)})\n${r.text}`).join('\n\n---\n\n');
+    return `The following excerpts were automatically retrieved from ${scope} and may help answer the user's latest message. Use them if relevant; ignore them if not.\n\n${context}`;
   } catch {
     return null;
   }
@@ -3653,19 +3657,27 @@ function renderRagList() {
   const conv = currentConv();
   if (!availableRagCollections.length) {
     el.innerHTML = '<div style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-bottom:6px">No collections yet</div>';
-  } else {
-    el.innerHTML = availableRagCollections.map(c => `
-      <div class="rag-item${conv?.ragCollectionId === c.id ? ' active' : ''}" title="${escHtml(c.name)} — click to ${conv?.ragCollectionId === c.id ? 'deactivate' : 'auto-inject into this chat'}" onclick="setActiveRagCollection('${c.id}')">
-        📚 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(c.name)}</span>
-        <span class="rag-meta">${c.chunks ?? c.chunkCount ?? 0} ch</span>
-        <button class="icon-btn" onclick="event.stopPropagation();deleteRag('${c.id}')" title="Delete" style="margin-left:4px">×</button>
-      </div>`).join('');
+    return;
   }
+  const allActive = !conv?.ragCollectionId;
+  const allItem = `
+    <div class="rag-item${allActive ? ' active' : ''}" title="Search across all collections at once — click a collection below to narrow it instead" onclick="setActiveRagCollection(null)">
+      🔍 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">All collections</span>
+      <span class="rag-meta">${availableRagCollections.length} col</span>
+    </div>`;
+  const items = availableRagCollections.map(c => `
+    <div class="rag-item${conv?.ragCollectionId === c.id ? ' active' : ''}" title="${escHtml(c.name)} — click to ${conv?.ragCollectionId === c.id ? 'search all collections again' : 'narrow auto-inject to this collection'}" onclick="setActiveRagCollection('${c.id}')">
+      📚 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(c.name)}</span>
+      <span class="rag-meta">${c.chunks ?? c.chunkCount ?? 0} ch</span>
+      <button class="icon-btn" onclick="event.stopPropagation();deleteRag('${c.id}')" title="Delete" style="margin-left:4px">×</button>
+    </div>`).join('');
+  el.innerHTML = allItem + items;
 }
 
-// Marks a knowledge collection as "active" for the current conversation. When RAG
-// auto-inject is enabled (Settings → RAG), the top matching chunks for the active
-// collection are silently added as context to every message sent in this chat.
+// Pins a single knowledge collection as "active" for the current conversation, or
+// clears the pin (id = null) to fall back to searching all collections at once.
+// When RAG auto-inject is enabled (Settings → RAG), the top matching chunks are
+// silently added as context to every message sent in this chat.
 function setActiveRagCollection(id) {
   const conv = currentConv();
   if (!conv) return;
@@ -3682,6 +3694,9 @@ function updateRagActiveBadge() {
   const col  = conv?.ragCollectionId ? availableRagCollections.find(c => c.id === conv.ragCollectionId) : null;
   if (col) {
     document.getElementById('rag-active-badge-name').textContent = col.name;
+    badge.style.display = 'flex';
+  } else if (availableRagCollections.length) {
+    document.getElementById('rag-active-badge-name').textContent = 'All collections';
     badge.style.display = 'flex';
   } else {
     badge.style.display = 'none';
