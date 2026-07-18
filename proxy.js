@@ -367,6 +367,9 @@ class RagEngine {
    */
   async query({ collectionId, collectionIds, query, topK }) {
     let targets;
+    if (collectionId && Array.isArray(collectionIds)) {
+      throw new Error('Specify either collectionId or collectionIds, not both');
+    }
     if (collectionId) {
       const col = this.collections.get(collectionId);
       if (!col) throw new Error(`Collection not found: ${collectionId}`);
