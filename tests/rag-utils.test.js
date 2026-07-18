@@ -2,7 +2,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { chunkText, cosine, computeStats } = require('../lib/rag-utils.js');
+const { chunkText, cosine, computeStats, rankChunks } = require('../lib/rag-utils.js');
 
 // ── cosine similarity ──────────────────────────────────────────────────────
 
@@ -125,4 +125,66 @@ test('computeStats: chunks without a source are not counted as sources', () => {
   const stats = computeStats([{ chunks: [{}, { source: '' }, { source: 'x' }] }]);
   assert.equal(stats.totalChunks, 3);
   assert.equal(stats.totalSources, 1);
+});
+
+// ── rankChunks ──────────────────────────────────────────────────────────────
+
+test('rankChunks: empty collections → []', () => {
+  assert.deepEqual(rankChunks([], [1, 0], 5), []);
+});
+
+test('rankChunks: merges and sorts chunks across multiple collections by score', () => {
+  const collections = [
+    { id: 'a', name: 'Alpha', chunks: [
+      { id: 'a1', source: 'a.md', text: 'low match', embedding: [0, 1] },
+    ] },
+    { id: 'b', name: 'Beta', chunks: [
+      { id: 'b1', source: 'b.md', text: 'high match', embedding: [1, 0] },
+      { id: 'b2', source: 'b2.md', text: 'mid match', embedding: [1, 1] },
+    ] },
+  ];
+  const results = rankChunks(collections, [1, 0], 5);
+  assert.equal(results.length, 3);
+  assert.equal(results[0].id, 'b1');
+  assert.equal(results[0].collectionId, 'b');
+  assert.equal(results[0].collectionName, 'Beta');
+  // Descending score order
+  for (let i = 1; i < results.length; i++) {
+    assert.ok(results[i - 1].score >= results[i].score);
+  }
+});
+
+test('rankChunks: respects topK across the merged set, not per collection', () => {
+  const collections = [
+    { id: 'a', chunks: [{ id: '1', embedding: [1, 0] }, { id: '2', embedding: [1, 0] }] },
+    { id: 'b', chunks: [{ id: '3', embedding: [1, 0] }, { id: '4', embedding: [1, 0] }] },
+  ];
+  const results = rankChunks(collections, [1, 0], 2);
+  assert.equal(results.length, 2);
+});
+
+test('rankChunks: collection with no chunks contributes nothing', () => {
+  const collections = [{ id: 'a', chunks: [] }, { id: 'b', chunks: undefined }];
+  assert.deepEqual(rankChunks(collections, [1, 0], 5), []);
+});
+
+test('rankChunks: skips chunks whose embedding dimension does not match the query (mixed embedding models)', () => {
+  const collections = [
+    { id: 'a', name: 'OldModel', chunks: [
+      { id: 'a1', source: 'a.md', text: 'stale dims', embedding: [1, 0, 0] }, // 3-dim, incompatible
+    ] },
+    { id: 'b', name: 'NewModel', chunks: [
+      { id: 'b1', source: 'b.md', text: 'matching dims', embedding: [1, 0] },
+    ] },
+  ];
+  const results = rankChunks(collections, [1, 0], 5); // 2-dim query
+  assert.equal(results.length, 1);
+  assert.equal(results[0].id, 'b1');
+});
+
+test('rankChunks: skips chunks with a missing or malformed embedding', () => {
+  const collections = [{ id: 'a', chunks: [{ id: '1', embedding: null }, { id: '2' }, { id: '3', embedding: [1, 0] }] }];
+  const results = rankChunks(collections, [1, 0], 5);
+  assert.equal(results.length, 1);
+  assert.equal(results[0].id, '3');
 });
