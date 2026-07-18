@@ -2994,7 +2994,7 @@ function openApiKeySettings() {
 }
 
 function switchSettingsTab(tab) {
-  ['general', 'config', 'apikeys', 'appearance', 'backup', 'voice', 'tools', 'rag'].forEach(t => {
+  ['general', 'config', 'apikeys', 'appearance', 'backup', 'voice', 'tools', 'rag', 'logs'].forEach(t => {
     document.getElementById(`settings-panel-${t}`).style.display = t === tab ? '' : 'none';
     document.getElementById(`settings-footer-${t}`).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById(`tab-${t}`);
@@ -3006,6 +3006,7 @@ function switchSettingsTab(tab) {
   if (tab === 'voice')      initTtsVoiceSelect();
   if (tab === 'tools')      loadToolsSettings();
   if (tab === 'rag')        loadRagSettings();
+  if (tab === 'logs')       loadLogsSettings();
   if (tab === 'general')    loadGeneralSettings();
 }
 
@@ -3610,6 +3611,104 @@ async function saveRagSettings() {
     if (!saveRes.ok) throw new Error(data.error || 'save failed');
     toast('RAG settings saved', 'success');
     closeModal('config-modal');
+  } catch (e) {
+    if (statusEl) { statusEl.textContent = e.message; statusEl.style.color = 'var(--red)'; }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § REQUEST LOGGING
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function loadLogsSettings() {
+  const statusEl = document.getElementById('logs-panel-status');
+  try {
+    const res = await fetch(`${PROXY}/v1/config`);
+    const cfg = await res.json();
+    const toggle = document.getElementById('logs-enabled-toggle');
+    if (toggle) toggle.classList.toggle('on', cfg.logging?.enabled === true);
+    if (statusEl) statusEl.textContent = '';
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Failed to load config: ' + e.message;
+  }
+  loadRequestLogs();
+}
+
+async function saveLogsSettings() {
+  const statusEl = document.getElementById('logs-panel-status');
+  try {
+    const res = await fetch(`${PROXY}/v1/config`);
+    const cfg = await res.json();
+    cfg.logging = { ...cfg.logging, enabled: document.getElementById('logs-enabled-toggle')?.classList.contains('on') ?? false };
+    const saveRes = await fetch(`${PROXY}/v1/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
+    });
+    const data = await saveRes.json();
+    if (!saveRes.ok) throw new Error(data.error || 'save failed');
+    toast('Logging settings saved', 'success');
+    closeModal('config-modal');
+  } catch (e) {
+    if (statusEl) { statusEl.textContent = e.message; statusEl.style.color = 'var(--red)'; }
+  }
+}
+
+async function loadRequestLogs() {
+  const listEl = document.getElementById('logs-list');
+  const statusEl = document.getElementById('logs-panel-status');
+  if (!listEl) return;
+  try {
+    const res = await fetch(`${PROXY}/v1/logs?limit=100`);
+    const data = await res.json();
+    renderLogsList(data.entries || [], data.enabled);
+  } catch (e) {
+    listEl.innerHTML = '';
+    if (statusEl) statusEl.textContent = 'Failed to load logs: ' + e.message;
+  }
+}
+
+function renderLogsList(entries, enabled) {
+  const listEl = document.getElementById('logs-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  if (!entries.length) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'padding:14px;color:var(--muted);font-size:11px';
+    empty.textContent = enabled === false ? 'Logging is disabled — enable it above to start recording requests.' : 'No requests logged yet.';
+    listEl.appendChild(empty);
+    return;
+  }
+  for (const entry of entries) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:10px;padding:6px 10px;border-bottom:1px solid var(--border);align-items:center';
+    const time = document.createElement('span');
+    time.style.cssText = 'color:var(--muted);flex:0 0 66px';
+    time.textContent = entry.ts ? new Date(entry.ts).toLocaleTimeString() : '';
+    const method = document.createElement('span');
+    method.style.cssText = 'color:var(--accent);flex:0 0 44px;font-weight:600';
+    method.textContent = entry.method || '';
+    const p = document.createElement('span');
+    p.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    p.textContent = entry.path || '';
+    const status = document.createElement('span');
+    status.style.cssText = `flex:0 0 34px;text-align:right;color:${entry.status >= 400 ? 'var(--red)' : 'var(--muted)'}`;
+    status.textContent = entry.status ?? '';
+    const ms = document.createElement('span');
+    ms.style.cssText = 'flex:0 0 54px;text-align:right;color:var(--muted)';
+    ms.textContent = `${entry.ms ?? 0}ms`;
+    row.append(time, method, p, status, ms);
+    listEl.appendChild(row);
+  }
+}
+
+async function clearRequestLogs() {
+  const statusEl = document.getElementById('logs-panel-status');
+  try {
+    const res = await fetch(`${PROXY}/v1/logs`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('clear failed');
+    toast('Request log cleared', 'success');
+    loadRequestLogs();
   } catch (e) {
     if (statusEl) { statusEl.textContent = e.message; statusEl.style.color = 'var(--red)'; }
   }

@@ -30,6 +30,10 @@
     "language": null
   },
 
+  "logging": {
+    "enabled": false
+  },
+
   "mcp_servers": [
     {
       "name": "filesystem",

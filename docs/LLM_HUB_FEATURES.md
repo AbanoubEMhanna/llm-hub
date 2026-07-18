@@ -268,7 +268,7 @@
 - [x] CORS locked to localhost
 - [x] API keys in localStorage only — never written to disk by the proxy
 - [x] ⚡ Per-session ephemeral API key (never persisted)
-- [ ] Request / response logging toggle (opt-in, stored locally)
+- [x] ⚡ Request / response logging toggle (opt-in, stored locally)
 - [ ] Prompt injection warning detection
 - [ ] Conversation data encryption at rest (opt-in, local key)
 - [ ] Audit log of all tool / agent executions
@@ -325,7 +325,7 @@
 | RAG / Knowledge Base | 10 | 4 |
 | Model Comparison | 7 | 2 |
 | Modern UI | 13 | 7 |
-| Security & Privacy | 6 | 4 |
+| Security & Privacy | 7 | 3 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
 | **Total** | **~127** | **~67** |
@@ -339,4 +339,4 @@
 
 ---
 
-*Last updated: 2026-07-17. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-18. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
