@@ -1640,7 +1640,10 @@ async function handleRequest(req, res) {
       const runStartedAt = new Date().toISOString();
       const runId = crypto.randomBytes(8).toString('hex');
       const reqStart = Date.now();
-      const pendingCalls = new Map();
+      // FIFO, not id-keyed: runAgentLoop always awaits a tool call's result
+      // before starting the next one, so pairing by arrival order is correct
+      // even if a provider omits or reuses tool-call ids.
+      const pendingCalls = [];
       const steps = [];
       let runPersisted = false;
       const persistRun = (status, errorMsg, elapsedMs) => {
@@ -1658,11 +1661,11 @@ async function handleRequest(req, res) {
       const emit = (type, payload) => {
         if (historyEnabled) {
           if (type === 'tool_call') {
-            pendingCalls.set(payload.id, { name: payload.name, args: payload.args, startedAt: Date.now() });
+            pendingCalls.push({ id: payload.id, name: payload.name, args: payload.args, startedAt: Date.now() });
           } else if (type === 'tool_result') {
-            const info = pendingCalls.get(payload.id);
+            const info = pendingCalls.shift();
             steps.push({
-              id: payload.id, name: payload.name || info?.name, args: info?.args,
+              id: payload.id || info?.id, name: payload.name || info?.name, args: info?.args,
               result: payload.result, cached: payload.cached,
               durationMs: info ? Date.now() - info.startedAt : 0,
             });
@@ -1676,9 +1679,15 @@ async function handleRequest(req, res) {
         try { res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`); } catch {}
       };
       console.log(`[Chat] ${model} | provider:${resolveProvider(model)} | tools:${use_tools} | msgs:${messages.length}`);
-      await runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, stop: stopSequences, seed: seedValue, numCtx, useTools: use_tools, apiKeys, customProviders, emit, signal });
-      persistRun('stopped'); // covers client-abort / error paths that never emitted a terminal event
-      try { res.end(); } catch {}
+      try {
+        await runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, stop: stopSequences, seed: seedValue, numCtx, useTools: use_tools, apiKeys, customProviders, emit, signal });
+      } catch (e) {
+        console.error('[Chat] Agent loop failed:', e);
+        emit('error', { message: e.message });
+      } finally {
+        persistRun('stopped'); // covers client-abort / error paths that never emitted a terminal event
+        try { res.end(); } catch {}
+      }
       return;
     }
 
