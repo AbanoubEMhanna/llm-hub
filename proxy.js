@@ -26,6 +26,7 @@ const { URL }    = require('url');
 const { isPrivateHost }    = require('./lib/ssrf');
 const { chunkText, cosine: cosineSimilarity, computeStats: computeRagStats, rankChunks } = require('./lib/rag-utils');
 const { evaluate: calcEvaluate } = require('./lib/calculator');
+const { formatLogEntry, parseLogLines } = require('./lib/request-log');
 const { buildSpec }        = require('./lib/openapi');
 const { parseStopSequences } = require('./lib/stop-sequences');
 const { parseSeed }        = require('./lib/seed');
@@ -50,6 +51,7 @@ function loadConfig() {
       },
       tools: { enabled: true, built_in: ['datetime','calculator','web_search','fetch_url','run_javascript','rag_search'] },
       rag: { enabled: true, embedding_provider: 'ollama', embedding_model: 'nomic-embed-text', chunk_size: 800, chunk_overlap: 100, top_k: 5 },
+      logging: { enabled: false },
       mcp_servers: [],
     };
   }
@@ -75,6 +77,28 @@ const STORAGE_DIR = path.isAbsolute(_storageCfg)
 const RAG_DIR = path.join(STORAGE_DIR, 'rag');
 if (!fs.existsSync(STORAGE_DIR)) fs.mkdirSync(STORAGE_DIR, { recursive: true });
 if (!fs.existsSync(RAG_DIR))     fs.mkdirSync(RAG_DIR,     { recursive: true });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § REQUEST LOGGING (opt-in, metadata only — see CONFIG.logging.enabled)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const LOG_DIR  = path.join(STORAGE_DIR, 'logs');
+const LOG_FILE = path.join(LOG_DIR, 'requests.jsonl');
+const LOG_MAX_BYTES = 5 * 1024 * 1024; // rotate once the file crosses this size
+const LOG_KEEP_ENTRIES = 1000;         // entries kept after rotation
+
+function appendRequestLog(entry) {
+  try {
+    if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
+    fs.appendFileSync(LOG_FILE, JSON.stringify(entry) + '\n');
+    if (fs.statSync(LOG_FILE).size > LOG_MAX_BYTES) {
+      const kept = parseLogLines(fs.readFileSync(LOG_FILE, 'utf8')).slice(-LOG_KEEP_ENTRIES);
+      fs.writeFileSync(LOG_FILE, kept.map(e => JSON.stringify(e)).join('\n') + '\n');
+    }
+  } catch (e) {
+    console.error('[Logs] write failed:', e.message);
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § HTTP UTILS
@@ -1481,7 +1505,7 @@ function readBody(req, maxBytes = 50 * 1024 * 1024) {
   });
 }
 
-const server = http.createServer(async (req, res) => {
+async function handleRequest(req, res) {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
   if (req.method === 'OPTIONS') { setCORS(res); res.writeHead(204); res.end(); return; }
@@ -2097,11 +2121,44 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // ── LOGS: recent request log entries (opt-in, see CONFIG.logging.enabled)
+    if (req.method === 'GET' && url.pathname === '/v1/logs') {
+      let entries = [];
+      try { entries = parseLogLines(fs.readFileSync(LOG_FILE, 'utf8')); } catch { /* no log file yet */ }
+      const limit = Math.min(parseInt(url.searchParams.get('limit') || '200', 10) || 200, 1000);
+      sendJSON(res, 200, { enabled: CONFIG.logging?.enabled === true, entries: entries.slice(-limit).reverse() });
+      return;
+    }
+
+    // ── LOGS: clear
+    if (req.method === 'DELETE' && url.pathname === '/v1/logs') {
+      try { fs.writeFileSync(LOG_FILE, ''); } catch { /* nothing to clear */ }
+      sendJSON(res, 200, { cleared: true });
+      return;
+    }
+
     sendJSON(res, 404, { error: 'Not found' });
   } catch (e) {
     console.error('[Server error]', e);
     try { sendJSON(res, 500, { error: e.message }); } catch {}
   }
+}
+
+const server = http.createServer((req, res) => {
+  if (CONFIG.logging?.enabled) {
+    const start = Date.now();
+    const { method } = req;
+    const pathname = new URL(req.url, `http://localhost:${PORT}`).pathname;
+    res.on('finish', () => {
+      appendRequestLog(formatLogEntry({
+        timestamp: new Date().toISOString(),
+        method, path: pathname,
+        status: res.statusCode,
+        durationMs: Date.now() - start,
+      }));
+    });
+  }
+  handleRequest(req, res);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
