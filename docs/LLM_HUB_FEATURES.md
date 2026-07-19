@@ -138,7 +138,7 @@
 - [x] Tool enable / disable toggle per session
 - [ ] 🔥 Shell command tool — opt-in, with confirmation prompt per execution
 - [ ] 🔥 Custom tool builder UI — define name, JSON schema, handler URL from UI
-- [ ] 🔥 Agent run history — step-by-step replay of past agent sessions
+- [x] 🔥 Agent run history — step-by-step replay of past agent sessions
 - [x] Tool result caching — skip re-runs for identical inputs in a session
 - [ ] Agent memory persistence across sessions (vector or key-value store)
 - [ ] 🏗️ Sub-agent spawning — parallel task execution
@@ -319,7 +319,7 @@
 | Hardware Awareness | 7 | 5 |
 | Chat Interface | 21 | 3 |
 | Model Parameters | 11 | 1 |
-| AI Agent & Tools | 6 | 8 |
+| AI Agent & Tools | 7 | 7 |
 | Code-First Workflow | 6 | 11 |
 | Attachments & Multimodal | 8 | 2 |
 | RAG / Knowledge Base | 10 | 4 |
@@ -328,15 +328,15 @@
 | Security & Privacy | 7 | 3 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
-| **Total** | **~127** | **~67** |
+| **Total** | **~128** | **~66** |
 
-**~65% complete. Top priorities to close the gap:**
+**~66% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
-3. 🔥 Agent tooling (shell tool, tool builder, run history)
+3. 🔥 Agent tooling (shell tool, custom tool builder)
 4. 🔥 Provider health monitoring + more cloud providers
 5. 🔥 Published Docker image + integration / E2E tests
 
 ---
 
-*Last updated: 2026-07-18. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-19. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
