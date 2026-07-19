@@ -34,6 +34,10 @@
     "enabled": false
   },
 
+  "agentHistory": {
+    "enabled": false
+  },
+
   "mcp_servers": [
     {
       "name": "filesystem",

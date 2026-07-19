@@ -27,6 +27,7 @@ const { isPrivateHost }    = require('./lib/ssrf');
 const { chunkText, cosine: cosineSimilarity, computeStats: computeRagStats, rankChunks } = require('./lib/rag-utils');
 const { evaluate: calcEvaluate } = require('./lib/calculator');
 const { formatLogEntry, parseLogLines } = require('./lib/request-log');
+const { formatRunEntry, parseRunLines } = require('./lib/agent-history');
 const { buildSpec }        = require('./lib/openapi');
 const { parseStopSequences } = require('./lib/stop-sequences');
 const { parseSeed }        = require('./lib/seed');
@@ -52,6 +53,7 @@ function loadConfig() {
       tools: { enabled: true, built_in: ['datetime','calculator','web_search','fetch_url','run_javascript','rag_search'] },
       rag: { enabled: true, embedding_provider: 'ollama', embedding_model: 'nomic-embed-text', chunk_size: 800, chunk_overlap: 100, top_k: 5 },
       logging: { enabled: false },
+      agentHistory: { enabled: false },
       mcp_servers: [],
     };
   }
@@ -97,6 +99,27 @@ function appendRequestLog(entry) {
     }
   } catch (e) {
     console.error('[Logs] write failed:', e.message);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § AGENT RUN HISTORY (opt-in, see CONFIG.agentHistory.enabled)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const AGENT_HISTORY_FILE = path.join(LOG_DIR, 'agent-runs.jsonl');
+const AGENT_HISTORY_MAX_BYTES = 5 * 1024 * 1024; // rotate once the file crosses this size
+const AGENT_HISTORY_KEEP_ENTRIES = 500;          // entries kept after rotation
+
+function appendAgentRun(entry) {
+  try {
+    if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
+    fs.appendFileSync(AGENT_HISTORY_FILE, JSON.stringify(entry) + '\n');
+    if (fs.statSync(AGENT_HISTORY_FILE).size > AGENT_HISTORY_MAX_BYTES) {
+      const kept = parseRunLines(fs.readFileSync(AGENT_HISTORY_FILE, 'utf8')).slice(-AGENT_HISTORY_KEEP_ENTRIES);
+      fs.writeFileSync(AGENT_HISTORY_FILE, kept.map(e => JSON.stringify(e)).join('\n') + '\n');
+    }
+  } catch (e) {
+    console.error('[AgentHistory] write failed:', e.message);
   }
 }
 
@@ -1610,13 +1633,61 @@ async function handleRequest(req, res) {
       });
       const signal = { aborted: false, onAbort: null };
       req.on('close', () => { signal.aborted = true; if (signal.onAbort) try { signal.onAbort(); } catch {} });
+
+      // Agent run history (opt-in): accumulate tool-call steps as they stream
+      // and persist the finished run once we see a terminal event.
+      const historyEnabled = CONFIG.agentHistory?.enabled === true;
+      const runStartedAt = new Date().toISOString();
+      const runId = crypto.randomBytes(8).toString('hex');
+      const reqStart = Date.now();
+      // FIFO, not id-keyed: runAgentLoop always awaits a tool call's result
+      // before starting the next one, so pairing by arrival order is correct
+      // even if a provider omits or reuses tool-call ids.
+      const pendingCalls = [];
+      const steps = [];
+      let runPersisted = false;
+      const persistRun = (status, errorMsg, elapsedMs) => {
+        if (runPersisted || !historyEnabled || steps.length === 0) return;
+        runPersisted = true;
+        appendAgentRun(formatRunEntry({
+          id: runId, timestamp: runStartedAt,
+          provider: resolveProvider(model) || '', model,
+          status, error: errorMsg || null,
+          elapsedMs: elapsedMs ?? (Date.now() - reqStart),
+          steps,
+        }));
+      };
+
       const emit = (type, payload) => {
+        if (historyEnabled) {
+          if (type === 'tool_call') {
+            pendingCalls.push({ id: payload.id, name: payload.name, args: payload.args, startedAt: Date.now() });
+          } else if (type === 'tool_result') {
+            const info = pendingCalls.shift();
+            steps.push({
+              id: payload.id || info?.id, name: payload.name || info?.name, args: info?.args,
+              result: payload.result, cached: payload.cached,
+              durationMs: info ? Date.now() - info.startedAt : 0,
+            });
+          } else if (type === 'done') {
+            persistRun('done', null, payload.elapsed);
+          } else if (type === 'error') {
+            persistRun('error', payload.message);
+          }
+        }
         if (signal.aborted) return;
         try { res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`); } catch {}
       };
       console.log(`[Chat] ${model} | provider:${resolveProvider(model)} | tools:${use_tools} | msgs:${messages.length}`);
-      await runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, stop: stopSequences, seed: seedValue, numCtx, useTools: use_tools, apiKeys, customProviders, emit, signal });
-      try { res.end(); } catch {}
+      try {
+        await runAgentLoop({ model, messages, temperature, max_tokens, top_p, top_k, repeat_penalty, frequency_penalty, stop: stopSequences, seed: seedValue, numCtx, useTools: use_tools, apiKeys, customProviders, emit, signal });
+      } catch (e) {
+        console.error('[Chat] Agent loop failed:', e);
+        emit('error', { message: e.message });
+      } finally {
+        persistRun('stopped'); // covers client-abort / error paths that never emitted a terminal event
+        try { res.end(); } catch {}
+      }
       return;
     }
 
@@ -2133,6 +2204,22 @@ async function handleRequest(req, res) {
     // ── LOGS: clear
     if (req.method === 'DELETE' && url.pathname === '/v1/logs') {
       try { fs.writeFileSync(LOG_FILE, ''); } catch { /* nothing to clear */ }
+      sendJSON(res, 200, { cleared: true });
+      return;
+    }
+
+    // ── AGENT RUNS: recent agent-loop sessions (opt-in, see CONFIG.agentHistory.enabled)
+    if (req.method === 'GET' && url.pathname === '/v1/agent-runs') {
+      let entries = [];
+      try { entries = parseRunLines(fs.readFileSync(AGENT_HISTORY_FILE, 'utf8')); } catch { /* no history file yet */ }
+      const limit = Math.min(parseInt(url.searchParams.get('limit') || '100', 10) || 100, 500);
+      sendJSON(res, 200, { enabled: CONFIG.agentHistory?.enabled === true, entries: entries.slice(-limit).reverse() });
+      return;
+    }
+
+    // ── AGENT RUNS: clear
+    if (req.method === 'DELETE' && url.pathname === '/v1/agent-runs') {
+      try { fs.writeFileSync(AGENT_HISTORY_FILE, ''); } catch { /* nothing to clear */ }
       sendJSON(res, 200, { cleared: true });
       return;
     }

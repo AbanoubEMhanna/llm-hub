@@ -2994,7 +2994,7 @@ function openApiKeySettings() {
 }
 
 function switchSettingsTab(tab) {
-  ['general', 'config', 'apikeys', 'appearance', 'backup', 'voice', 'tools', 'rag', 'logs'].forEach(t => {
+  ['general', 'config', 'apikeys', 'appearance', 'backup', 'voice', 'tools', 'rag', 'logs', 'agent-history'].forEach(t => {
     document.getElementById(`settings-panel-${t}`).style.display = t === tab ? '' : 'none';
     document.getElementById(`settings-footer-${t}`).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById(`tab-${t}`);
@@ -3007,6 +3007,7 @@ function switchSettingsTab(tab) {
   if (tab === 'tools')      loadToolsSettings();
   if (tab === 'rag')        loadRagSettings();
   if (tab === 'logs')       loadLogsSettings();
+  if (tab === 'agent-history') loadAgentHistorySettings();
   if (tab === 'general')    loadGeneralSettings();
 }
 
@@ -3709,6 +3710,140 @@ async function clearRequestLogs() {
     if (!res.ok) throw new Error('clear failed');
     toast('Request log cleared', 'success');
     loadRequestLogs();
+  } catch (e) {
+    if (statusEl) { statusEl.textContent = e.message; statusEl.style.color = 'var(--red)'; }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § AGENT RUN HISTORY
+// ─────────────────────────────────────────────────────────────────────────────
+
+let _agentRunsCache = [];
+
+async function loadAgentHistorySettings() {
+  const statusEl = document.getElementById('agent-history-panel-status');
+  try {
+    const res = await fetch(`${PROXY}/v1/config`);
+    const cfg = await res.json();
+    const toggle = document.getElementById('agent-history-enabled-toggle');
+    if (toggle) toggle.classList.toggle('on', cfg.agentHistory?.enabled === true);
+    if (statusEl) statusEl.textContent = '';
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Failed to load config: ' + e.message;
+  }
+  loadAgentRuns();
+}
+
+async function saveAgentHistorySettings() {
+  const statusEl = document.getElementById('agent-history-panel-status');
+  try {
+    const res = await fetch(`${PROXY}/v1/config`);
+    const cfg = await res.json();
+    cfg.agentHistory = { ...cfg.agentHistory, enabled: document.getElementById('agent-history-enabled-toggle')?.classList.contains('on') ?? false };
+    const saveRes = await fetch(`${PROXY}/v1/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
+    });
+    const data = await saveRes.json();
+    if (!saveRes.ok) throw new Error(data.error || 'save failed');
+    toast('Agent history settings saved', 'success');
+    closeModal('config-modal');
+  } catch (e) {
+    if (statusEl) { statusEl.textContent = e.message; statusEl.style.color = 'var(--red)'; }
+  }
+}
+
+async function loadAgentRuns() {
+  const listEl = document.getElementById('agent-runs-list');
+  const statusEl = document.getElementById('agent-history-panel-status');
+  if (!listEl) return;
+  const replayEl = document.getElementById('agent-run-replay');
+  if (replayEl) replayEl.innerHTML = '';
+  try {
+    const res = await fetch(`${PROXY}/v1/agent-runs?limit=50`);
+    const data = await res.json();
+    _agentRunsCache = data.entries || [];
+    renderAgentRunsList(_agentRunsCache, data.enabled);
+  } catch (e) {
+    listEl.innerHTML = '';
+    if (statusEl) statusEl.textContent = 'Failed to load agent history: ' + e.message;
+  }
+}
+
+function renderAgentRunsList(entries, enabled) {
+  const listEl = document.getElementById('agent-runs-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  if (!entries.length) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'padding:14px;color:var(--muted);font-size:11px';
+    empty.textContent = enabled === false ? 'Agent history is disabled — enable it above to start recording runs.' : 'No agent runs recorded yet.';
+    listEl.appendChild(empty);
+    return;
+  }
+  entries.forEach((run) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:10px;padding:6px 10px;border-bottom:1px solid var(--border);align-items:center;cursor:pointer';
+    row.onclick = () => renderAgentRunReplay(run);
+    const time = document.createElement('span');
+    time.style.cssText = 'color:var(--muted);flex:0 0 66px';
+    time.textContent = run.ts ? new Date(run.ts).toLocaleTimeString() : '';
+    const model = document.createElement('span');
+    model.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    model.textContent = run.model || '';
+    const stepCount = document.createElement('span');
+    stepCount.style.cssText = 'flex:0 0 60px;text-align:right;color:var(--muted)';
+    stepCount.textContent = `${run.steps?.length ?? 0} steps`;
+    const status = document.createElement('span');
+    status.style.cssText = `flex:0 0 54px;text-align:right;color:${run.status === 'error' ? 'var(--red)' : 'var(--muted)'}`;
+    status.textContent = run.status || '';
+    const ms = document.createElement('span');
+    ms.style.cssText = 'flex:0 0 54px;text-align:right;color:var(--muted)';
+    ms.textContent = `${run.ms ?? 0}ms`;
+    row.append(time, model, stepCount, status, ms);
+    listEl.appendChild(row);
+  });
+}
+
+function renderAgentRunReplay(run) {
+  const el = document.getElementById('agent-run-replay');
+  if (!el) return;
+  el.innerHTML = '';
+  const header = document.createElement('div');
+  header.style.cssText = 'font-size:12px;font-weight:600;margin-bottom:8px';
+  header.textContent = `${run.model} — ${run.steps.length} step${run.steps.length === 1 ? '' : 's'} — ${run.status}${run.error ? ': ' + run.error : ''}`;
+  el.appendChild(header);
+  run.steps.forEach((step, i) => {
+    const card = document.createElement('div');
+    card.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-family:var(--mono);font-size:11px';
+    const title = document.createElement('div');
+    title.style.cssText = 'display:flex;justify-content:space-between;color:var(--accent);font-weight:600;margin-bottom:4px';
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = `#${i + 1} ${step.name}${step.cached ? ' (cached)' : ''}`;
+    const msSpan = document.createElement('span');
+    msSpan.style.color = 'var(--muted)';
+    msSpan.textContent = `${step.ms}ms`;
+    title.append(nameSpan, msSpan);
+    const args = document.createElement('div');
+    args.style.cssText = 'color:var(--muted);white-space:pre-wrap;word-break:break-word;margin-bottom:4px';
+    args.textContent = `args: ${step.args}`;
+    const result = document.createElement('div');
+    result.style.cssText = 'white-space:pre-wrap;word-break:break-word';
+    result.textContent = `result: ${step.result}`;
+    card.append(title, args, result);
+    el.appendChild(card);
+  });
+}
+
+async function clearAgentRuns() {
+  const statusEl = document.getElementById('agent-history-panel-status');
+  try {
+    const res = await fetch(`${PROXY}/v1/agent-runs`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('clear failed');
+    toast('Agent run history cleared', 'success');
+    loadAgentRuns();
   } catch (e) {
     if (statusEl) { statusEl.textContent = e.message; statusEl.style.color = 'var(--red)'; }
   }
