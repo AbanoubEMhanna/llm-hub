@@ -4970,7 +4970,7 @@ function replayCompareSession(id) {
   paneA.innerHTML = '';
   paneB.innerHTML = '';
 
-  const renderMsg = (pane, role, text, grade) => {
+  const renderMsg = (pane, role, text, grade, modelName) => {
     const wrap = document.createElement('div');
     wrap.className = 'msg-wrap';
     wrap.dataset.role = role;
@@ -4978,27 +4978,26 @@ function replayCompareSession(id) {
     if (role === 'user') {
       wrap.innerHTML = `<div class="msg user"><div class="avatar">👤</div><div class="bubble">${renderMarkdown(text)}</div></div>`;
     } else {
-      wrap.innerHTML = `<div class="msg assistant"><div class="avatar">🤖</div><div class="bubble"><div class="msg-content">${renderMarkdown(text)}</div></div></div><div class="msg-meta"></div>`;
-      if (grade) {
-        wrap.dataset.cmpGrade = grade;
-        const meta = wrap.querySelector('.msg-meta');
-        const gw = document.createElement('span');
-        gw.className = 'cmp-grade-wrap';
-        gw.innerHTML =
-          `<button class="cmp-grade-btn cmp-grade-up${grade === 'up' ? ' active' : ''}" title="Good response">👍</button>` +
-          `<button class="cmp-grade-btn cmp-grade-dn${grade === 'down' ? ' active' : ''}" title="Bad response">👎</button>`;
-        gw.querySelector('.cmp-grade-up').addEventListener('click', () => gradeCompareMsg(wrap, 'up'));
-        gw.querySelector('.cmp-grade-dn').addEventListener('click', () => gradeCompareMsg(wrap, 'down'));
-        meta.appendChild(gw);
-      }
+      const displayName = escHtml((modelName || '').replace(/^(ollama|lmstudio)\//, ''));
+      wrap.innerHTML = `<div class="msg assistant"><div class="avatar">🤖</div><div class="bubble"><div class="msg-content">${renderMarkdown(text)}</div></div></div><div class="msg-meta"><span>${displayName}</span></div>`;
+      if (grade) wrap.dataset.cmpGrade = grade;
+      const meta = wrap.querySelector('.msg-meta');
+      const gw = document.createElement('span');
+      gw.className = 'cmp-grade-wrap';
+      gw.innerHTML =
+        `<button class="cmp-grade-btn cmp-grade-up${grade === 'up' ? ' active' : ''}" title="Good response">👍</button>` +
+        `<button class="cmp-grade-btn cmp-grade-dn${grade === 'down' ? ' active' : ''}" title="Bad response">👎</button>`;
+      gw.querySelector('.cmp-grade-up').addEventListener('click', () => gradeCompareMsg(wrap, 'up'));
+      gw.querySelector('.cmp-grade-dn').addEventListener('click', () => gradeCompareMsg(wrap, 'down'));
+      meta.appendChild(gw);
     }
     pane.appendChild(wrap);
   };
 
   session.rounds.forEach((r) => {
     if (r.prompt) { renderMsg(paneA, 'user', r.prompt); renderMsg(paneB, 'user', r.prompt); }
-    if (r.textA) renderMsg(paneA, 'assistant', r.textA, r.gradeA);
-    if (r.textB) renderMsg(paneB, 'assistant', r.textB, r.gradeB);
+    if (r.textA) renderMsg(paneA, 'assistant', r.textA, r.gradeA, session.modelA);
+    if (r.textB) renderMsg(paneB, 'assistant', r.textB, r.gradeB, session.modelB);
   });
 
   currentCompareSessionId = session.id;
