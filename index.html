@@ -334,6 +334,7 @@
         <button class="ghost-btn" onclick="swapCompareModels()" title="Swap left and right models">↔ Swap</button>
         <button class="ghost-btn" id="compare-diff-btn" onclick="showCompareDiff()" title="Show word-level diff between the two latest responses" disabled>⬍ Diff</button>
         <button class="ghost-btn" id="compare-save-btn" onclick="saveCompareReport()" title="Save comparison as Markdown report" disabled>⬇ Report</button>
+        <button class="ghost-btn" id="compare-history-btn" onclick="openCompareHistory()" title="Browse and replay past comparison sessions">🕘 History</button>
         <button class="ghost-btn" onclick="clearCompare()" title="Clear both panes">Clear</button>
         <button class="ghost-btn" onclick="toggleCompareMode()" title="Exit compare mode">Exit</button>
       </div>
@@ -1456,6 +1457,25 @@
   </div>
 </div>
 
+<!-- Comparison Session History modal -->
+<div class="modal-overlay" id="compare-history-modal" onclick="if(event.target===this)closeModal('compare-history-modal')">
+  <div class="modal modal-diff">
+    <div class="modal-header">
+      <div class="modal-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+        Comparison History
+      </div>
+      <button class="modal-close" onclick="closeModal('compare-history-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="compare-history-list" class="compare-history-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="ghost-btn" onclick="clearCompareHistory()">Clear All</button>
+    </div>
+  </div>
+</div>
+
 <!-- Edit History Diff modal -->
 <div class="modal-overlay" id="edit-diff-modal" onclick="if(event.target===this)closeModal('edit-diff-modal')">
   <div class="modal modal-diff">
@@ -1565,6 +1585,7 @@
 <script src="lib/context-timeline.js"></script>
 <script src="lib/key-storage.js"></script>
 <script src="lib/sound-effects.js"></script>
+<script src="lib/comparison-history.js"></script>
 <script src="app.js"></script>
 <script>
 function applySamplingPreset(name) {

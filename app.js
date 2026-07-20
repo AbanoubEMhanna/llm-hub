@@ -70,6 +70,8 @@ let compareAbortB        = null;
 let compareAbMode        = false;   // blind A/B test — hides model names until revealed
 let compareAbActualA     = null;    // which model ended up in pane A this round
 let compareAbActualB     = null;    // which model ended up in pane B this round
+let compareHistory       = JSON.parse(localStorage.getItem('llm-compare-history') || '[]');
+let currentCompareSessionId = null; // id of the in-progress session; new session starts on next send after clear
 
 // Compare grading (reset on clearCompare / mode toggle)
 // Grades are stored as data-cmp-grade attributes on each assistant msg-wrap
@@ -4419,6 +4421,7 @@ function swapCompareModels() {
 
 function clearCompare() {
   if (isLoading) stopGeneration();
+  currentCompareSessionId = null;
   document.getElementById('compare-msgs-a').innerHTML = '';
   document.getElementById('compare-msgs-b').innerHTML = '';
   const da = document.getElementById('compare-wins-a');
@@ -4635,6 +4638,7 @@ async function sendCompare() {
         const revealBtn = document.getElementById('compare-reveal-btn');
         if (revealBtn) revealBtn.disabled = false;
       }
+      persistCompareSession();
     }
     highlightNewCode();
     // Grade buttons appear once generation is complete (only when there's content)
@@ -4859,6 +4863,166 @@ function saveCompareReport() {
   a.click();
   URL.revokeObjectURL(url);
   toast('Report saved', 'success');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § COMPARE HISTORY (browse & replay past comparison sessions)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function saveCompareHistoryToStorage() {
+  localStorage.setItem('llm-compare-history', JSON.stringify(compareHistory));
+}
+
+function collectCompareRounds() {
+  const paneA = document.getElementById('compare-msgs-a');
+  const paneB = document.getElementById('compare-msgs-b');
+  const userWraps = [...(paneA?.querySelectorAll('.msg-wrap[data-role="user"]') || [])];
+  const aWraps    = [...(paneA?.querySelectorAll('.msg-wrap[data-role="assistant"]') || [])];
+  const bWraps    = [...(paneB?.querySelectorAll('.msg-wrap[data-role="assistant"]') || [])];
+  const rounds = [];
+  const count = Math.max(userWraps.length, aWraps.length, bWraps.length);
+  for (let i = 0; i < count; i++) {
+    rounds.push({
+      prompt: userWraps[i]?.dataset.rawText || '',
+      textA: aWraps[i]?.dataset.rawText || '',
+      textB: bWraps[i]?.dataset.rawText || '',
+      gradeA: aWraps[i]?.dataset.cmpGrade || null,
+      gradeB: bWraps[i]?.dataset.cmpGrade || null,
+    });
+  }
+  return rounds;
+}
+
+// Called once both models finish a round — records/updates the current
+// session in local comparison history so it can be browsed and replayed
+// later. AB mode is skipped: revealing/replaying would leak the blinded
+// model identities that A/B mode is meant to hide.
+function persistCompareSession() {
+  if (compareAbMode) return;
+  const rounds = collectCompareRounds();
+  if (!rounds.some(r => r.textA || r.textB)) return;
+  if (!currentCompareSessionId) currentCompareSessionId = 'cmp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const existing = compareHistory.find(s => s.id === currentCompareSessionId);
+  const session = formatSession({
+    id: currentCompareSessionId,
+    ts: existing?.ts,
+    modelA: compareModelA,
+    modelB: compareModelB,
+    abMode: compareAbMode,
+    rounds,
+  });
+  compareHistory = upsertSession(compareHistory, session);
+  saveCompareHistoryToStorage();
+}
+
+function openCompareHistory() {
+  renderCompareHistoryList();
+  openModal('compare-history-modal');
+}
+
+function renderCompareHistoryList() {
+  const listEl = document.getElementById('compare-history-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  if (!compareHistory.length) {
+    listEl.innerHTML = '<div class="compare-history-empty">No comparison sessions saved yet — responses are recorded here automatically once both models reply.</div>';
+    return;
+  }
+  compareHistory.forEach((session) => {
+    const row = document.createElement('div');
+    row.className = 'compare-history-item';
+    const wins = session.rounds.reduce((acc, r) => {
+      if (r.gradeA === 'up') acc.a++;
+      if (r.gradeB === 'up') acc.b++;
+      return acc;
+    }, { a: 0, b: 0 });
+    row.innerHTML = `
+      <div class="compare-history-item-main">
+        <div class="compare-history-item-models">${escHtml(session.modelA)} <span class="compare-history-vs">vs</span> ${escHtml(session.modelB)}</div>
+        <div class="compare-history-item-meta">${new Date(session.ts).toLocaleString()} · ${session.rounds.length} round${session.rounds.length === 1 ? '' : 's'}${wins.a + wins.b > 0 ? ` · A ${wins.a} 👍 : B ${wins.b} 👍` : ''}</div>
+      </div>
+      <div class="compare-history-item-actions">
+        <button class="ghost-btn" title="Replay this session">▶ Replay</button>
+        <button class="ghost-btn" title="Delete this session">🗑</button>
+      </div>`;
+    const [replayBtn, deleteBtn] = row.querySelectorAll('button');
+    replayBtn.onclick = () => replayCompareSession(session.id);
+    deleteBtn.onclick = () => deleteCompareSession(session.id);
+    listEl.appendChild(row);
+  });
+}
+
+function replayCompareSession(id) {
+  const session = compareHistory.find(s => s.id === id);
+  if (!session) return;
+  if (!compareMode) toggleCompareMode();
+  closeModal('compare-history-modal');
+  clearCompare();
+
+  const selA = document.getElementById('compare-model-a');
+  const selB = document.getElementById('compare-model-b');
+  if (selA) selA.value = session.modelA;
+  if (selB) selB.value = session.modelB;
+  onCompareModelChange();
+
+  const paneA = document.getElementById('compare-msgs-a');
+  const paneB = document.getElementById('compare-msgs-b');
+  paneA.innerHTML = '';
+  paneB.innerHTML = '';
+
+  const renderMsg = (pane, role, text, grade) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg-wrap';
+    wrap.dataset.role = role;
+    wrap.dataset.rawText = text;
+    if (role === 'user') {
+      wrap.innerHTML = `<div class="msg user"><div class="avatar">👤</div><div class="bubble">${renderMarkdown(text)}</div></div>`;
+    } else {
+      wrap.innerHTML = `<div class="msg assistant"><div class="avatar">🤖</div><div class="bubble"><div class="msg-content">${renderMarkdown(text)}</div></div></div><div class="msg-meta"></div>`;
+      if (grade) {
+        wrap.dataset.cmpGrade = grade;
+        const meta = wrap.querySelector('.msg-meta');
+        const gw = document.createElement('span');
+        gw.className = 'cmp-grade-wrap';
+        gw.innerHTML =
+          `<button class="cmp-grade-btn cmp-grade-up${grade === 'up' ? ' active' : ''}" title="Good response">👍</button>` +
+          `<button class="cmp-grade-btn cmp-grade-dn${grade === 'down' ? ' active' : ''}" title="Bad response">👎</button>`;
+        gw.querySelector('.cmp-grade-up').addEventListener('click', () => gradeCompareMsg(wrap, 'up'));
+        gw.querySelector('.cmp-grade-dn').addEventListener('click', () => gradeCompareMsg(wrap, 'down'));
+        meta.appendChild(gw);
+      }
+    }
+    pane.appendChild(wrap);
+  };
+
+  session.rounds.forEach((r) => {
+    if (r.prompt) { renderMsg(paneA, 'user', r.prompt); renderMsg(paneB, 'user', r.prompt); }
+    if (r.textA) renderMsg(paneA, 'assistant', r.textA, r.gradeA);
+    if (r.textB) renderMsg(paneB, 'assistant', r.textB, r.gradeB);
+  });
+
+  currentCompareSessionId = session.id;
+  updateCompareEmptyState();
+  updateCompareWinDisplay();
+  updateCompareDiffBtn();
+  highlightNewCode();
+  toast('Replayed comparison session', 'success');
+}
+
+function deleteCompareSession(id) {
+  compareHistory = compareHistory.filter(s => s.id !== id);
+  saveCompareHistoryToStorage();
+  if (currentCompareSessionId === id) currentCompareSessionId = null;
+  renderCompareHistoryList();
+}
+
+function clearCompareHistory() {
+  if (!compareHistory.length) return;
+  compareHistory = [];
+  saveCompareHistoryToStorage();
+  currentCompareSessionId = null;
+  renderCompareHistoryList();
+  toast('Comparison history cleared', 'success');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

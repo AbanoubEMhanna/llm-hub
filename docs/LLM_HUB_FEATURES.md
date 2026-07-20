@@ -222,7 +222,7 @@
 - [x] Save comparison as downloadable Markdown report
 - [x] 🔥 ⚡ A/B test mode — random model assignment, reveal after response
 - [ ] 🏗️ Multi-model tournament — bracket-style 3+ model comparison
-- [ ] Comparison history — browse and replay past comparison sessions
+- [x] ⚡ Comparison history — browse and replay past comparison sessions
 
 ---
 
@@ -323,12 +323,12 @@
 | Code-First Workflow | 6 | 11 |
 | Attachments & Multimodal | 8 | 2 |
 | RAG / Knowledge Base | 10 | 4 |
-| Model Comparison | 7 | 2 |
+| Model Comparison | 8 | 1 |
 | Modern UI | 13 | 7 |
 | Security & Privacy | 7 | 3 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
-| **Total** | **~128** | **~66** |
+| **Total** | **~129** | **~65** |
 
 **~66% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
@@ -339,4 +339,4 @@
 
 ---
 
-*Last updated: 2026-07-19. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-20. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
