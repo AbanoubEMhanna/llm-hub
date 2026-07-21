@@ -1160,6 +1160,18 @@ del.diff-del {
 .compare-status.ready { color: var(--accent); opacity: 1; }
 .compare-status.warn  { color: var(--orange); opacity: 1; }
 
+.compare-history-list { display: flex; flex-direction: column; gap: 6px; }
+.compare-history-empty { padding: 20px 8px; color: var(--muted); font-size: 12px; text-align: center; }
+.compare-history-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius);
+}
+.compare-history-item-main { min-width: 0; }
+.compare-history-item-models { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compare-history-vs { color: var(--muted); font-weight: 400; font-size: 11px; margin: 0 2px; }
+.compare-history-item-meta { color: var(--muted); font-family: var(--mono); font-size: 11px; margin-top: 2px; }
+.compare-history-item-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+
 /* Hide the title-sub on narrow screens so the action buttons stay readable */
 @media (max-width: 900px) {
   .compare-title-sub { display: none; }
