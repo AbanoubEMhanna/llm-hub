@@ -2387,10 +2387,31 @@ function updateToolResult(el, result, cached) {
     statusEl.textContent = cached ? 'done ✓ (cached)' : 'done ✓';
     statusEl.className = 'tool-status done';
   }
+  let parsed = null;
   if (resultEl) {
-    try { resultEl.textContent = JSON.stringify(JSON.parse(result), null, 2); }
+    try { parsed = JSON.parse(result); resultEl.textContent = JSON.stringify(parsed, null, 2); }
     catch { resultEl.textContent = result; }
   }
+  const warnings = collectInjectionWarnings(parsed);
+  if (warnings.length) {
+    const body = el.querySelector('.tool-body');
+    const warnEl = document.createElement('div');
+    warnEl.className = 'tool-injection-warning';
+    warnEl.innerHTML = warnings.map((w) => `⚠️ ${escHtml(w)}`).join('<br>');
+    body.insertBefore(warnEl, body.firstChild);
+  }
+}
+
+// Pulls prompt-injection warnings surfaced by fetch_url / rag_search out of a
+// parsed tool result (top-level `warning`, or per-item `warning` in `results`).
+function collectInjectionWarnings(parsed) {
+  if (!parsed || typeof parsed !== 'object') return [];
+  const warnings = [];
+  if (parsed.warning) warnings.push(parsed.warning);
+  if (Array.isArray(parsed.results)) {
+    for (const r of parsed.results) if (r && r.warning) warnings.push(r.warning);
+  }
+  return warnings;
 }
 
 function updateStats({ model, elapsed, prompt_tokens, completion_tokens }) {
