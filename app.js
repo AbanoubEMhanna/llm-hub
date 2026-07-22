@@ -2397,7 +2397,10 @@ function updateToolResult(el, result, cached) {
     const body = el.querySelector('.tool-body');
     const warnEl = document.createElement('div');
     warnEl.className = 'tool-injection-warning';
-    warnEl.innerHTML = warnings.map((w) => `⚠️ ${escHtml(w)}`).join('<br>');
+    warnings.forEach((w, i) => {
+      if (i > 0) warnEl.appendChild(document.createElement('br'));
+      warnEl.appendChild(document.createTextNode(`⚠️ ${w}`));
+    });
     body.insertBefore(warnEl, body.firstChild);
   }
 }
@@ -2407,9 +2410,9 @@ function updateToolResult(el, result, cached) {
 function collectInjectionWarnings(parsed) {
   if (!parsed || typeof parsed !== 'object') return [];
   const warnings = [];
-  if (parsed.warning) warnings.push(parsed.warning);
+  if (typeof parsed.warning === 'string') warnings.push(parsed.warning);
   if (Array.isArray(parsed.results)) {
-    for (const r of parsed.results) if (r && r.warning) warnings.push(r.warning);
+    for (const r of parsed.results) if (r && typeof r.warning === 'string') warnings.push(r.warning);
   }
   return warnings;
 }
