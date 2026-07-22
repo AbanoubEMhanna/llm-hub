@@ -24,7 +24,7 @@ const os         = require('os');
 const { URL }    = require('url');
 
 const { isPrivateHost }    = require('./lib/ssrf');
-const { chunkText, cosine: cosineSimilarity, computeStats: computeRagStats, rankChunks } = require('./lib/rag-utils');
+const { chunkText, cosine: cosineSimilarity, computeStats: computeRagStats, rankChunks, removeChunk, replaceChunkText } = require('./lib/rag-utils');
 const { evaluate: calcEvaluate } = require('./lib/calculator');
 const { formatLogEntry, parseLogLines } = require('./lib/request-log');
 const { formatRunEntry, parseRunLines } = require('./lib/agent-history');
@@ -344,12 +344,44 @@ class RagEngine {
 
   getCollection(id) { return this.collections.get(id); }
 
+  getChunk(collectionId, chunkId) {
+    const col = this.collections.get(collectionId);
+    return col?.chunks?.find(c => c.id === chunkId) || null;
+  }
+
   getStats() { return computeRagStats([...this.collections.values()]); }
 
   deleteCollection(id) {
     this.collections.delete(id);
     const p = path.join(RAG_DIR, `${id}.json`);
     if (fs.existsSync(p)) fs.unlinkSync(p);
+  }
+
+  /** Delegate to shared lib/rag-utils (single source of truth for tests) */
+  deleteChunk(collectionId, chunkId) {
+    const col = this.collections.get(collectionId);
+    if (!col) return false;
+    const { found, chunks } = removeChunk(col.chunks, chunkId);
+    if (!found) return false;
+    col.chunks = chunks;
+    col.updatedAt = Date.now();
+    this._persist(col);
+    return true;
+  }
+
+  /** Re-embeds the new text before persisting — embeddings must match the current text. */
+  async updateChunk(collectionId, chunkId, text) {
+    const col = this.collections.get(collectionId);
+    if (!col) return null;
+    const { found, chunks } = replaceChunkText(col.chunks, chunkId, text);
+    if (!found) return null;
+    const embedding = await this.embed(text);
+    const idx = chunks.findIndex(c => c.id === chunkId);
+    chunks[idx] = { ...chunks[idx], embedding };
+    col.chunks = chunks;
+    col.updatedAt = Date.now();
+    this._persist(col);
+    return chunks[idx];
   }
 
   /** Delegate to shared lib/rag-utils (single source of truth for tests) */
@@ -1906,6 +1938,38 @@ async function handleRequest(req, res) {
         emit('error', { message: e.message });
       }
       try { res.end(); } catch {}
+      return;
+    }
+
+    // ── RAG: get a single chunk's full text (the collection-level GET below only
+    // returns a 200-char preview, which isn't enough to edit a longer chunk)
+    if (req.method === 'GET' && /^\/v1\/rag\/collections\/[^/]+\/chunks\/[^/]+$/.test(url.pathname)) {
+      const [, , , , collectionId, , chunkId] = url.pathname.split('/');
+      const chunk = rag.getChunk(collectionId, chunkId);
+      if (!chunk) { sendJSON(res, 404, { error: 'chunk not found' }); return; }
+      sendJSON(res, 200, { id: chunk.id, source: chunk.source, text: chunk.text }); return;
+    }
+
+    // ── RAG: delete a single chunk (checked before the generic collection routes below,
+    // since both start with the same prefix)
+    if (req.method === 'DELETE' && /^\/v1\/rag\/collections\/[^/]+\/chunks\/[^/]+$/.test(url.pathname)) {
+      const [, , , , collectionId, , chunkId] = url.pathname.split('/');
+      const ok = rag.deleteChunk(collectionId, chunkId);
+      if (!ok) { sendJSON(res, 404, { error: 'chunk not found' }); return; }
+      sendJSON(res, 200, { ok: true }); return;
+    }
+
+    // ── RAG: edit a single chunk's text (re-embeds)
+    if (req.method === 'PUT' && /^\/v1\/rag\/collections\/[^/]+\/chunks\/[^/]+$/.test(url.pathname)) {
+      const [, , , , collectionId, , chunkId] = url.pathname.split('/');
+      const body = await readBody(req);
+      const text = typeof body.text === 'string' ? body.text.trim() : '';
+      if (!text) { sendJSON(res, 400, { error: 'text is required' }); return; }
+      try {
+        const chunk = await rag.updateChunk(collectionId, chunkId, text);
+        if (!chunk) { sendJSON(res, 404, { error: 'chunk not found' }); return; }
+        sendJSON(res, 200, { ok: true, chunk: { id: chunk.id, source: chunk.source, preview: chunk.text.slice(0, 200) } });
+      } catch (e) { sendJSON(res, 500, { error: e.message }); }
       return;
     }
 

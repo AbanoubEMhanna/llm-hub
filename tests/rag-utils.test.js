@@ -2,7 +2,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { chunkText, cosine, computeStats, rankChunks } = require('../lib/rag-utils.js');
+const { chunkText, cosine, computeStats, rankChunks, removeChunk, replaceChunkText } = require('../lib/rag-utils.js');
 
 // ── cosine similarity ──────────────────────────────────────────────────────
 
@@ -187,4 +187,65 @@ test('rankChunks: skips chunks with a missing or malformed embedding', () => {
   const results = rankChunks(collections, [1, 0], 5);
   assert.equal(results.length, 1);
   assert.equal(results[0].id, '3');
+});
+
+// ── removeChunk ─────────────────────────────────────────────────────────────
+
+test('removeChunk: removes the matching chunk by id', () => {
+  const chunks = [{ id: '1', text: 'a' }, { id: '2', text: 'b' }, { id: '3', text: 'c' }];
+  const { found, chunks: next } = removeChunk(chunks, '2');
+  assert.equal(found, true);
+  assert.deepEqual(next.map(c => c.id), ['1', '3']);
+});
+
+test('removeChunk: does not mutate the input array', () => {
+  const chunks = [{ id: '1' }, { id: '2' }];
+  const original = chunks.slice();
+  removeChunk(chunks, '1');
+  assert.deepEqual(chunks, original);
+});
+
+test('removeChunk: not found → found:false, same chunks returned', () => {
+  const chunks = [{ id: '1' }];
+  const result = removeChunk(chunks, 'missing');
+  assert.equal(result.found, false);
+  assert.equal(result.chunks, chunks);
+});
+
+test('removeChunk: handles undefined/empty chunk list', () => {
+  assert.equal(removeChunk(undefined, '1').found, false);
+  assert.deepEqual(removeChunk(undefined, '1').chunks, []);
+  assert.equal(removeChunk([], '1').found, false);
+});
+
+// ── replaceChunkText ────────────────────────────────────────────────────────
+
+test('replaceChunkText: updates text of the matching chunk, preserves other fields', () => {
+  const chunks = [{ id: '1', source: 'a.md', text: 'old', embedding: [1, 2] }];
+  const { found, chunks: next } = replaceChunkText(chunks, '1', 'new text');
+  assert.equal(found, true);
+  assert.equal(next[0].text, 'new text');
+  assert.equal(next[0].source, 'a.md');
+  assert.deepEqual(next[0].embedding, [1, 2]);
+});
+
+test('replaceChunkText: does not mutate the input array or chunk objects', () => {
+  const original = { id: '1', text: 'old' };
+  const chunks = [original];
+  replaceChunkText(chunks, '1', 'new');
+  assert.equal(chunks[0].text, 'old');
+  assert.equal(original.text, 'old');
+});
+
+test('replaceChunkText: not found → found:false, same chunks returned', () => {
+  const chunks = [{ id: '1', text: 'old' }];
+  const result = replaceChunkText(chunks, 'missing', 'new');
+  assert.equal(result.found, false);
+  assert.equal(result.chunks, chunks);
+});
+
+test('replaceChunkText: only the targeted chunk changes among many', () => {
+  const chunks = [{ id: '1', text: 'a' }, { id: '2', text: 'b' }, { id: '3', text: 'c' }];
+  const { chunks: next } = replaceChunkText(chunks, '2', 'B!');
+  assert.deepEqual(next.map(c => c.text), ['a', 'B!', 'c']);
 });

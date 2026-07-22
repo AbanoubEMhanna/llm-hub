@@ -1301,6 +1301,22 @@
   </div>
 </div>
 
+<!-- RAG chunk preview / edit / delete modal -->
+<div class="modal-overlay" id="rag-chunks-modal">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <div class="modal-title" id="rag-chunks-title">Chunks</div>
+      <button class="icon-btn" onclick="closeModal('rag-chunks-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="rag-chunks-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('rag-chunks-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Edit message modal -->
 <div class="modal-overlay" id="edit-modal">
   <div class="modal">
