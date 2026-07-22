@@ -753,6 +753,13 @@ input[type=range]::-webkit-slider-thumb {
   word-break: break-word; max-height: 180px; overflow-y: auto;
   color: var(--text); line-height: 1.5;
 }
+.tool-injection-warning {
+  margin-bottom: 8px; padding: 6px 8px; border-radius: 4px;
+  font-size: 10px; line-height: 1.6;
+  background: color-mix(in srgb, var(--orange) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--orange) 25%, transparent);
+  color: var(--orange);
+}
 
 /* ── Code blocks ── */
 .bubble pre {

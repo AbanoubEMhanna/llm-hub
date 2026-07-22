@@ -33,6 +33,7 @@ const { parseStopSequences } = require('./lib/stop-sequences');
 const { parseSeed }        = require('./lib/seed');
 const { parseContextLength } = require('./lib/context-length');
 const { ToolCallCache }    = require('./lib/tool-cache');
+const { detectPromptInjection, formatInjectionWarning } = require('./lib/prompt-injection');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § CONFIG & STORAGE
@@ -609,7 +610,10 @@ const builtInExecutors = {
                              .replace(/<style[\s\S]*?<\/style>/gi, '')
                              .replace(/<[^>]+>/g, ' ')
                              .replace(/\s+/g, ' ').trim().slice(0, max_chars);
-            resolve(JSON.stringify({ url, content: text, truncated: body.length > max_chars }));
+            const result = { url, content: text, truncated: body.length > max_chars };
+            const warning = formatInjectionWarning(detectPromptInjection(text));
+            if (warning) result.warning = warning;
+            resolve(JSON.stringify(result));
           });
         });
         req.on('timeout', () => { req.destroy(); resolve(JSON.stringify({ error: `fetch_url timed out after ${TIMEOUT_MS}ms` })); });
@@ -645,12 +649,13 @@ const builtInExecutors = {
       const results = await rag.query({ collectionId: collection_id, collectionIds: collection_ids, query, topK: top_k });
       return JSON.stringify({
         query,
-        results: results.map(r => ({
-          source:     r.source,
-          collection: r.collectionName,
-          score:      r.score.toFixed(3),
-          text:       r.text.slice(0, 600),
-        })),
+        results: results.map(r => {
+          const text = r.text.slice(0, 600);
+          const chunk = { source: r.source, collection: r.collectionName, score: r.score.toFixed(3), text };
+          const warning = formatInjectionWarning(detectPromptInjection(text));
+          if (warning) chunk.warning = warning;
+          return chunk;
+        }),
       });
     } catch (e) {
       return JSON.stringify({ error: e.message });
