@@ -380,6 +380,8 @@ async function loadModels() {
         quantization:   m.quantization || null,
         size_label:     m.size_label || null,
         family:         m.family || null,
+        license:        m.license || null,
+        owned_by:       m.owned_by || null,
       };
     }
 
@@ -4380,6 +4382,50 @@ function onCompareModelChange() {
   compareModelB = document.getElementById('compare-model-b').value || null;
   updateCompareEmptyState();
   updateCompareSendState();
+  renderCompareSpecSheet();
+}
+
+let compareSpecSheetOpen = false;
+
+function toggleCompareSpecSheet() {
+  compareSpecSheetOpen = !compareSpecSheetOpen;
+  document.getElementById('compare-specs-btn')?.classList.toggle('active', compareSpecSheetOpen);
+  const panel = document.getElementById('compare-spec-sheet');
+  if (panel) panel.style.display = compareSpecSheetOpen ? '' : 'none';
+  renderCompareSpecSheet();
+}
+
+function specSheetEscape(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function renderCompareSpecSheet() {
+  const panel = document.getElementById('compare-spec-sheet');
+  if (!panel || !compareSpecSheetOpen) return;
+  if (!compareModelA || !compareModelB) {
+    panel.innerHTML = '<div class="compare-spec-empty">Pick both models to see their spec sheet</div>';
+    return;
+  }
+  const metaA = modelMetadata[compareModelA] || {};
+  const metaB = modelMetadata[compareModelB] || {};
+  const rows = buildSpecRows(metaA, metaB);
+  if (!rows.length) {
+    panel.innerHTML = '<div class="compare-spec-empty">No spec metadata available for these models</div>';
+    return;
+  }
+  const nameA = modelAliases[compareModelA] || compareModelA.replace(MODEL_ID_PREFIX_RE, '');
+  const nameB = modelAliases[compareModelB] || compareModelB.replace(MODEL_ID_PREFIX_RE, '');
+  panel.innerHTML = `
+    <table class="compare-spec-table">
+      <thead><tr><th></th><th>${specSheetEscape(nameA)}</th><th>${specSheetEscape(nameB)}</th></tr></thead>
+      <tbody>
+        ${rows.map(r => `<tr class="${r.differs ? 'differs' : ''}">
+          <td class="compare-spec-label">${specSheetEscape(r.label)}</td>
+          <td>${specSheetEscape(r.a)}</td>
+          <td>${specSheetEscape(r.b)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
 }
 
 function updateCompareEmptyState() {

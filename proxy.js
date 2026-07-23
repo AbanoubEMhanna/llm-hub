@@ -1071,6 +1071,9 @@ async function fetchAllModels(apiKeys = {}, customProviders = []) {
           m.parameter_size = params;
           m.quantization = show.data.details?.quantization_level || null;
           m.family = show.data.details?.family || null;
+          m.license = typeof show.data.license === 'string' && show.data.license.trim()
+            ? show.data.license.trim().split('\n')[0].slice(0, 80)
+            : null;
         }
       } catch { /* skip enrichment for this model */ }
     });
