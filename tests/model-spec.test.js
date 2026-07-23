@@ -76,3 +76,18 @@ test('buildSpecRows: preserves declared field order', () => {
 test('buildSpecRows: handles missing metadata objects gracefully', () => {
   assert.doesNotThrow(() => buildSpecRows(undefined, { parameter_size: '3B' }));
 });
+
+test('buildSpecRows: marks raw values that differ but round to the same display text', () => {
+  // 1024 and 1535 both format to "1K tokens" but are genuinely different context windows.
+  const rows = buildSpecRows({ context_length: 1024 }, { context_length: 1535 });
+  const row = rows.find(r => r.label === 'Context window');
+  assert.equal(row.a, '1K tokens');
+  assert.equal(row.b, '1K tokens');
+  assert.equal(row.differs, true);
+});
+
+test('buildSpecRows: does not mark undefined vs. explicit null as differing', () => {
+  const rows = buildSpecRows({ family: 'Llama', license: undefined }, { family: 'Llama', license: null });
+  const row = rows.find(r => r.label === 'License');
+  assert.equal(row, undefined); // both sides empty → row omitted entirely
+});

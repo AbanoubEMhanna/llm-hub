@@ -70,6 +70,7 @@ let compareAbortB        = null;
 let compareAbMode        = false;   // blind A/B test — hides model names until revealed
 let compareAbActualA     = null;    // which model ended up in pane A this round
 let compareAbActualB     = null;    // which model ended up in pane B this round
+let compareAbRevealed    = false;   // has the user clicked "Reveal" this round?
 let compareHistory       = JSON.parse(localStorage.getItem('llm-compare-history') || '[]');
 let currentCompareSessionId = null; // id of the in-progress session; new session starts on next send after clear
 
@@ -4406,6 +4407,10 @@ function renderCompareSpecSheet() {
     panel.innerHTML = '<div class="compare-spec-empty">Pick both models to see their spec sheet</div>';
     return;
   }
+  if (compareAbMode && !compareAbRevealed) {
+    panel.innerHTML = '<div class="compare-spec-empty">🎲 Spec sheet hidden during blind A/B — click Reveal to compare specs</div>';
+    return;
+  }
   const metaA = modelMetadata[compareModelA] || {};
   const metaB = modelMetadata[compareModelB] || {};
   const rows = buildSpecRows(metaA, metaB);
@@ -4502,6 +4507,7 @@ function clearCompare() {
   if (sc) sc.textContent = '';
   // Reset A/B reveal state on clear
   compareAbActualA = compareAbActualB = null;
+  compareAbRevealed = false;
   const revealBtn = document.getElementById('compare-reveal-btn');
   if (revealBtn) revealBtn.disabled = true;
   // Reset AB label text to generic names
@@ -4527,7 +4533,9 @@ function toggleAbMode() {
   const labB = document.getElementById('compare-ab-label-b');
   if (labA) { labA.textContent = 'Model A'; labA.style.display = compareAbMode ? '' : 'none'; }
   if (labB) { labB.textContent = 'Model B'; labB.style.display = compareAbMode ? '' : 'none'; }
+  compareAbRevealed = false;
   if (!compareAbMode) { compareAbActualA = compareAbActualB = null; }
+  renderCompareSpecSheet();
 }
 
 function revealAbModels() {
@@ -4550,6 +4558,8 @@ function revealAbModels() {
     if (s && (s.textContent === 'Model B' || s.textContent.startsWith('?'))) s.textContent = nameB;
   });
   document.getElementById('compare-reveal-btn').disabled = true;
+  compareAbRevealed = true;
+  renderCompareSpecSheet();
   toast(`🔍 Revealed — Left: ${nameA} · Right: ${nameB}`, 'success');
 }
 
