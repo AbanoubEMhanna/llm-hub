@@ -573,6 +573,23 @@ input[type=range]::-webkit-slider-thumb {
 .rag-item .rag-meta { margin-left: auto; font-size: 9px; opacity: .6; }
 .rag-item.active { background: var(--s2); color: var(--accent); border: 1px solid var(--accent); }
 
+.rag-chunk-item {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 10px; margin-bottom: 8px; background: var(--s2);
+}
+.rag-chunk-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.rag-chunk-source {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+}
+.rag-chunk-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.rag-chunk-text {
+  font-family: var(--mono); font-size: 12px; white-space: pre-wrap;
+  word-break: break-word; color: var(--text);
+}
+.rag-chunk-textarea { width: 100%; min-height: 100px; }
+.rag-chunk-save-row { display: none; gap: 6px; margin-top: 8px; }
+
 .rag-stat-tile {
   background: var(--s2); border: 1px solid var(--border); border-radius: 6px;
   padding: 8px 6px; text-align: center;

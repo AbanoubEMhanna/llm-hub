@@ -204,7 +204,7 @@
 - [x] RAG settings tab — embedding model, chunk size, top_k
 - [ ] 🔥 GitHub repository indexing — clone + embed all repo files
 - [x] ⚡ Auto-inject relevant chunks into every message (toggle)
-- [ ] Chunk preview and manual editing UI
+- [x] Chunk preview and manual editing UI
 - [ ] Hybrid search — keyword + vector (BM25)
 - [x] Multi-collection query — search across all collections at once
 - [ ] Re-embedding on model change
@@ -322,15 +322,15 @@
 | AI Agent & Tools | 7 | 7 |
 | Code-First Workflow | 6 | 11 |
 | Attachments & Multimodal | 8 | 2 |
-| RAG / Knowledge Base | 10 | 4 |
+| RAG / Knowledge Base | 11 | 3 |
 | Model Comparison | 9 | 0 |
 | Modern UI | 13 | 7 |
 | Security & Privacy | 8 | 2 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
-| **Total** | **~132** | **~62** |
+| **Total** | **~133** | **~61** |
 
-**~68% complete. Top priorities to close the gap:**
+**~69% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell tool, custom tool builder)
@@ -339,4 +339,4 @@
 
 ---
 
-*Last updated: 2026-07-23. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-24. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
