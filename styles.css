@@ -1111,6 +1111,24 @@ input[type=range]::-webkit-slider-thumb {
 }
 .compare-header-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
+#compare-specs-btn.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+.compare-spec-sheet {
+  border-bottom: 1px solid var(--border); background: var(--s1);
+  padding: 10px 16px; flex-shrink: 0; overflow-x: auto;
+}
+.compare-spec-empty { color: var(--muted); font-size: 12px; font-family: var(--mono); }
+.compare-spec-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.compare-spec-table th {
+  text-align: left; font-weight: 600; color: var(--muted); font-family: var(--mono);
+  font-size: 10px; text-transform: uppercase; letter-spacing: .03em;
+  padding: 4px 10px; border-bottom: 1px solid var(--border);
+}
+.compare-spec-table td { padding: 5px 10px; border-bottom: 1px solid var(--border); }
+.compare-spec-table tr:last-child td { border-bottom: none; }
+.compare-spec-label { color: var(--muted); font-family: var(--mono); font-size: 11px; white-space: nowrap; }
+.compare-spec-table tr.differs td:not(.compare-spec-label) { color: var(--accent); font-weight: 600; }
+
 .compare-panes { flex: 1; display: flex; overflow: hidden; min-height: 0; }
 .compare-pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 .compare-divider { width: 1px; background: var(--border); flex-shrink: 0; }

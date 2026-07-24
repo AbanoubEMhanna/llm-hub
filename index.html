@@ -332,6 +332,7 @@
         <button class="ghost-btn" id="compare-ab-btn" onclick="toggleAbMode()" title="A/B test mode — model names hidden until you click Reveal">🎲 A/B</button>
         <button class="ghost-btn" id="compare-reveal-btn" onclick="revealAbModels()" title="Reveal which model produced each response" disabled style="display:none">👁 Reveal</button>
         <button class="ghost-btn" onclick="swapCompareModels()" title="Swap left and right models">↔ Swap</button>
+        <button class="ghost-btn" id="compare-specs-btn" onclick="toggleCompareSpecSheet()" title="Show a side-by-side spec sheet (context, quant, size, license)">📋 Specs</button>
         <button class="ghost-btn" id="compare-diff-btn" onclick="showCompareDiff()" title="Show word-level diff between the two latest responses" disabled>⬍ Diff</button>
         <button class="ghost-btn" id="compare-save-btn" onclick="saveCompareReport()" title="Save comparison as Markdown report" disabled>⬇ Report</button>
         <button class="ghost-btn" id="compare-history-btn" onclick="openCompareHistory()" title="Browse and replay past comparison sessions">🕘 History</button>
@@ -339,6 +340,8 @@
         <button class="ghost-btn" onclick="toggleCompareMode()" title="Exit compare mode">Exit</button>
       </div>
     </div>
+
+    <div class="compare-spec-sheet" id="compare-spec-sheet" style="display:none"></div>
 
     <div class="compare-panes">
       <div class="compare-pane">
@@ -1602,6 +1605,7 @@
 <script src="lib/key-storage.js"></script>
 <script src="lib/sound-effects.js"></script>
 <script src="lib/comparison-history.js"></script>
+<script src="lib/model-spec.js"></script>
 <script src="app.js"></script>
 <script>
 function applySamplingPreset(name) {
