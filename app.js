@@ -3915,7 +3915,7 @@ async function loadRagStats() {
 // Builds one .rag-item row via DOM APIs (not innerHTML) so a crafted collection
 // id or name — e.g. from a client-supplied collection_id on /v1/rag/upload —
 // can't break out of an inline event-handler string and inject script.
-function buildRagItemEl({ active, icon, label, meta, title, onClick, onDelete }) {
+function buildRagItemEl({ active, icon, label, meta, title, onClick, onPreview, onDelete }) {
   const div = document.createElement('div');
   div.className = 'rag-item' + (active ? ' active' : '');
   div.title = title;
@@ -3926,6 +3926,15 @@ function buildRagItemEl({ active, icon, label, meta, title, onClick, onDelete })
   metaSpan.className = 'rag-meta';
   metaSpan.textContent = meta;
   div.append(`${icon} `, labelSpan, metaSpan);
+  if (onPreview) {
+    const previewBtn = document.createElement('button');
+    previewBtn.className = 'icon-btn';
+    previewBtn.title = 'Preview chunks';
+    previewBtn.style.marginLeft = '4px';
+    previewBtn.textContent = '👁';
+    previewBtn.addEventListener('click', (e) => { e.stopPropagation(); onPreview(); });
+    div.appendChild(previewBtn);
+  }
   if (onDelete) {
     const delBtn = document.createElement('button');
     delBtn.className = 'icon-btn';
@@ -3964,8 +3973,9 @@ function renderRagList() {
       label: c.name,
       meta:  `${c.chunks ?? c.chunkCount ?? 0} ch`,
       title: `${c.name} — click to ${active ? 'search all collections again' : 'narrow auto-inject to this collection'}`,
-      onClick:  () => setActiveRagCollection(c.id),
-      onDelete: () => deleteRag(c.id),
+      onClick:   () => setActiveRagCollection(c.id),
+      onPreview: () => openRagChunksModal(c.id, c.name),
+      onDelete:  () => deleteRag(c.id),
     }));
   }
 }
@@ -4007,6 +4017,149 @@ async function deleteRag(id) {
   if (conv?.ragCollectionId === id) { conv.ragCollectionId = null; saveConvs(); }
   updateRagActiveBadge();
   toast('Collection deleted', 'success');
+}
+
+// ── RAG chunk preview / edit / delete ───────────────────────────────────────
+
+async function openRagChunksModal(collectionId, collectionName) {
+  document.getElementById('rag-chunks-title').textContent = `Chunks — ${collectionName}`;
+  const listEl = document.getElementById('rag-chunks-list');
+  listEl.textContent = 'Loading…';
+  openModal('rag-chunks-modal');
+  try {
+    const res = await fetch(`${PROXY}/v1/rag/collections/${collectionId}`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const data = await res.json();
+    renderRagChunksList(collectionId, data.chunks || []);
+  } catch (e) {
+    listEl.textContent = '';
+    const err = document.createElement('div');
+    err.style.cssText = 'color:var(--red);font-size:12px';
+    err.textContent = `Failed to load chunks: ${e.message}`;
+    listEl.appendChild(err);
+  }
+}
+
+function renderRagChunksList(collectionId, chunks) {
+  const listEl = document.getElementById('rag-chunks-list');
+  listEl.innerHTML = '';
+  if (!chunks.length) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'color:var(--muted);font-size:12px';
+    empty.textContent = 'No chunks in this collection';
+    listEl.appendChild(empty);
+    return;
+  }
+  for (const chunk of chunks) listEl.appendChild(buildRagChunkEl(collectionId, chunk));
+}
+
+// A chunk row: source label, preview text, and Edit/Delete actions. Edit swaps
+// in a textarea seeded with the full chunk text (fetched lazily — the list
+// view only carries a 200-char preview) and re-embeds on save.
+function buildRagChunkEl(collectionId, chunk) {
+  const div = document.createElement('div');
+  div.className = 'rag-chunk-item';
+
+  const header = document.createElement('div');
+  header.className = 'rag-chunk-header';
+  const sourceSpan = document.createElement('span');
+  sourceSpan.className = 'rag-chunk-source';
+  sourceSpan.textContent = chunk.source || 'unknown source';
+  header.appendChild(sourceSpan);
+
+  const actions = document.createElement('div');
+  actions.className = 'rag-chunk-actions';
+  const editBtn = document.createElement('button');
+  editBtn.className = 'btn btn-sm';
+  editBtn.textContent = 'Edit';
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'btn btn-sm';
+  deleteBtn.textContent = 'Delete';
+  actions.append(editBtn, deleteBtn);
+  header.appendChild(actions);
+
+  const textEl = document.createElement('div');
+  textEl.className = 'rag-chunk-text';
+  textEl.textContent = chunk.preview;
+
+  const textarea = document.createElement('textarea');
+  textarea.className = 'rag-chunk-textarea';
+  textarea.style.display = 'none';
+
+  const saveRow = document.createElement('div');
+  saveRow.className = 'rag-chunk-save-row';
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'btn primary btn-sm';
+  saveBtn.textContent = 'Save';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn btn-sm';
+  cancelBtn.textContent = 'Cancel';
+  saveRow.append(saveBtn, cancelBtn);
+
+  const enterEdit = async () => {
+    editBtn.disabled = true;
+    try {
+      const res = await fetch(`${PROXY}/v1/rag/collections/${collectionId}/chunks/${chunk.id}`);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+      textarea.value = data.text ?? chunk.preview;
+      textEl.style.display = 'none';
+      textarea.style.display = 'block';
+      saveRow.style.display = 'flex';
+      editBtn.style.display = 'none';
+    } catch (e) {
+      toast(`Failed to load chunk: ${e.message}`, 'error');
+    } finally {
+      editBtn.disabled = false;
+    }
+  };
+  const exitEdit = () => {
+    textEl.style.display = 'block';
+    textarea.style.display = 'none';
+    saveRow.style.display = 'none';
+    editBtn.style.display = '';
+  };
+
+  editBtn.addEventListener('click', enterEdit);
+  cancelBtn.addEventListener('click', exitEdit);
+  saveBtn.addEventListener('click', async () => {
+    const trimmed = textarea.value.trim();
+    if (!trimmed) { toast('Chunk text cannot be empty', 'error'); return; }
+    saveBtn.disabled = true;
+    try {
+      const res = await fetch(`${PROXY}/v1/rag/collections/${collectionId}/chunks/${chunk.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: trimmed }),
+      });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+      textEl.textContent = data.chunk?.preview ?? trimmed;
+      exitEdit();
+      toast('Chunk updated', 'success');
+    } catch (e) {
+      toast(`Failed to update chunk: ${e.message}`, 'error');
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+  deleteBtn.addEventListener('click', async () => {
+    if (!confirm('Delete this chunk?')) return;
+    deleteBtn.disabled = true;
+    try {
+      const res = await fetch(`${PROXY}/v1/rag/collections/${collectionId}/chunks/${chunk.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      div.remove();
+      loadRagCollections();
+      toast('Chunk deleted', 'success');
+    } catch (e) {
+      toast(`Failed to delete chunk: ${e.message}`, 'error');
+      deleteBtn.disabled = false;
+    }
+  });
+
+  div.append(header, textEl, textarea, saveRow);
+  return div;
 }
 
 let pendingRagFiles = [];
