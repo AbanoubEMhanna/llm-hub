@@ -3599,6 +3599,9 @@ async function loadRagSettings() {
     const autoInjectToggle = document.getElementById('rag-auto-inject-toggle');
     if (autoInjectToggle) autoInjectToggle.classList.toggle('on', rag.auto_inject === true);
 
+    const hybridToggle = document.getElementById('rag-hybrid-toggle');
+    if (hybridToggle) hybridToggle.classList.toggle('on', rag.hybrid_search === true);
+
     const setVal = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.value = val; };
     setVal('rag-embed-provider', rag.embedding_provider || 'ollama');
     setVal('rag-embed-model',    rag.embedding_model    || 'nomic-embed-text');
@@ -3622,6 +3625,7 @@ async function saveRagSettings() {
       ...cfg.rag,
       enabled:            document.getElementById('rag-enabled-toggle')?.classList.contains('on') ?? true,
       auto_inject:        document.getElementById('rag-auto-inject-toggle')?.classList.contains('on') ?? false,
+      hybrid_search:      document.getElementById('rag-hybrid-toggle')?.classList.contains('on') ?? false,
       embedding_provider: document.getElementById('rag-embed-provider')?.value  || 'ollama',
       embedding_model:    document.getElementById('rag-embed-model')?.value     || 'nomic-embed-text',
       chunk_size:         parseInt(document.getElementById('rag-chunk-size')?.value    || '800',  10),

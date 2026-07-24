@@ -205,7 +205,7 @@
 - [ ] 🔥 GitHub repository indexing — clone + embed all repo files
 - [x] ⚡ Auto-inject relevant chunks into every message (toggle)
 - [x] Chunk preview and manual editing UI
-- [ ] Hybrid search — keyword + vector (BM25)
+- [x] Hybrid search — keyword + vector (BM25)
 - [x] Multi-collection query — search across all collections at once
 - [ ] Re-embedding on model change
 - [x] Knowledge base stats panel — total chunks, sources, last updated

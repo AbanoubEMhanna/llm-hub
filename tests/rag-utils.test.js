@@ -2,7 +2,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { chunkText, cosine, computeStats, rankChunks, removeChunk, replaceChunkText } = require('../lib/rag-utils.js');
+const { chunkText, cosine, computeStats, rankChunks, removeChunk, replaceChunkText, tokenize, bm25Scores, hybridRankChunks } = require('../lib/rag-utils.js');
 
 // ── cosine similarity ──────────────────────────────────────────────────────
 
@@ -248,4 +248,100 @@ test('replaceChunkText: only the targeted chunk changes among many', () => {
   const chunks = [{ id: '1', text: 'a' }, { id: '2', text: 'b' }, { id: '3', text: 'c' }];
   const { chunks: next } = replaceChunkText(chunks, '2', 'B!');
   assert.deepEqual(next.map(c => c.text), ['a', 'B!', 'c']);
+});
+
+// ── tokenize ─────────────────────────────────────────────────────────────────
+
+test('tokenize: lowercases and splits on non-alphanumeric', () => {
+  assert.deepEqual(tokenize('Hello, World! v2.0'), ['hello', 'world', 'v2', '0']);
+});
+
+test('tokenize: null/undefined/empty → []', () => {
+  assert.deepEqual(tokenize(null), []);
+  assert.deepEqual(tokenize(undefined), []);
+  assert.deepEqual(tokenize(''), []);
+});
+
+// ── bm25Scores ───────────────────────────────────────────────────────────────
+
+test('bm25Scores: doc containing the query term outranks one without it', () => {
+  const docs = ['the quick brown fox', 'a lazy dog sleeps'];
+  const scores = bm25Scores('fox', docs);
+  assert.ok(scores[0] > 0);
+  assert.equal(scores[1], 0);
+});
+
+test('bm25Scores: no query terms → all zero', () => {
+  const docs = ['alpha beta', 'gamma delta'];
+  assert.deepEqual(bm25Scores('', docs), [0, 0]);
+});
+
+test('bm25Scores: empty doc list → []', () => {
+  assert.deepEqual(bm25Scores('fox', []), []);
+});
+
+test('bm25Scores: rarer matched term scores higher than a term common to every doc', () => {
+  const docs = ['common word apple', 'common word banana', 'common word cherry unique'];
+  const [common, , unique] = [
+    bm25Scores('common', docs)[0],
+    null,
+    bm25Scores('unique', docs)[2],
+  ];
+  assert.ok(unique > common);
+});
+
+// ── hybridRankChunks ─────────────────────────────────────────────────────────
+
+function makeCol(id, chunks) {
+  return { id, name: id, chunks };
+}
+
+test('hybridRankChunks: keyword match surfaces a chunk that pure vector search would miss', () => {
+  const collections = [makeCol('c1', [
+    { id: 'a', source: 's', text: 'completely unrelated filler text', embedding: [1, 0] },
+    { id: 'b', source: 's', text: 'the answer contains the word xylophone', embedding: [0, 1] },
+  ])];
+  // Query embedding points at chunk 'a', but the query text keyword-matches chunk 'b'.
+  const results = hybridRankChunks(collections, [1, 0], 'xylophone', 5, 0.3);
+  assert.equal(results[0].id, 'b');
+});
+
+test('hybridRankChunks: alpha=1 behaves like pure vector rankChunks', () => {
+  const collections = [makeCol('c1', [
+    { id: 'a', source: 's', text: 'xylophone xylophone xylophone', embedding: [1, 0] },
+    { id: 'b', source: 's', text: 'no keyword here', embedding: [0, 1] },
+  ])];
+  const results = hybridRankChunks(collections, [1, 0], 'xylophone', 5, 1);
+  assert.equal(results[0].id, 'a');
+  assert.equal(results[0].score, 1); // pure cosine, no BM25 contribution
+});
+
+test('hybridRankChunks: skips chunks with mismatched embedding dimensions', () => {
+  const collections = [makeCol('c1', [
+    { id: 'a', source: 's', text: 'match', embedding: [1, 0, 0] },
+    { id: 'b', source: 's', text: 'match', embedding: [1, 0] },
+  ])];
+  const results = hybridRankChunks(collections, [1, 0], 'match', 5);
+  assert.equal(results.length, 1);
+  assert.equal(results[0].id, 'b');
+});
+
+test('hybridRankChunks: no candidates → []', () => {
+  assert.deepEqual(hybridRankChunks([makeCol('c1', [])], [1, 0], 'query', 5), []);
+});
+
+test('hybridRankChunks: respects topK', () => {
+  const collections = [makeCol('c1', [
+    { id: '1', source: 's', text: 'a', embedding: [1, 0] },
+    { id: '2', source: 's', text: 'b', embedding: [0.9, 0.1] },
+    { id: '3', source: 's', text: 'c', embedding: [0.1, 0.9] },
+  ])];
+  const results = hybridRankChunks(collections, [1, 0], 'query with no matches', 2);
+  assert.equal(results.length, 2);
+});
+
+test('hybridRankChunks: output shape matches rankChunks (no leaked internal vectorScore field)', () => {
+  const collections = [makeCol('c1', [{ id: '1', source: 's', text: 'text', embedding: [1, 0] }])];
+  const [result] = hybridRankChunks(collections, [1, 0], 'text', 5);
+  assert.deepEqual(Object.keys(result).sort(), ['collectionId', 'collectionName', 'id', 'score', 'source', 'text'].sort());
 });
