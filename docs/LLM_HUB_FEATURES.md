@@ -316,7 +316,7 @@
 
 | Area | ✅ Done | ⬜ To Do |
 |------|---------|----------|
-| Providers & Connectivity | 12 | 3 |
+| Providers & Connectivity | 16 | 2 |
 | Local Model Management | 9 | 6 |
 | Hardware Awareness | 7 | 5 |
 | Chat Interface | 21 | 3 |
@@ -330,9 +330,9 @@
 | Security & Privacy | 8 | 2 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
-| **Total** | **~136** | **~59** |
+| **Total** | **~136** | **~60** |
 
-**~70% complete. Top priorities to close the gap:**
+**~69% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell tool, custom tool builder)

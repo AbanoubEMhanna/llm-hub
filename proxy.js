@@ -34,6 +34,7 @@ const { parseSeed }        = require('./lib/seed');
 const { parseContextLength } = require('./lib/context-length');
 const { ToolCallCache }    = require('./lib/tool-cache');
 const { detectPromptInjection, formatInjectionWarning } = require('./lib/prompt-injection');
+const { applyProviderTokenParam } = require('./lib/provider-params');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § CONFIG & STORAGE
@@ -1408,6 +1409,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
         if (stop.length > 0)      body.stop   = stop;
         if (seed !== undefined)   body.seed   = seed;
         if (tools.length > 0)     body.tools  = tools;
+        applyProviderTokenParam(provider, body);
         streamFn = (cb) => streamHTTPS(cfg.hostname, cfg.chatPath, body, headers, cb);
       }
 
@@ -1801,7 +1803,7 @@ async function handleRequest(req, res) {
           return;
         }
 
-        const r = await httpsPost(cfg.hostname, cfg.chatPath, upstreamBody, headers);
+        const r = await httpsPost(cfg.hostname, cfg.chatPath, applyProviderTokenParam(provider, upstreamBody), headers);
         sendJSON(res, r.status || 502, r.data);
         return;
       }
