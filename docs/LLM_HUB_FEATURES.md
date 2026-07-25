@@ -205,7 +205,7 @@
 - [ ] 🔥 GitHub repository indexing — clone + embed all repo files
 - [x] ⚡ Auto-inject relevant chunks into every message (toggle)
 - [x] Chunk preview and manual editing UI
-- [ ] Hybrid search — keyword + vector (BM25)
+- [x] Hybrid search — keyword + vector (BM25)
 - [x] Multi-collection query — search across all collections at once
 - [ ] Re-embedding on model change
 - [x] Knowledge base stats panel — total chunks, sources, last updated
@@ -322,13 +322,13 @@
 | AI Agent & Tools | 7 | 7 |
 | Code-First Workflow | 6 | 11 |
 | Attachments & Multimodal | 8 | 2 |
-| RAG / Knowledge Base | 11 | 3 |
+| RAG / Knowledge Base | 12 | 2 |
 | Model Comparison | 9 | 0 |
 | Modern UI | 13 | 7 |
 | Security & Privacy | 8 | 2 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
-| **Total** | **~133** | **~61** |
+| **Total** | **~134** | **~60** |
 
 **~69% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)

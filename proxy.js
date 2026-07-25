@@ -24,7 +24,7 @@ const os         = require('os');
 const { URL }    = require('url');
 
 const { isPrivateHost }    = require('./lib/ssrf');
-const { chunkText, cosine: cosineSimilarity, computeStats: computeRagStats, rankChunks, removeChunk, replaceChunkText } = require('./lib/rag-utils');
+const { chunkText, cosine: cosineSimilarity, computeStats: computeRagStats, rankChunks, hybridRankChunks, removeChunk, replaceChunkText } = require('./lib/rag-utils');
 const { evaluate: calcEvaluate } = require('./lib/calculator');
 const { formatLogEntry, parseLogLines } = require('./lib/request-log');
 const { formatRunEntry, parseRunLines } = require('./lib/agent-history');
@@ -52,7 +52,7 @@ function loadConfig() {
         lmstudio: { host: 'localhost', port: 1234  },
       },
       tools: { enabled: true, built_in: ['datetime','calculator','web_search','fetch_url','run_javascript','rag_search'] },
-      rag: { enabled: true, embedding_provider: 'ollama', embedding_model: 'nomic-embed-text', chunk_size: 800, chunk_overlap: 100, top_k: 5 },
+      rag: { enabled: true, embedding_provider: 'ollama', embedding_model: 'nomic-embed-text', chunk_size: 800, chunk_overlap: 100, top_k: 5, hybrid_search: false },
       logging: { enabled: false },
       agentHistory: { enabled: false },
       mcp_servers: [],
@@ -467,7 +467,10 @@ class RagEngine {
     if (!targets.some(c => c.chunks?.length)) return [];
 
     const qEmbed = await this.embed(query);
-    return rankChunks(targets, qEmbed, topK || CONFIG.rag.top_k || 5);
+    const k = topK || CONFIG.rag.top_k || 5;
+    return CONFIG.rag.hybrid_search
+      ? hybridRankChunks(targets, qEmbed, query, k)
+      : rankChunks(targets, qEmbed, k);
   }
 }
 
