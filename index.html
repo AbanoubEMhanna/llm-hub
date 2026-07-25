@@ -53,6 +53,8 @@
       <div class="status-dot cloud-dot" id="b-together" title="Together AI — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>Together</span></div>
       <div class="status-dot cloud-dot" id="b-fireworks" title="Fireworks — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>Fireworks</span></div>
       <div class="status-dot cloud-dot" id="b-cohere" title="Cohere — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>Cohere</span></div>
+      <div class="status-dot cloud-dot" id="b-deepseek" title="DeepSeek — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>DeepSeek</span></div>
+      <div class="status-dot cloud-dot" id="b-cerebras" title="Cerebras — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>Cerebras</span></div>
     </div>
   </div>
 
@@ -889,6 +891,26 @@
           <button class="btn btn-sm" onclick="toggleKeyVisibility('key-cohere', this)">Show</button>
           <button class="btn btn-sm provider-test-btn" id="test-cohere" onclick="testProvider('cohere')" title="Ping Cohere with the current key">Test</button>
           <span class="provider-test-status" id="test-status-cohere" role="status" aria-live="polite" aria-atomic="true"></span>
+        </div>
+        <div class="api-key-row">
+          <label class="api-key-label">
+            <span class="provider-badge deepseek-badge">DeepSeek</span>
+            <span class="provider-hint">deepseek-chat, deepseek-reasoner…</span>
+          </label>
+          <input class="api-key-input" id="key-deepseek" type="password" placeholder="sk-…" autocomplete="off"/>
+          <button class="btn btn-sm" onclick="toggleKeyVisibility('key-deepseek', this)">Show</button>
+          <button class="btn btn-sm provider-test-btn" id="test-deepseek" onclick="testProvider('deepseek')" title="Ping DeepSeek with the current key">Test</button>
+          <span class="provider-test-status" id="test-status-deepseek" role="status" aria-live="polite" aria-atomic="true"></span>
+        </div>
+        <div class="api-key-row">
+          <label class="api-key-label">
+            <span class="provider-badge cerebras-badge">Cerebras</span>
+            <span class="provider-hint">Llama 3.1/3.3 at wafer-scale speed…</span>
+          </label>
+          <input class="api-key-input" id="key-cerebras" type="password" placeholder="csk-…" autocomplete="off"/>
+          <button class="btn btn-sm" onclick="toggleKeyVisibility('key-cerebras', this)">Show</button>
+          <button class="btn btn-sm provider-test-btn" id="test-cerebras" onclick="testProvider('cerebras')" title="Ping Cerebras with the current key">Test</button>
+          <span class="provider-test-status" id="test-status-cerebras" role="status" aria-live="polite" aria-atomic="true"></span>
         </div>
       </div>
       <div id="apikey-status" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
