@@ -41,6 +41,11 @@ test('parseNvidiaSmi defaults used to 0 when unparsable', () => {
   assert.equal(gpus[0].vram_used_mb, 0);
 });
 
+test('parseNvidiaSmi skips a GPU with a blank total-VRAM field instead of treating it as 0', () => {
+  const out = 'NVIDIA GeForce RTX 4090, , 1187\n';
+  assert.deepEqual(parseNvidiaSmi(out), []);
+});
+
 test('parseRocmSmi parses a single card', () => {
   const json = JSON.stringify({
     card0: { 'VRAM Total Memory (B)': '17179869184', 'VRAM Total Used Memory (B)': '1073741824' },
@@ -69,4 +74,11 @@ test('parseRocmSmi returns [] for invalid JSON', () => {
 test('parseRocmSmi skips cards missing a total field', () => {
   const json = JSON.stringify({ card0: { 'some other key': '123' } });
   assert.deepEqual(parseRocmSmi(json), []);
+});
+
+test('parseRocmSmi skips a card with a blank or whitespace-only total field instead of treating it as 0', () => {
+  const blank = JSON.stringify({ card0: { 'VRAM Total Memory (B)': '', 'VRAM Total Used Memory (B)': '1073741824' } });
+  const whitespace = JSON.stringify({ card0: { 'VRAM Total Memory (B)': '   ', 'VRAM Total Used Memory (B)': '1073741824' } });
+  assert.deepEqual(parseRocmSmi(blank), []);
+  assert.deepEqual(parseRocmSmi(whitespace), []);
 });

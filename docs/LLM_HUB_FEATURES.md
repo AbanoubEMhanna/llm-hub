@@ -317,22 +317,22 @@
 | Area | ✅ Done | ⬜ To Do |
 |------|---------|----------|
 | Providers & Connectivity | 16 | 2 |
-| Local Model Management | 9 | 6 |
+| Local Model Management | 11 | 3 |
 | Hardware Awareness | 8 | 4 |
-| Chat Interface | 21 | 3 |
+| Chat Interface | 27 | 4 |
 | Model Parameters | 11 | 1 |
-| AI Agent & Tools | 7 | 7 |
+| AI Agent & Tools | 8 | 8 |
 | Code-First Workflow | 6 | 11 |
 | Attachments & Multimodal | 8 | 2 |
 | RAG / Knowledge Base | 12 | 2 |
-| Model Comparison | 9 | 0 |
-| Modern UI | 13 | 7 |
+| Model Comparison | 8 | 1 |
+| Modern UI | 17 | 7 |
 | Security & Privacy | 8 | 2 |
 | Deployment | 8 | 6 |
-| Developer / Testing | 5 | 4 |
-| **Total** | **~137** | **~59** |
+| Developer / Testing | 6 | 5 |
+| **Total** | **154** | **58** |
 
-**~69% complete. Top priorities to close the gap:**
+**~73% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell tool, custom tool builder)

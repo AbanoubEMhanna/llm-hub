@@ -1199,14 +1199,13 @@ function runCommandCapture(cmd, args, timeoutMs = 3000) {
   });
 }
 
-/** Detect total GPU VRAM via `nvidia-smi` (NVIDIA) or `rocm-smi` (AMD). Returns [] if neither is present. */
+/** Detect total GPU VRAM via `nvidia-smi` (NVIDIA) and/or `rocm-smi` (AMD). Returns [] if neither is present. */
 async function detectGpus() {
-  const nvOut = await runCommandCapture('nvidia-smi', ['--query-gpu=name,memory.total,memory.used', '--format=csv,noheader,nounits']);
-  const nvGpus = parseNvidiaSmi(nvOut);
-  if (nvGpus.length) return nvGpus;
-
-  const rocmOut = await runCommandCapture('rocm-smi', ['--showmeminfo', 'vram', '--json']);
-  return parseRocmSmi(rocmOut);
+  const [nvOut, rocmOut] = await Promise.all([
+    runCommandCapture('nvidia-smi', ['--query-gpu=name,memory.total,memory.used', '--format=csv,noheader,nounits']),
+    runCommandCapture('rocm-smi', ['--showmeminfo', 'vram', '--json']),
+  ]);
+  return [...parseNvidiaSmi(nvOut), ...parseRocmSmi(rocmOut)];
 }
 
 let gpuInfoCache = { data: [], ts: 0 };
