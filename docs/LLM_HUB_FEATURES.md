@@ -32,7 +32,9 @@
 - [x] Together AI
 - [x] Fireworks AI
 - [x] Cohere
-- [ ] AI21 / Perplexity / DeepSeek / Cerebras
+- [x] DeepSeek
+- [x] Cerebras
+- [ ] AI21 / Perplexity
 - [x] ⚡ Provider usage cost estimator (token price × message count)
 
 ---
@@ -314,7 +316,7 @@
 
 | Area | ✅ Done | ⬜ To Do |
 |------|---------|----------|
-| Providers & Connectivity | 10 | 4 |
+| Providers & Connectivity | 16 | 2 |
 | Local Model Management | 9 | 6 |
 | Hardware Awareness | 7 | 5 |
 | Chat Interface | 21 | 3 |
@@ -328,7 +330,7 @@
 | Security & Privacy | 8 | 2 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 5 | 4 |
-| **Total** | **~134** | **~60** |
+| **Total** | **~136** | **~60** |
 
 **~69% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
@@ -339,4 +341,4 @@
 
 ---
 
-*Last updated: 2026-07-24. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-25. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*

@@ -34,6 +34,7 @@ const { parseSeed }        = require('./lib/seed');
 const { parseContextLength } = require('./lib/context-length');
 const { ToolCallCache }    = require('./lib/tool-cache');
 const { detectPromptInjection, formatInjectionWarning } = require('./lib/prompt-injection');
+const { applyProviderTokenParam } = require('./lib/provider-params');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § CONFIG & STORAGE
@@ -860,6 +861,8 @@ const CLOUD_PROVIDERS = {
   together:   { hostname: 'api.together.xyz',       modelsPath: '/v1/models',                chatPath: '/v1/chat/completions',                  keyProp: 'together' },
   fireworks:  { hostname: 'api.fireworks.ai',        modelsPath: '/inference/v1/models',      chatPath: '/inference/v1/chat/completions',         keyProp: 'fireworks' },
   cohere:     { hostname: 'api.cohere.com',          modelsPath: '/compatibility/v1/models',  chatPath: '/compatibility/v1/chat/completions',     keyProp: 'cohere' },
+  deepseek:   { hostname: 'api.deepseek.com',        modelsPath: '/v1/models',                chatPath: '/v1/chat/completions',                  keyProp: 'deepseek' },
+  cerebras:   { hostname: 'api.cerebras.ai',         modelsPath: '/v1/models',                chatPath: '/v1/chat/completions',                  keyProp: 'cerebras' },
 };
 
 
@@ -973,11 +976,13 @@ function resolveProvider(m) {
   if (m?.startsWith('together/'))   return 'together';
   if (m?.startsWith('fireworks/'))  return 'fireworks';
   if (m?.startsWith('cohere/'))     return 'cohere';
+  if (m?.startsWith('deepseek/'))   return 'deepseek';
+  if (m?.startsWith('cerebras/'))   return 'cerebras';
   const customMatch = m?.match(/^(custom_[^/]+)\//);
   if (customMatch && customProviderConfigs.has(customMatch[1])) return customMatch[1];
   return modelRegistry.get(m) || null;
 }
-function stripPrefix(m) { return m?.replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|together|fireworks|cohere|custom_[^/]+)\//, '') || m; }
+function stripPrefix(m) { return m?.replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|together|fireworks|cohere|deepseek|cerebras|custom_[^/]+)\//, '') || m; }
 
 async function fetchAllModels(apiKeys = {}, customProviders = []) {
   modelRegistry.clear();
@@ -1404,6 +1409,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
         if (stop.length > 0)      body.stop   = stop;
         if (seed !== undefined)   body.seed   = seed;
         if (tools.length > 0)     body.tools  = tools;
+        applyProviderTokenParam(provider, body);
         streamFn = (cb) => streamHTTPS(cfg.hostname, cfg.chatPath, body, headers, cb);
       }
 
@@ -1797,7 +1803,7 @@ async function handleRequest(req, res) {
           return;
         }
 
-        const r = await httpsPost(cfg.hostname, cfg.chatPath, upstreamBody, headers);
+        const r = await httpsPost(cfg.hostname, cfg.chatPath, applyProviderTokenParam(provider, upstreamBody), headers);
         sendJSON(res, r.status || 502, r.data);
         return;
       }
