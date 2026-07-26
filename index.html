@@ -606,9 +606,18 @@
       <div class="sys-mem-bar">
         <div class="sys-mem-fill" id="sys-ram-fill" style="width:0%"></div>
       </div>
+      <div id="sys-gpu-section" style="display:none">
+        <div class="sys-mem-row" style="margin-top:8px">
+          <span class="sys-mem-label" id="sys-gpu-label">GPU</span>
+          <span class="sys-mem-value" id="sys-gpu-text">—</span>
+        </div>
+        <div class="sys-mem-bar">
+          <div class="sys-mem-fill" id="sys-gpu-fill" style="width:0%"></div>
+        </div>
+      </div>
       <div id="sys-vram-section" style="display:none">
         <div class="sys-mem-row" style="margin-top:8px">
-          <span class="sys-mem-label">GPU VRAM</span>
+          <span class="sys-mem-label">GPU VRAM (loaded models)</span>
           <span class="sys-mem-value" id="sys-vram-text">—</span>
         </div>
         <div id="sys-vram-models" class="sys-vram-models"></div>
