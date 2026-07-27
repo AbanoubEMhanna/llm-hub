@@ -35,6 +35,7 @@ const { parseContextLength } = require('./lib/context-length');
 const { ToolCallCache }    = require('./lib/tool-cache');
 const { detectPromptInjection, formatInjectionWarning } = require('./lib/prompt-injection');
 const { applyProviderTokenParam } = require('./lib/provider-params');
+const { parseNvidiaSmi, parseRocmSmi } = require('./lib/gpu-info');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § CONFIG & STORAGE
@@ -1179,6 +1180,45 @@ async function getRunningModels() {
   return results;
 }
 
+/** Run a CLI tool and capture stdout; resolves '' on any failure (missing binary, timeout, non-zero exit). */
+function runCommandCapture(cmd, args, timeoutMs = 3000) {
+  return new Promise((resolve) => {
+    let proc;
+    try {
+      proc = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'ignore'] });
+    } catch {
+      resolve(''); return;
+    }
+    let out = '';
+    let done = false;
+    const finish = (result) => { if (!done) { done = true; resolve(result); } };
+    const timer = setTimeout(() => { try { proc.kill(); } catch {} finish(''); }, timeoutMs);
+    proc.stdout.on('data', (d) => { out += d; });
+    proc.on('error', () => { clearTimeout(timer); finish(''); });
+    proc.on('close', (code) => { clearTimeout(timer); finish(code === 0 ? out : ''); });
+  });
+}
+
+/** Detect total GPU VRAM via `nvidia-smi` (NVIDIA) and/or `rocm-smi` (AMD). Returns [] if neither is present. */
+async function detectGpus() {
+  const [nvOut, rocmOut] = await Promise.all([
+    runCommandCapture('nvidia-smi', ['--query-gpu=name,memory.total,memory.used', '--format=csv,noheader,nounits']),
+    runCommandCapture('rocm-smi', ['--showmeminfo', 'vram', '--json']),
+  ]);
+  return [...parseNvidiaSmi(nvOut), ...parseRocmSmi(rocmOut)];
+}
+
+let gpuInfoCache = { data: [], ts: 0 };
+const GPU_CACHE_MS = 10000;
+/** Cached wrapper around detectGpus() — nvidia-smi/rocm-smi are cheap but no need to re-spawn on every poll. */
+async function getGpuInfo() {
+  const now = Date.now();
+  if (now - gpuInfoCache.ts < GPU_CACHE_MS) return gpuInfoCache.data;
+  const data = await detectGpus();
+  gpuInfoCache = { data, ts: now };
+  return data;
+}
+
 /** Get system resource info */
 function getSystemInfo() {
   const totalMem = os.totalmem();
@@ -1650,7 +1690,8 @@ async function handleRequest(req, res) {
     // ── SYSTEM INFO (memory, CPU)
     if (req.method === 'GET' && url.pathname === '/v1/system') {
       const sysInfo = getSystemInfo();
-      const running = await getRunningModels();
+      const [running, gpus] = await Promise.all([getRunningModels(), getGpuInfo()]);
+      sysInfo.gpus = gpus;
       sendJSON(res, 200, { system: sysInfo, running_models: running });
       return;
     }

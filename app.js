@@ -6434,6 +6434,34 @@ function updateSystemDisplay() {
     fillEl.className = 'sys-mem-fill' + (m.usage_pct > 90 ? ' danger' : m.usage_pct > 75 ? ' warn' : '');
   }
 
+  // Detected GPU hardware (nvidia-smi / rocm-smi) — total VRAM capacity, distinct
+  // from the "loaded models" section below which only reflects what Ollama/LM
+  // Studio report as currently in use.
+  const gpuSection = document.getElementById('sys-gpu-section');
+  const gpuText    = document.getElementById('sys-gpu-text');
+  const gpuFill    = document.getElementById('sys-gpu-fill');
+  const gpuLabel   = document.getElementById('sys-gpu-label');
+  const gpus       = systemInfo.gpus || [];
+  if (gpuSection) {
+    if (gpus.length > 0) {
+      gpuSection.style.display = 'block';
+      const totalMb = gpus.reduce((sum, g) => sum + g.vram_total_mb, 0);
+      const usedMb  = gpus.reduce((sum, g) => sum + g.vram_used_mb, 0);
+      const pct = totalMb > 0 ? Math.round((usedMb / totalMb) * 100) : 0;
+      if (gpuLabel) gpuLabel.textContent = gpus.length > 1 ? `GPU (${gpus.length})` : 'GPU';
+      if (gpuText) {
+        gpuText.textContent = `${formatMM(usedMb * 1048576)} / ${formatMM(totalMb * 1048576)} (${pct}%)`;
+        gpuText.title = gpus.map(g => `${g.name}: ${formatMM(g.vram_used_mb * 1048576)} / ${formatMM(g.vram_total_mb * 1048576)}`).join('\n');
+      }
+      if (gpuFill) {
+        gpuFill.style.width = pct + '%';
+        gpuFill.className = 'sys-mem-fill' + (pct > 90 ? ' danger' : pct > 75 ? ' warn' : '');
+      }
+    } else {
+      gpuSection.style.display = 'none';
+    }
+  }
+
   // GPU VRAM — show only when models are actually loaded in GPU memory
   const vramSection = document.getElementById('sys-vram-section');
   const vramText    = document.getElementById('sys-vram-text');

@@ -65,7 +65,7 @@
 - [x] "Fits your system" optgroup — models filtered by available RAM
 - [x] Model benchmark runner — tokens/sec, TTFT, total time, ranked table
 - [x] Cloud API cost estimation — per-message USD cost
-- [ ] 🔥 Total GPU VRAM detection (nvidia-smi / rocm-smi integration)
+- [x] Total GPU VRAM detection (nvidia-smi / rocm-smi integration)
 - [ ] VRAM-aware load warning before pulling large models
 - [ ] CPU / GPU temperature display (where OS exposes it)
 - [ ] Performance dashboard — tokens/sec trend chart over time
@@ -317,22 +317,22 @@
 | Area | ✅ Done | ⬜ To Do |
 |------|---------|----------|
 | Providers & Connectivity | 16 | 2 |
-| Local Model Management | 9 | 6 |
-| Hardware Awareness | 7 | 5 |
-| Chat Interface | 21 | 3 |
+| Local Model Management | 11 | 3 |
+| Hardware Awareness | 8 | 4 |
+| Chat Interface | 27 | 4 |
 | Model Parameters | 11 | 1 |
-| AI Agent & Tools | 7 | 7 |
+| AI Agent & Tools | 8 | 8 |
 | Code-First Workflow | 6 | 11 |
 | Attachments & Multimodal | 8 | 2 |
 | RAG / Knowledge Base | 12 | 2 |
-| Model Comparison | 9 | 0 |
-| Modern UI | 13 | 7 |
+| Model Comparison | 8 | 1 |
+| Modern UI | 17 | 7 |
 | Security & Privacy | 8 | 2 |
 | Deployment | 8 | 6 |
-| Developer / Testing | 5 | 4 |
-| **Total** | **~136** | **~60** |
+| Developer / Testing | 6 | 5 |
+| **Total** | **154** | **58** |
 
-**~69% complete. Top priorities to close the gap:**
+**~73% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell tool, custom tool builder)
@@ -341,4 +341,4 @@
 
 ---
 
-*Last updated: 2026-07-25. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-26. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
