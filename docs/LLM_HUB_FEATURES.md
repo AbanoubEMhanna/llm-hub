@@ -66,7 +66,7 @@
 - [x] Model benchmark runner — tokens/sec, TTFT, total time, ranked table
 - [x] Cloud API cost estimation — per-message USD cost
 - [x] Total GPU VRAM detection (nvidia-smi / rocm-smi integration)
-- [ ] VRAM-aware load warning before pulling large models
+- [x] VRAM-aware load warning before pulling large models
 - [ ] CPU / GPU temperature display (where OS exposes it)
 - [ ] Performance dashboard — tokens/sec trend chart over time
 - [ ] Response latency histogram per model
@@ -318,7 +318,7 @@
 |------|---------|----------|
 | Providers & Connectivity | 16 | 2 |
 | Local Model Management | 11 | 3 |
-| Hardware Awareness | 8 | 4 |
+| Hardware Awareness | 9 | 3 |
 | Chat Interface | 27 | 4 |
 | Model Parameters | 11 | 1 |
 | AI Agent & Tools | 8 | 8 |
@@ -330,7 +330,7 @@
 | Security & Privacy | 8 | 2 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 6 | 5 |
-| **Total** | **154** | **58** |
+| **Total** | **155** | **57** |
 
 **~73% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
@@ -341,4 +341,4 @@
 
 ---
 
-*Last updated: 2026-07-26. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-27. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
