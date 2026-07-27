@@ -7033,9 +7033,32 @@ function renderModelLibrary(query = '') {
   }).join('');
 }
 
+// Warns before pulling a model too large for detected GPU VRAM (or, if no
+// GPU was detected, free system RAM). Returns false if the user backs out.
+function confirmLibraryPullFit(name, sizeLabel) {
+  if (!systemInfo || typeof estimateLoadFit !== 'function') return true;
+  const fit = estimateLoadFit(sizeLabel, {
+    gpus: systemInfo.gpus,
+    freeRamBytes: systemInfo.memory?.free,
+  });
+  if (!fit || fit.level === 'fit') return true;
+
+  const capacityLabel = formatMM(fit.capacityBytes);
+  const sourceLabel = fit.source === 'vram' ? 'available GPU VRAM' : 'free system RAM';
+  const verb = fit.level === 'no' ? 'will likely not fit in' : 'is close to the limit of';
+  return confirm(
+    `${name} (${sizeLabel}) ${verb} your ${sourceLabel} (${capacityLabel}).\n\n` +
+    `Pulling it may fail to load or run very slowly. Continue anyway?`
+  );
+}
+
 function pullFromLibrary(name, btnEl) {
   const pullBtn = document.getElementById('mm-pull-btn');
   if (pullBtn?.disabled) return;
+
+  const entry = OLLAMA_LIBRARY.find(m => m.name === name);
+  if (entry && !confirmLibraryPullFit(name, entry.size)) return;
+
   switchModelManagerTab('installed');
   const input = document.getElementById('mm-pull-input');
   input.value = name;
