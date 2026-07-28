@@ -2612,6 +2612,17 @@ function enhanceCodeBlocks(scope = document) {
     const diffPane = document.createElement('div');
     diffPane.className = 'artifact-pane artifact-diff-pane';
 
+    const diffToolbar = document.createElement('div');
+    diffToolbar.className = 'artifact-editor-toolbar';
+    diffToolbar.innerHTML = `
+      <span class="artifact-lang-badge">DIFF</span>
+      <button class="artifact-editor-btn artifact-reset-btn" title="Reset to original">↺ Reset</button>`;
+
+    const diffBody = document.createElement('div');
+    diffBody.className = 'artifact-diff-body';
+    diffPane.appendChild(diffToolbar);
+    diffPane.appendChild(diffBody);
+
     const editorToolbar = document.createElement('div');
     editorToolbar.className = 'artifact-editor-toolbar';
     editorToolbar.innerHTML = `
@@ -2645,12 +2656,17 @@ function enhanceCodeBlocks(scope = document) {
     // ── Diff render helper — original vs. current editor contents ─────────────
     function renderArtifactDiff() {
       if (textarea.value === originalCode) {
-        diffPane.innerHTML = '<div class="artifact-diff-empty">No changes yet — edit the code to see a diff.</div>';
+        diffBody.innerHTML = '<div class="artifact-diff-empty">No changes yet — edit the code to see a diff.</div>';
         return;
       }
       const parts = computeWordDiff(originalCode, textarea.value);
-      diffPane.innerHTML = `<pre class="diff-text artifact-diff-text">${renderDiff(parts)}</pre>`;
+      diffBody.innerHTML = `<pre class="diff-text artifact-diff-text">${renderDiff(parts)}</pre>`;
     }
+
+    diffToolbar.querySelector('.artifact-reset-btn').onclick = () => {
+      textarea.value = originalCode;
+      renderArtifactDiff();
+    };
 
     // ── Tab switching — auto-run when going to Preview ────────────────────────
     tabs.querySelectorAll('.artifact-tab').forEach(btn => {
@@ -2678,7 +2694,6 @@ function enhanceCodeBlocks(scope = document) {
 
     editorToolbar.querySelector('.artifact-reset-btn').onclick = () => {
       textarea.value = originalCode;
-      if (diffPane.classList.contains('active')) renderArtifactDiff();
     };
 
     editorToolbar.querySelector('.artifact-copy-btn').onclick = (e) => {
