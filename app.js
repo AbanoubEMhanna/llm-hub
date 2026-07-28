@@ -2594,7 +2594,8 @@ function enhanceCodeBlocks(scope = document) {
     tabs.className = 'artifact-tabs';
     tabs.innerHTML = `
       <button class="artifact-tab active" data-tab="preview">🖼 Preview</button>
-      <button class="artifact-tab" data-tab="code">✏️ Edit</button>`;
+      <button class="artifact-tab" data-tab="code">✏️ Edit</button>
+      <button class="artifact-tab" data-tab="diff">🆚 Diff</button>`;
     wrap.appendChild(tabs);
 
     // ── Preview pane ──────────────────────────────────────────────────────────
@@ -2606,6 +2607,10 @@ function enhanceCodeBlocks(scope = document) {
     // ── Code / editor pane ────────────────────────────────────────────────────
     const codePane = document.createElement('div');
     codePane.className = 'artifact-pane artifact-editor-pane';
+
+    // ── Diff pane — original vs. edited code ──────────────────────────────────
+    const diffPane = document.createElement('div');
+    diffPane.className = 'artifact-pane artifact-diff-pane';
 
     const editorToolbar = document.createElement('div');
     editorToolbar.className = 'artifact-editor-toolbar';
@@ -2628,6 +2633,7 @@ function enhanceCodeBlocks(scope = document) {
 
     wrap.appendChild(previewPane);
     wrap.appendChild(codePane);
+    wrap.appendChild(diffPane);
 
     // ── Re-render helper ──────────────────────────────────────────────────────
     function rerender() {
@@ -2636,15 +2642,27 @@ function enhanceCodeBlocks(scope = document) {
       currentPreviewEl = newEl;
     }
 
+    // ── Diff render helper — original vs. current editor contents ─────────────
+    function renderArtifactDiff() {
+      if (textarea.value === originalCode) {
+        diffPane.innerHTML = '<div class="artifact-diff-empty">No changes yet — edit the code to see a diff.</div>';
+        return;
+      }
+      const parts = computeWordDiff(originalCode, textarea.value);
+      diffPane.innerHTML = `<pre class="diff-text artifact-diff-text">${renderDiff(parts)}</pre>`;
+    }
+
     // ── Tab switching — auto-run when going to Preview ────────────────────────
     tabs.querySelectorAll('.artifact-tab').forEach(btn => {
       btn.onclick = () => {
         tabs.querySelectorAll('.artifact-tab').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        const showPreview = btn.dataset.tab === 'preview';
-        previewPane.classList.toggle('active', showPreview);
-        codePane.classList.toggle('active', !showPreview);
-        if (showPreview) rerender();
+        const tab = btn.dataset.tab;
+        previewPane.classList.toggle('active', tab === 'preview');
+        codePane.classList.toggle('active', tab === 'code');
+        diffPane.classList.toggle('active', tab === 'diff');
+        if (tab === 'preview') rerender();
+        if (tab === 'diff') renderArtifactDiff();
       };
     });
 
@@ -2655,10 +2673,12 @@ function enhanceCodeBlocks(scope = document) {
       tabs.querySelector('[data-tab="preview"]').classList.add('active');
       previewPane.classList.add('active');
       codePane.classList.remove('active');
+      diffPane.classList.remove('active');
     };
 
     editorToolbar.querySelector('.artifact-reset-btn').onclick = () => {
       textarea.value = originalCode;
+      if (diffPane.classList.contains('active')) renderArtifactDiff();
     };
 
     editorToolbar.querySelector('.artifact-copy-btn').onclick = (e) => {

@@ -872,6 +872,16 @@ input[type=range]::-webkit-slider-thumb {
   background: var(--bg); color: var(--text); tab-size: 2;
 }
 
+/* Artifact diff pane — original vs. edited code */
+.artifact-diff-pane {
+  background: var(--bg); min-height: 200px; max-height: 460px; overflow: auto; padding: 12px;
+}
+.artifact-diff-text { font-size: 12px; }
+.artifact-diff-empty {
+  color: var(--muted); font-size: 12px; font-family: var(--mono);
+  padding: 24px 12px; text-align: center;
+}
+
 /* Typing dots */
 .typing { display: flex; gap: 5px; padding: 4px 0; align-items: center; height: 24px; }
 .typing span {
