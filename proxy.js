@@ -36,6 +36,7 @@ const { ToolCallCache }    = require('./lib/tool-cache');
 const { detectPromptInjection, formatInjectionWarning } = require('./lib/prompt-injection');
 const { applyProviderTokenParam } = require('./lib/provider-params');
 const { parseNvidiaSmi, parseRocmSmi } = require('./lib/gpu-info');
+const { validateCustomTool, buildCustomToolDef, sanitizeCustomTools } = require('./lib/custom-tools');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § CONFIG & STORAGE
@@ -701,6 +702,83 @@ const builtInExecutors = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § CUSTOM TOOLS (user-defined, HTTP handler — see CONFIG.custom_tools)
+// ─────────────────────────────────────────────────────────────────────────────
+// Same SSRF/timeout/size-cap protections as fetch_url: the handler URL is
+// user-supplied, so it's treated as untrusted-destination the same way.
+
+function callCustomTool(tool, args) {
+  return new Promise((resolve) => {
+    const TIMEOUT_MS = 10000;
+    const MAX_BYTES  = 1024 * 1024; // 1MB
+
+    let parsed;
+    try {
+      parsed = new URL(tool.url);
+    } catch (e) {
+      resolve(JSON.stringify({ error: `Invalid handler URL: ${e.message}` }));
+      return;
+    }
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      resolve(JSON.stringify({ error: `Unsupported protocol: ${parsed.protocol}` }));
+      return;
+    }
+    if (isPrivateHost(parsed.hostname)) {
+      resolve(JSON.stringify({ error: `Blocked: cannot call private/local addresses (${parsed.hostname})` }));
+      return;
+    }
+
+    const method = (tool.method || 'POST').toUpperCase();
+    if (method === 'GET') {
+      for (const [k, v] of Object.entries(args || {})) {
+        parsed.searchParams.set(k, typeof v === 'string' ? v : JSON.stringify(v));
+      }
+    }
+    const payload = method === 'POST' ? JSON.stringify({ arguments: args || {} }) : null;
+    const mod = parsed.protocol === 'https:' ? https : http;
+    const req = mod.request(parsed, {
+      method,
+      timeout: TIMEOUT_MS,
+      headers: {
+        'User-Agent': 'LocalLLMHub/3.1',
+        ...(payload ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } : {}),
+      },
+    }, (res) => {
+      let body = '';
+      let bytes = 0;
+      let aborted = false;
+      res.on('data', (c) => {
+        if (aborted) return;
+        bytes += c.length;
+        if (bytes > MAX_BYTES) {
+          aborted = true;
+          req.destroy();
+          resolve(JSON.stringify({ error: `Response exceeded ${MAX_BYTES} bytes — aborted` }));
+          return;
+        }
+        body += c;
+      });
+      res.on('end', () => {
+        if (aborted) return;
+        if (res.statusCode >= 400) {
+          resolve(JSON.stringify({ error: `Handler returned HTTP ${res.statusCode}`, body: body.slice(0, 2000) }));
+          return;
+        }
+        try {
+          resolve(JSON.stringify(JSON.parse(body)));
+        } catch {
+          resolve(JSON.stringify({ result: body.slice(0, 4000) }));
+        }
+      });
+    });
+    req.on('timeout', () => { req.destroy(); resolve(JSON.stringify({ error: `Custom tool "${tool.name}" timed out after ${TIMEOUT_MS}ms` })); });
+    req.on('error', (e) => resolve(JSON.stringify({ error: e.message })));
+    if (payload) req.write(payload);
+    req.end();
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § MCP STDIO CLIENT
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -772,15 +850,17 @@ class MCPStdioClient {
 
 class ToolRegistry {
   constructor() {
-    this.mcpClients  = new Map();
-    this.mcpToolMap  = new Map();
-    this.allToolDefs = [];
+    this.mcpClients     = new Map();
+    this.mcpToolMap     = new Map();
+    this.customToolMap  = new Map();
+    this.allToolDefs    = [];
   }
 
   async init() {
     this.allToolDefs = [];
     this.mcpClients.clear();
     this.mcpToolMap.clear();
+    this.customToolMap.clear();
 
     const enabled = CONFIG.tools?.built_in || Object.keys(BUILT_IN_DEFS);
     for (const name of enabled) {
@@ -808,6 +888,13 @@ class ToolRegistry {
         console.error(`[MCP] ❌ ${srv.name}: ${e.message}`);
       }
     }
+
+    const reserved = new Set(this.allToolDefs.map(t => t.name));
+    for (const tool of sanitizeCustomTools(CONFIG.custom_tools, reserved)) {
+      this.customToolMap.set(tool.name, tool);
+      this.allToolDefs.push(buildCustomToolDef(tool));
+    }
+
     console.log(`[Tools] ${this.allToolDefs.length} total`);
   }
 
@@ -821,6 +908,7 @@ class ToolRegistry {
   async execute(name, args) {
     const srvName = this.mcpToolMap.get(name);
     if (srvName) return await this.mcpClients.get(srvName).callTool(name, args);
+    if (this.customToolMap.has(name)) return await callCustomTool(this.customToolMap.get(name), args);
     if (builtInExecutors[name]) {
       const r = await builtInExecutors[name](args);
       return typeof r === 'string' ? r : JSON.stringify(r);

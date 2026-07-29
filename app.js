@@ -3062,7 +3062,7 @@ function openApiKeySettings() {
 }
 
 function switchSettingsTab(tab) {
-  ['general', 'config', 'apikeys', 'appearance', 'backup', 'voice', 'tools', 'rag', 'logs', 'agent-history'].forEach(t => {
+  ['general', 'config', 'apikeys', 'appearance', 'backup', 'voice', 'tools', 'custom-tools', 'rag', 'logs', 'agent-history'].forEach(t => {
     document.getElementById(`settings-panel-${t}`).style.display = t === tab ? '' : 'none';
     document.getElementById(`settings-footer-${t}`).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById(`tab-${t}`);
@@ -3073,6 +3073,7 @@ function switchSettingsTab(tab) {
   if (tab === 'apikeys')    renderCustomProvidersList();
   if (tab === 'voice')      initTtsVoiceSelect();
   if (tab === 'tools')      loadToolsSettings();
+  if (tab === 'custom-tools') loadCustomToolsSettings();
   if (tab === 'rag')        loadRagSettings();
   if (tab === 'logs')       loadLogsSettings();
   if (tab === 'agent-history') loadAgentHistorySettings();
@@ -3617,6 +3618,152 @@ async function saveToolsSettings() {
     const data = await saveRes.json();
     if (!saveRes.ok) throw new Error(data.error || 'save failed');
     toast('Tools settings saved', 'success');
+    closeModal('config-modal');
+    await loadTools();
+  } catch (e) {
+    if (statusEl) { statusEl.textContent = e.message; statusEl.style.color = 'var(--red)'; }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § CUSTOM TOOLS SETTINGS TAB
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CUSTOM_TOOL_NAME_RE = /^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/;
+let _customToolsDraft = [];
+
+async function loadCustomToolsSettings() {
+  const statusEl = document.getElementById('custom-tools-panel-status');
+  try {
+    const res = await fetch(`${PROXY}/v1/config`);
+    const cfg = await res.json();
+    _customToolsDraft = Array.isArray(cfg.custom_tools) ? cfg.custom_tools.slice() : [];
+    cancelEditCustomTool();
+    renderCustomToolsList();
+    if (statusEl) statusEl.textContent = '';
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Failed to load config: ' + e.message;
+  }
+}
+
+function renderCustomToolsList() {
+  const container = document.getElementById('custom-tools-list');
+  if (!container) return;
+  if (!_customToolsDraft.length) {
+    container.innerHTML = '<div class="cp-empty">No custom tools added yet.</div>';
+    return;
+  }
+  container.innerHTML = _customToolsDraft.map((t, i) => `
+    <div class="cp-row">
+      <div class="cp-info">
+        <span class="cp-name">${escHtml(t.name)}</span>
+        <span class="cp-url">${escHtml(t.method || 'POST')} ${escHtml(t.url)}</span>
+        <span class="cp-badge ${t.enabled === false ? 'no-key' : 'key-set'}">${t.enabled === false ? 'disabled' : 'enabled'}</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" onclick="editCustomTool(${i})">Edit</button>
+        <button class="btn btn-sm" onclick="deleteCustomTool(${i})">Remove</button>
+      </div>
+    </div>`).join('');
+}
+
+function _readCustomToolForm() {
+  const name        = (document.getElementById('ct-name-input')?.value || '').trim();
+  const description = (document.getElementById('ct-description-input')?.value || '').trim();
+  const url          = (document.getElementById('ct-url-input')?.value || '').trim();
+  const method       = document.getElementById('ct-method-input')?.value || 'POST';
+  const schemaRaw    = (document.getElementById('ct-schema-input')?.value || '').trim();
+  const enabled      = document.getElementById('ct-enabled-input')?.classList.contains('on') ?? true;
+
+  if (!name || !CUSTOM_TOOL_NAME_RE.test(name)) {
+    return { error: 'Name must start with a letter/underscore and contain only letters, numbers, underscores.' };
+  }
+  if (!description) return { error: 'Description is required.' };
+  try { new URL(url); } catch { return { error: 'Handler URL must be a valid http:// or https:// URL.' }; }
+  let input_schema;
+  try {
+    input_schema = schemaRaw ? JSON.parse(schemaRaw) : { type: 'object', properties: {} };
+  } catch (e) {
+    return { error: 'JSON schema is invalid: ' + e.message };
+  }
+  if (typeof input_schema !== 'object' || Array.isArray(input_schema)) {
+    return { error: 'JSON schema must be an object.' };
+  }
+  return { tool: { name, description, url, method, input_schema, enabled } };
+}
+
+function addOrUpdateCustomTool() {
+  const statusEl = document.getElementById('custom-tools-panel-status');
+  const { tool, error } = _readCustomToolForm();
+  if (error) {
+    if (statusEl) { statusEl.textContent = error; statusEl.style.color = 'var(--red)'; }
+    return;
+  }
+  const editIndex = document.getElementById('ct-edit-index')?.value;
+  const idx = editIndex === '' || editIndex === undefined ? -1 : parseInt(editIndex, 10);
+  const collidesWith = _customToolsDraft.findIndex((t, i) => t.name === tool.name && i !== idx);
+  if (collidesWith !== -1) {
+    if (statusEl) { statusEl.textContent = `A tool named "${tool.name}" already exists.`; statusEl.style.color = 'var(--red)'; }
+    return;
+  }
+  if (idx >= 0 && idx < _customToolsDraft.length) {
+    _customToolsDraft[idx] = tool;
+  } else {
+    _customToolsDraft.push(tool);
+  }
+  cancelEditCustomTool();
+  renderCustomToolsList();
+  if (statusEl) { statusEl.textContent = 'Tool staged — click Save to persist.'; statusEl.style.color = 'var(--muted)'; }
+}
+
+function editCustomTool(index) {
+  const tool = _customToolsDraft[index];
+  if (!tool) return;
+  document.getElementById('ct-edit-index').value = String(index);
+  document.getElementById('ct-name-input').value = tool.name || '';
+  document.getElementById('ct-description-input').value = tool.description || '';
+  document.getElementById('ct-url-input').value = tool.url || '';
+  document.getElementById('ct-method-input').value = tool.method || 'POST';
+  document.getElementById('ct-schema-input').value = JSON.stringify(tool.input_schema || {}, null, 2);
+  document.getElementById('ct-enabled-input').classList.toggle('on', tool.enabled !== false);
+  document.getElementById('custom-tool-form-label').textContent = `Editing "${tool.name}"`;
+  document.getElementById('ct-submit-btn').textContent = 'Update Tool';
+  document.getElementById('ct-cancel-edit-btn').style.display = '';
+}
+
+function cancelEditCustomTool() {
+  document.getElementById('ct-edit-index').value = '';
+  document.getElementById('ct-name-input').value = '';
+  document.getElementById('ct-description-input').value = '';
+  document.getElementById('ct-url-input').value = '';
+  document.getElementById('ct-method-input').value = 'POST';
+  document.getElementById('ct-schema-input').value = '';
+  document.getElementById('ct-enabled-input').classList.add('on');
+  document.getElementById('custom-tool-form-label').textContent = 'Add a Tool';
+  document.getElementById('ct-submit-btn').textContent = 'Add Tool';
+  document.getElementById('ct-cancel-edit-btn').style.display = 'none';
+}
+
+function deleteCustomTool(index) {
+  _customToolsDraft.splice(index, 1);
+  cancelEditCustomTool();
+  renderCustomToolsList();
+}
+
+async function saveCustomToolsSettings() {
+  const statusEl = document.getElementById('custom-tools-panel-status');
+  try {
+    const res = await fetch(`${PROXY}/v1/config`);
+    const cfg = await res.json();
+    cfg.custom_tools = _customToolsDraft;
+    const saveRes = await fetch(`${PROXY}/v1/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
+    });
+    const data = await saveRes.json();
+    if (!saveRes.ok) throw new Error(data.error || 'save failed');
+    toast('Custom tools saved', 'success');
     closeModal('config-modal');
     await loadTools();
   } catch (e) {

@@ -38,6 +38,8 @@
     "enabled": false
   },
 
+  "custom_tools": [],
+
   "mcp_servers": [
     {
       "name": "filesystem",

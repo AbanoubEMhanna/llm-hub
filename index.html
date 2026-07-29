@@ -738,6 +738,7 @@
       <button class="settings-tab" id="tab-voice" onclick="switchSettingsTab('voice')">Voice</button>
       <button class="settings-tab" id="tab-backup" onclick="switchSettingsTab('backup')">Backup</button>
       <button class="settings-tab" id="tab-tools" onclick="switchSettingsTab('tools')">Tools</button>
+      <button class="settings-tab" id="tab-custom-tools" onclick="switchSettingsTab('custom-tools')">Custom Tools</button>
       <button class="settings-tab" id="tab-rag" onclick="switchSettingsTab('rag')">RAG</button>
       <button class="settings-tab" id="tab-logs" onclick="switchSettingsTab('logs')">Logs</button>
       <button class="settings-tab" id="tab-agent-history" onclick="switchSettingsTab('agent-history')">Agent History</button>
@@ -1120,6 +1121,45 @@
     <div class="modal-footer" id="settings-footer-tools" style="display:none">
       <button class="btn" onclick="closeModal('config-modal')">Cancel</button>
       <button class="btn primary" onclick="saveToolsSettings()">Save</button>
+    </div>
+
+    <!-- Tab: Custom Tools -->
+    <div class="modal-body" id="settings-panel-custom-tools" style="display:none">
+      <p style="color:var(--muted);font-size:12px;margin-bottom:16px">
+        Define your own tools the model can call during agent mode. Each one forwards its arguments as JSON
+        to an HTTP handler URL you control, and the handler's response is returned to the model. Same SSRF
+        protection as the built-in <code style="font-family:var(--mono)">fetch_url</code> tool — private/local
+        addresses are blocked.
+      </p>
+
+      <div class="appearance-section-label" style="margin-bottom:8px">Your Tools</div>
+      <div id="custom-tools-list" style="margin-bottom:18px"></div>
+
+      <div class="appearance-section-label" style="margin-bottom:8px" id="custom-tool-form-label">Add a Tool</div>
+      <input type="hidden" id="ct-edit-index" value="">
+      <div style="display:grid;grid-template-columns:1fr 100px;gap:8px;margin-bottom:8px">
+        <input type="text" class="model-select" id="ct-name-input" style="font-size:12px" placeholder="tool_name (letters, numbers, underscores)"/>
+        <select class="model-select" id="ct-method-input" style="font-size:12px">
+          <option value="POST">POST</option>
+          <option value="GET">GET</option>
+        </select>
+      </div>
+      <input type="text" class="model-select" id="ct-description-input" style="font-size:12px;width:100%;margin-bottom:8px" placeholder="Description — what does this tool do?"/>
+      <input type="text" class="model-select" id="ct-url-input" style="font-size:12px;width:100%;margin-bottom:8px" placeholder="https://your-handler.example.com/tool"/>
+      <textarea class="model-select" id="ct-schema-input" style="font-size:12px;width:100%;height:90px;font-family:var(--mono);resize:vertical;margin-bottom:8px" placeholder='{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]}'></textarea>
+      <label class="tool-toggle" style="margin-bottom:10px">
+        <div class="toggle on" id="ct-enabled-input" onclick="this.classList.toggle('on')"></div>
+        <span><strong style="font-size:12px">Enabled</strong></span>
+      </label>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="btn btn-sm primary" id="ct-submit-btn" onclick="addOrUpdateCustomTool()">Add Tool</button>
+        <button class="btn btn-sm" id="ct-cancel-edit-btn" style="display:none" onclick="cancelEditCustomTool()">Cancel Edit</button>
+      </div>
+      <div id="custom-tools-panel-status" style="margin-top:6px;font-size:12px;color:var(--muted)"></div>
+    </div>
+    <div class="modal-footer" id="settings-footer-custom-tools" style="display:none">
+      <button class="btn" onclick="closeModal('config-modal')">Cancel</button>
+      <button class="btn primary" onclick="saveCustomToolsSettings()">Save</button>
     </div>
 
     <!-- Tab: RAG -->
