@@ -163,7 +163,7 @@
 - [x] Live code editing inside artifact preview — edit + re-render inline
 - [x] Code / text file attachment — drag-and-drop or click to attach `.js`, `.py`, `.ts`, etc.
 - [ ] 🔥 🏗️ File tree sidebar — browse local files via MCP filesystem server
-- [ ] 🔥 Diff viewer — before/after code comparison with syntax highlighting
+- [x] 🔥 Diff viewer — before/after code comparison with syntax highlighting
 - [ ] 🔥 Git integration — show diff, stage, commit, PR review in-app
 - [ ] ⚡ Copy code → file save dialog (write directly to disk via MCP)
 - [ ] Terminal pane — run shell commands inline, see output in chat
@@ -322,7 +322,7 @@
 | Chat Interface | 27 | 4 |
 | Model Parameters | 11 | 1 |
 | AI Agent & Tools | 8 | 8 |
-| Code-First Workflow | 6 | 11 |
+| Code-First Workflow | 7 | 10 |
 | Attachments & Multimodal | 8 | 2 |
 | RAG / Knowledge Base | 12 | 2 |
 | Model Comparison | 8 | 1 |
@@ -330,10 +330,10 @@
 | Security & Privacy | 8 | 2 |
 | Deployment | 8 | 6 |
 | Developer / Testing | 6 | 5 |
-| **Total** | **155** | **57** |
+| **Total** | **156** | **56** |
 
-**~73% complete. Top priorities to close the gap:**
-1. 🔥 Code-first workflow (file tree, multi-file context, diff viewer, git integration)
+**~74% complete. Top priorities to close the gap:**
+1. 🔥 Code-first workflow (file tree, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell tool, custom tool builder)
 4. 🔥 Provider health monitoring + more cloud providers
@@ -341,4 +341,4 @@
 
 ---
 
-*Last updated: 2026-07-27. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-28. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
