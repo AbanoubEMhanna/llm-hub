@@ -287,7 +287,7 @@
 - [x] `docker-compose.yml` — LLM Hub + Ollama in a single stack
 - [x] Env var overrides — PORT, HOST, STORAGE_DIR, OLLAMA_HOST/PORT
 - [x] `GET /health` endpoint with provider status JSON
-- [ ] 🔥 ⚡ Published Docker image on Docker Hub / GHCR
+- [x] 🔥 ⚡ Published Docker image on Docker Hub / GHCR
 - [ ] ⚡ Reverse proxy config examples (nginx, Caddy, Traefik)
 - [ ] `npx llm-hub` zero-install launcher
 - [ ] 🏗️ Desktop app — Electron or Tauri wrapper
@@ -328,17 +328,17 @@
 | Model Comparison | 8 | 1 |
 | Modern UI | 17 | 7 |
 | Security & Privacy | 8 | 2 |
-| Deployment | 8 | 6 |
+| Deployment | 9 | 5 |
 | Developer / Testing | 6 | 5 |
-| **Total** | **157** | **55** |
+| **Total** | **158** | **54** |
 
-**~74% complete. Top priorities to close the gap:**
+**~75% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell tool)
 4. 🔥 Provider health monitoring + more cloud providers
-5. 🔥 Published Docker image + integration / E2E tests
+5. 🔥 Integration / E2E tests for HTTP endpoints
 
 ---
 
-*Last updated: 2026-07-29. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-30. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
