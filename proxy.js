@@ -23,7 +23,7 @@ const crypto     = require('crypto');
 const os         = require('os');
 const { URL }    = require('url');
 
-const { isPrivateHost }    = require('./lib/ssrf');
+const { isPrivateHost, resolveSafeAddress } = require('./lib/ssrf');
 const { chunkText, cosine: cosineSimilarity, computeStats: computeRagStats, rankChunks, hybridRankChunks, removeChunk, replaceChunkText } = require('./lib/rag-utils');
 const { evaluate: calcEvaluate } = require('./lib/calculator');
 const { formatLogEntry, parseLogLines } = require('./lib/request-log');
@@ -36,6 +36,7 @@ const { ToolCallCache }    = require('./lib/tool-cache');
 const { detectPromptInjection, formatInjectionWarning } = require('./lib/prompt-injection');
 const { applyProviderTokenParam } = require('./lib/provider-params');
 const { parseNvidiaSmi, parseRocmSmi } = require('./lib/gpu-info');
+const { validateCustomTool, buildCustomToolDef, sanitizeCustomTools } = require('./lib/custom-tools');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § CONFIG & STORAGE
@@ -701,6 +702,94 @@ const builtInExecutors = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § CUSTOM TOOLS (user-defined, HTTP handler — see CONFIG.custom_tools)
+// ─────────────────────────────────────────────────────────────────────────────
+// Same SSRF/timeout/size-cap protections as fetch_url: the handler URL is
+// user-supplied, so it's treated as untrusted-destination the same way.
+
+async function callCustomTool(tool, args) {
+  const TIMEOUT_MS = 10000;
+  const MAX_BYTES  = 1024 * 1024; // 1MB
+
+  let parsed;
+  try {
+    parsed = new URL(tool.url);
+  } catch (e) {
+    return JSON.stringify({ error: `Invalid handler URL: ${e.message}` });
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    return JSON.stringify({ error: `Unsupported protocol: ${parsed.protocol}` });
+  }
+
+  let resolvedAddress;
+  try {
+    resolvedAddress = await resolveSafeAddress(parsed.hostname);
+  } catch (e) {
+    return JSON.stringify({ error: `Blocked: ${e.message}` });
+  }
+
+  return new Promise((resolve) => {
+    const method = (tool.method || 'POST').toUpperCase();
+    if (method === 'GET') {
+      for (const [k, v] of Object.entries(args || {})) {
+        parsed.searchParams.set(k, typeof v === 'string' ? v : JSON.stringify(v));
+      }
+    }
+    const payload = method === 'POST' ? JSON.stringify({ arguments: args || {} }) : null;
+    const mod = parsed.protocol === 'https:' ? https : http;
+    // Connect to the pre-resolved, SSRF-checked address (not the hostname) so a
+    // DNS answer can't change between the check above and the actual connect —
+    // while still sending the original Host header / TLS SNI for the handler.
+    const req = mod.request({
+      protocol: parsed.protocol,
+      hostname: resolvedAddress,
+      port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+      path: `${parsed.pathname}${parsed.search}`,
+      servername: parsed.protocol === 'https:' ? parsed.hostname : undefined,
+      method,
+      timeout: TIMEOUT_MS,
+      headers: {
+        'User-Agent': 'LocalLLMHub/3.1',
+        Host: parsed.host,
+        ...(payload ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } : {}),
+      },
+    }, (res) => {
+      const chunks = [];
+      let bytes = 0;
+      let aborted = false;
+      res.on('data', (c) => {
+        if (aborted) return;
+        bytes += c.length;
+        if (bytes > MAX_BYTES) {
+          aborted = true;
+          req.destroy();
+          resolve(JSON.stringify({ error: `Response exceeded ${MAX_BYTES} bytes — aborted` }));
+          return;
+        }
+        chunks.push(c);
+      });
+      res.on('end', () => {
+        if (aborted) return;
+        const body = Buffer.concat(chunks).toString('utf8');
+        if (res.statusCode >= 400) {
+          resolve(JSON.stringify({ error: `Handler returned HTTP ${res.statusCode}`, body: body.slice(0, 2000) }));
+          return;
+        }
+        try {
+          resolve(JSON.stringify(JSON.parse(body)));
+        } catch {
+          resolve(JSON.stringify({ result: body.slice(0, 4000) }));
+        }
+      });
+    });
+    req.on('timeout', () => { req.destroy(); resolve(JSON.stringify({ error: `Custom tool "${tool.name}" timed out after ${TIMEOUT_MS}ms` })); });
+    req.on('error', (e) => resolve(JSON.stringify({ error: e.message })));
+    if (payload) req.write(payload);
+    req.end();
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § MCP STDIO CLIENT
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -772,15 +861,17 @@ class MCPStdioClient {
 
 class ToolRegistry {
   constructor() {
-    this.mcpClients  = new Map();
-    this.mcpToolMap  = new Map();
-    this.allToolDefs = [];
+    this.mcpClients     = new Map();
+    this.mcpToolMap     = new Map();
+    this.customToolMap  = new Map();
+    this.allToolDefs    = [];
   }
 
   async init() {
     this.allToolDefs = [];
     this.mcpClients.clear();
     this.mcpToolMap.clear();
+    this.customToolMap.clear();
 
     const enabled = CONFIG.tools?.built_in || Object.keys(BUILT_IN_DEFS);
     for (const name of enabled) {
@@ -808,6 +899,13 @@ class ToolRegistry {
         console.error(`[MCP] ❌ ${srv.name}: ${e.message}`);
       }
     }
+
+    const reserved = new Set(this.allToolDefs.map(t => t.name));
+    for (const tool of sanitizeCustomTools(CONFIG.custom_tools, reserved)) {
+      this.customToolMap.set(tool.name, tool);
+      this.allToolDefs.push(buildCustomToolDef(tool));
+    }
+
     console.log(`[Tools] ${this.allToolDefs.length} total`);
   }
 
@@ -821,6 +919,7 @@ class ToolRegistry {
   async execute(name, args) {
     const srvName = this.mcpToolMap.get(name);
     if (srvName) return await this.mcpClients.get(srvName).callTool(name, args);
+    if (this.customToolMap.has(name)) return await callCustomTool(this.customToolMap.get(name), args);
     if (builtInExecutors[name]) {
       const r = await builtInExecutors[name](args);
       return typeof r === 'string' ? r : JSON.stringify(r);
@@ -2150,6 +2249,14 @@ async function handleRequest(req, res) {
       const body = await readBody(req);
       try {
         if (!body.providers || !body.tools) { sendJSON(res, 400, { error: 'invalid config: providers + tools required' }); return; }
+        if (body.custom_tools) {
+          const invalid = body.custom_tools
+            .map((tool, index) => ({ index, name: tool && tool.name, errors: validateCustomTool(tool).errors }))
+            .filter((entry) => entry.errors.length > 0);
+          if (invalid.length > 0) {
+            sendJSON(res, 400, { error: 'invalid custom_tools entries', invalid }); return;
+          }
+        }
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(body, null, 2));
         CONFIG = body;
         await registry.reload();

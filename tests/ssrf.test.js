@@ -2,7 +2,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { isPrivateHost } = require('../lib/ssrf.js');
+const { isPrivateHost, resolveSafeAddress } = require('../lib/ssrf.js');
 
 // ── Private / blocked hosts ────────────────────────────────────────────────
 
@@ -75,4 +75,16 @@ test('allows public domain names', () => {
 test('is case-insensitive for hostnames', () => {
   assert.equal(isPrivateHost('LOCALHOST'), true);
   assert.equal(isPrivateHost('Metadata.Google.Internal'), true);
+});
+
+// ── resolveSafeAddress (DNS-rebinding guard) ──────────────────────────────
+
+test('resolveSafeAddress rejects localhost before any DNS lookup', async () => {
+  await assert.rejects(resolveSafeAddress('localhost'));
+});
+
+test('resolveSafeAddress rejects private IP literals', async () => {
+  await assert.rejects(resolveSafeAddress('127.0.0.1'));
+  await assert.rejects(resolveSafeAddress('10.0.0.5'));
+  await assert.rejects(resolveSafeAddress('169.254.169.254'));
 });
