@@ -1138,15 +1138,15 @@
       <div class="appearance-section-label" style="margin-bottom:8px" id="custom-tool-form-label">Add a Tool</div>
       <input type="hidden" id="ct-edit-index" value="">
       <div style="display:grid;grid-template-columns:1fr 100px;gap:8px;margin-bottom:8px">
-        <input type="text" class="model-select" id="ct-name-input" style="font-size:12px" placeholder="tool_name (letters, numbers, underscores)"/>
-        <select class="model-select" id="ct-method-input" style="font-size:12px">
+        <input type="text" class="model-select" id="ct-name-input" aria-label="Tool name" style="font-size:12px" placeholder="tool_name (letters, numbers, underscores)"/>
+        <select class="model-select" id="ct-method-input" aria-label="HTTP method" style="font-size:12px">
           <option value="POST">POST</option>
           <option value="GET">GET</option>
         </select>
       </div>
-      <input type="text" class="model-select" id="ct-description-input" style="font-size:12px;width:100%;margin-bottom:8px" placeholder="Description — what does this tool do?"/>
-      <input type="text" class="model-select" id="ct-url-input" style="font-size:12px;width:100%;margin-bottom:8px" placeholder="https://your-handler.example.com/tool"/>
-      <textarea class="model-select" id="ct-schema-input" style="font-size:12px;width:100%;height:90px;font-family:var(--mono);resize:vertical;margin-bottom:8px" placeholder='{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]}'></textarea>
+      <input type="text" class="model-select" id="ct-description-input" aria-label="Tool description" style="font-size:12px;width:100%;margin-bottom:8px" placeholder="Description — what does this tool do?"/>
+      <input type="url" class="model-select" id="ct-url-input" aria-label="Handler URL" style="font-size:12px;width:100%;margin-bottom:8px" placeholder="https://your-handler.example.com/tool"/>
+      <textarea class="model-select" id="ct-schema-input" aria-label="JSON input schema" style="font-size:12px;width:100%;height:90px;font-family:var(--mono);resize:vertical;margin-bottom:8px" placeholder='{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]}'></textarea>
       <label class="tool-toggle" style="margin-bottom:10px">
         <div class="toggle on" id="ct-enabled-input" onclick="this.classList.toggle('on')"></div>
         <span><strong style="font-size:12px">Enabled</strong></span>

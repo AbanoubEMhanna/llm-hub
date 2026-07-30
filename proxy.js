@@ -23,7 +23,7 @@ const crypto     = require('crypto');
 const os         = require('os');
 const { URL }    = require('url');
 
-const { isPrivateHost }    = require('./lib/ssrf');
+const { isPrivateHost, resolveSafeAddress } = require('./lib/ssrf');
 const { chunkText, cosine: cosineSimilarity, computeStats: computeRagStats, rankChunks, hybridRankChunks, removeChunk, replaceChunkText } = require('./lib/rag-utils');
 const { evaluate: calcEvaluate } = require('./lib/calculator');
 const { formatLogEntry, parseLogLines } = require('./lib/request-log');
@@ -707,27 +707,28 @@ const builtInExecutors = {
 // Same SSRF/timeout/size-cap protections as fetch_url: the handler URL is
 // user-supplied, so it's treated as untrusted-destination the same way.
 
-function callCustomTool(tool, args) {
+async function callCustomTool(tool, args) {
+  const TIMEOUT_MS = 10000;
+  const MAX_BYTES  = 1024 * 1024; // 1MB
+
+  let parsed;
+  try {
+    parsed = new URL(tool.url);
+  } catch (e) {
+    return JSON.stringify({ error: `Invalid handler URL: ${e.message}` });
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    return JSON.stringify({ error: `Unsupported protocol: ${parsed.protocol}` });
+  }
+
+  let resolvedAddress;
+  try {
+    resolvedAddress = await resolveSafeAddress(parsed.hostname);
+  } catch (e) {
+    return JSON.stringify({ error: `Blocked: ${e.message}` });
+  }
+
   return new Promise((resolve) => {
-    const TIMEOUT_MS = 10000;
-    const MAX_BYTES  = 1024 * 1024; // 1MB
-
-    let parsed;
-    try {
-      parsed = new URL(tool.url);
-    } catch (e) {
-      resolve(JSON.stringify({ error: `Invalid handler URL: ${e.message}` }));
-      return;
-    }
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
-      resolve(JSON.stringify({ error: `Unsupported protocol: ${parsed.protocol}` }));
-      return;
-    }
-    if (isPrivateHost(parsed.hostname)) {
-      resolve(JSON.stringify({ error: `Blocked: cannot call private/local addresses (${parsed.hostname})` }));
-      return;
-    }
-
     const method = (tool.method || 'POST').toUpperCase();
     if (method === 'GET') {
       for (const [k, v] of Object.entries(args || {})) {
@@ -736,15 +737,24 @@ function callCustomTool(tool, args) {
     }
     const payload = method === 'POST' ? JSON.stringify({ arguments: args || {} }) : null;
     const mod = parsed.protocol === 'https:' ? https : http;
-    const req = mod.request(parsed, {
+    // Connect to the pre-resolved, SSRF-checked address (not the hostname) so a
+    // DNS answer can't change between the check above and the actual connect —
+    // while still sending the original Host header / TLS SNI for the handler.
+    const req = mod.request({
+      protocol: parsed.protocol,
+      hostname: resolvedAddress,
+      port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+      path: `${parsed.pathname}${parsed.search}`,
+      servername: parsed.protocol === 'https:' ? parsed.hostname : undefined,
       method,
       timeout: TIMEOUT_MS,
       headers: {
         'User-Agent': 'LocalLLMHub/3.1',
+        Host: parsed.host,
         ...(payload ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } : {}),
       },
     }, (res) => {
-      let body = '';
+      const chunks = [];
       let bytes = 0;
       let aborted = false;
       res.on('data', (c) => {
@@ -756,10 +766,11 @@ function callCustomTool(tool, args) {
           resolve(JSON.stringify({ error: `Response exceeded ${MAX_BYTES} bytes — aborted` }));
           return;
         }
-        body += c;
+        chunks.push(c);
       });
       res.on('end', () => {
         if (aborted) return;
+        const body = Buffer.concat(chunks).toString('utf8');
         if (res.statusCode >= 400) {
           resolve(JSON.stringify({ error: `Handler returned HTTP ${res.statusCode}`, body: body.slice(0, 2000) }));
           return;
@@ -2238,6 +2249,14 @@ async function handleRequest(req, res) {
       const body = await readBody(req);
       try {
         if (!body.providers || !body.tools) { sendJSON(res, 400, { error: 'invalid config: providers + tools required' }); return; }
+        if (body.custom_tools) {
+          const invalid = body.custom_tools
+            .map((tool, index) => ({ index, name: tool && tool.name, errors: validateCustomTool(tool).errors }))
+            .filter((entry) => entry.errors.length > 0);
+          if (invalid.length > 0) {
+            sendJSON(res, 400, { error: 'invalid custom_tools entries', invalid }); return;
+          }
+        }
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(body, null, 2));
         CONFIG = body;
         await registry.reload();

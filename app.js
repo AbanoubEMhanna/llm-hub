@@ -3679,7 +3679,10 @@ function _readCustomToolForm() {
     return { error: 'Name must start with a letter/underscore and contain only letters, numbers, underscores.' };
   }
   if (!description) return { error: 'Description is required.' };
-  try { new URL(url); } catch { return { error: 'Handler URL must be a valid http:// or https:// URL.' }; }
+  try {
+    const { protocol } = new URL(url);
+    if (protocol !== 'http:' && protocol !== 'https:') throw new Error('bad protocol');
+  } catch { return { error: 'Handler URL must be a valid http:// or https:// URL.' }; }
   let input_schema;
   try {
     input_schema = schemaRaw ? JSON.parse(schemaRaw) : { type: 'object', properties: {} };

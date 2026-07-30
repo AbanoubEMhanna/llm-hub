@@ -32,6 +32,11 @@ test('validateCustomTool: accepts underscores and leading underscore in name', (
   assert.equal(validateCustomTool({ ...VALID_TOOL, name: '_my_tool_2' }).valid, true);
 });
 
+test('validateCustomTool: enforces the 64-char name limit', () => {
+  assert.equal(validateCustomTool({ ...VALID_TOOL, name: 'a'.repeat(64) }).valid, true);
+  assert.equal(validateCustomTool({ ...VALID_TOOL, name: 'a'.repeat(65) }).valid, false);
+});
+
 test('validateCustomTool: rejects missing description', () => {
   const { valid, errors } = validateCustomTool({ ...VALID_TOOL, description: '' });
   assert.equal(valid, false);
@@ -44,7 +49,7 @@ test('validateCustomTool: rejects missing/malformed input_schema', () => {
   assert.equal(validateCustomTool({ ...VALID_TOOL, input_schema: ['not', 'an', 'object'] }).valid, false);
 });
 
-test('validateCustomTool: rejects invalid method', () => {
+test('validateCustomTool: normalizes method case and rejects unsupported methods', () => {
   assert.equal(validateCustomTool({ ...VALID_TOOL, method: 'DELETE' }).valid, false);
   assert.equal(validateCustomTool({ ...VALID_TOOL, method: 'get' }).valid, true);
 });
