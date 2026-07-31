@@ -13,7 +13,25 @@ node proxy.js                 # starts on http://localhost:8765
 
 ## Docker (single container)
 
-Build and run LLM Hub without Ollama (connect to a separately-running Ollama):
+### Option A: pull the published image
+
+Every push to `main` publishes a multi-arch image to GitHub Container Registry — no local build needed:
+
+```bash
+docker pull ghcr.io/abanoubemhanna/llm-hub:latest
+
+docker run -d \
+  --name llm-hub \
+  -p 8765:8765 \
+  -v llm-hub-data:/data \
+  -e HOST=0.0.0.0 \
+  -e OLLAMA_HOST=host.docker.internal \
+  ghcr.io/abanoubemhanna/llm-hub:latest
+```
+
+Pin to an immutable tag instead of `latest` for production — each image is also tagged with its short commit SHA (e.g. `ghcr.io/abanoubemhanna/llm-hub:sha-4c03ed0`) and, for tagged releases, its semver (`v1.2.3`, `1.2`).
+
+### Option B: build locally
 
 ```bash
 docker build -t llm-hub .
@@ -111,7 +129,16 @@ Response example:
 
 ## Rollback
 
-**Docker Compose:** redeploy a previous image tag:
+**Published GHCR image:** redeploy the SHA-tagged image from the last known-good commit:
+
+```bash
+docker pull ghcr.io/abanoubemhanna/llm-hub:sha-<previous-short-sha>
+docker stop llm-hub && docker rm llm-hub
+docker run -d --name llm-hub -p 8765:8765 -v llm-hub-data:/data \
+  ghcr.io/abanoubemhanna/llm-hub:sha-<previous-short-sha>
+```
+
+**Docker Compose (local build):** redeploy a previous image tag:
 
 ```bash
 docker compose down
