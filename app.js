@@ -4366,6 +4366,8 @@ function openRagUpload() {
   document.getElementById('rag-status').textContent = '';
   document.getElementById('rag-new-name').value = '';
   document.getElementById('rag-url-input').value = '';
+  document.getElementById('rag-github-input').value = '';
+  document.getElementById('rag-github-branch').value = '';
   switchRagTab('files');
 
   const sel = document.getElementById('rag-collection-select');
@@ -4380,12 +4382,16 @@ function openRagUpload() {
 }
 
 function switchRagTab(tab) {
-  const isFiles = tab === 'files';
-  document.getElementById('rag-panel-files').style.display = isFiles ? '' : 'none';
-  document.getElementById('rag-panel-url').style.display  = isFiles ? 'none' : '';
+  const isFiles  = tab === 'files';
+  const isUrl    = tab === 'url';
+  const isGithub = tab === 'github';
+  document.getElementById('rag-panel-files').style.display  = isFiles ? '' : 'none';
+  document.getElementById('rag-panel-url').style.display    = isUrl ? '' : 'none';
+  document.getElementById('rag-panel-github').style.display = isGithub ? '' : 'none';
   document.getElementById('rag-upload-btn').style.display = isFiles ? '' : 'none';
   document.getElementById('rag-tab-files').classList.toggle('active', isFiles);
-  document.getElementById('rag-tab-url').classList.toggle('active', !isFiles);
+  document.getElementById('rag-tab-url').classList.toggle('active', isUrl);
+  document.getElementById('rag-tab-github').classList.toggle('active', isGithub);
   document.getElementById('rag-progress').style.display = 'none';
   document.getElementById('rag-status').textContent = '';
 }
@@ -4444,6 +4450,72 @@ async function crawlRagUrl() {
   } catch (e) {
     document.getElementById('rag-status').textContent = '❌ ' + e.message;
     toast('Crawl failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function indexRagGithubRepo() {
+  const repoUrl = document.getElementById('rag-github-input').value.trim();
+  if (!repoUrl) return toast('Enter a repo URL first', 'error');
+
+  const sel     = document.getElementById('rag-collection-select');
+  const colId   = sel.value === '__new__' ? null : sel.value;
+  const newName = document.getElementById('rag-new-name').value.trim();
+  if (!colId && !newName) return toast('Name the new collection', 'error');
+
+  const branch = document.getElementById('rag-github-branch').value.trim();
+
+  const btn = document.getElementById('rag-github-btn');
+  btn.disabled = true;
+  document.getElementById('rag-progress').style.display = 'block';
+  document.getElementById('rag-progress-fill').style.width = '0%';
+  document.getElementById('rag-status').textContent = 'Sending request…';
+
+  try {
+    const body = {
+      repo_url: repoUrl,
+      ...(branch ? { branch } : {}),
+      ...(colId ? { collection_id: colId } : { collection_name: newName }),
+    };
+    const res = await fetch(`${PROXY}/v1/rag/github`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf('\n\n')) >= 0) {
+        const line = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        if (!line.startsWith('data: ')) continue;
+        let evt; try { evt = JSON.parse(line.slice(6)); } catch { continue; }
+        if (evt.type === 'status') {
+          document.getElementById('rag-status').textContent = evt.message;
+        } else if (evt.type === 'progress') {
+          const pct = Math.round((evt.done / evt.total) * 100);
+          document.getElementById('rag-progress-fill').style.width = pct + '%';
+          document.getElementById('rag-status').textContent = `Indexed ${evt.done}/${evt.total} files…`;
+        } else if (evt.type === 'done') {
+          document.getElementById('rag-status').textContent = `✓ Indexed ${evt.filesIndexed} files, ${evt.chunksAdded} chunks`;
+          await loadRagCollections();
+          setTimeout(() => closeModal('rag-modal'), 700);
+          toast('Repo indexed and embedded', 'success');
+        } else if (evt.type === 'error') {
+          throw new Error(evt.message);
+        }
+      }
+    }
+  } catch (e) {
+    document.getElementById('rag-status').textContent = '❌ ' + e.message;
+    toast('Repo indexing failed: ' + e.message, 'error');
   } finally {
     btn.disabled = false;
   }

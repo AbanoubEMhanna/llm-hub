@@ -204,7 +204,7 @@
 - [x] Web page crawl — paste URL, auto-scrape + embed
 - [x] PDF attachment — client-side extraction + embedding
 - [x] RAG settings tab — embedding model, chunk size, top_k
-- [ ] 🔥 GitHub repository indexing — clone + embed all repo files
+- [x] 🔥 GitHub repository indexing — clone + embed all repo files
 - [x] ⚡ Auto-inject relevant chunks into every message (toggle)
 - [x] Chunk preview and manual editing UI
 - [x] Hybrid search — keyword + vector (BM25)
@@ -324,21 +324,21 @@
 | AI Agent & Tools | 9 | 7 |
 | Code-First Workflow | 7 | 10 |
 | Attachments & Multimodal | 8 | 2 |
-| RAG / Knowledge Base | 12 | 2 |
+| RAG / Knowledge Base | 13 | 1 |
 | Model Comparison | 8 | 1 |
 | Modern UI | 17 | 7 |
 | Security & Privacy | 8 | 2 |
 | Deployment | 9 | 5 |
 | Developer / Testing | 7 | 4 |
-| **Total** | **159** | **53** |
+| **Total** | **160** | **52** |
 
 **~75% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
-3. 🔥 Agent tooling (shell tool)
-4. 🔥 Provider health monitoring + more cloud providers
-5. GGUF drag-and-drop import + model update notifications
+3. 🔥 Agent tooling (shell command tool — needs a new tool-call confirmation flow, see Developer notes)
+4. GGUF drag-and-drop import + model update notifications
+5. More cloud providers (AI21 / Perplexity) + per-provider timeout/retry config
 
 ---
 
-*Last updated: 2026-07-31. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-08-01. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*

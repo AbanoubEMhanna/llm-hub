@@ -37,6 +37,7 @@ const { detectPromptInjection, formatInjectionWarning } = require('./lib/prompt-
 const { applyProviderTokenParam } = require('./lib/provider-params');
 const { parseNvidiaSmi, parseRocmSmi } = require('./lib/gpu-info');
 const { validateCustomTool, buildCustomToolDef, sanitizeCustomTools } = require('./lib/custom-tools');
+const { isAllowedRepoUrl, walkRepoFiles, cloneRepo, repoDisplayName } = require('./lib/github-index');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § CONFIG & STORAGE
@@ -2088,6 +2089,69 @@ async function handleRequest(req, res) {
         emit('done', result);
       } catch (e) {
         emit('error', { message: e.message });
+      }
+      try { res.end(); } catch {}
+      return;
+    }
+
+    // ── RAG: index a GitHub (or any git-hosted) repo — shallow clone + embed
+    // every text/code file it contains
+    if (req.method === 'POST' && url.pathname === '/v1/rag/github') {
+      const body = await readBody(req);
+      const { repo_url, collection_id, collection_name, branch } = body;
+      if (!repo_url) { sendJSON(res, 400, { error: 'repo_url required' }); return; }
+
+      const allowed = isAllowedRepoUrl(repo_url, isPrivateHost);
+      if (!allowed.ok) { sendJSON(res, 400, { error: allowed.reason }); return; }
+
+      setCORS(res);
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      });
+      const emit = (type, payload) => {
+        try { res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`); } catch {}
+      };
+
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'llm-hub-repo-'));
+      try {
+        emit('status', { message: `Cloning ${repo_url}…` });
+        await cloneRepo(repo_url, tmpDir, { branch });
+
+        emit('status', { message: 'Scanning files…' });
+        const files = walkRepoFiles(tmpDir);
+        if (!files.length) {
+          emit('error', { message: 'No indexable text/code files found in this repo' });
+          try { res.end(); } catch {}
+          return;
+        }
+
+        const repoName = repoDisplayName(repo_url);
+        let currentCollectionId = collection_id || null;
+        let filesDone = 0, chunksAdded = 0;
+
+        for (const file of files) {
+          let text;
+          try { text = fs.readFileSync(file.absPath, 'utf8'); } catch { filesDone++; continue; }
+          if (!text.trim()) { filesDone++; continue; }
+          const result = await rag.addDocument({
+            collectionId:   currentCollectionId,
+            collectionName: collection_name || repoName,
+            source:         `${repoName}/${file.relPath}`,
+            text,
+          });
+          currentCollectionId = result.collectionId;
+          chunksAdded += result.chunksAdded;
+          filesDone++;
+          emit('progress', { done: filesDone, total: files.length, chunksAdded });
+        }
+
+        emit('done', { collectionId: currentCollectionId, filesIndexed: filesDone, chunksAdded });
+      } catch (e) {
+        emit('error', { message: e.message });
+      } finally {
+        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
       }
       try { res.end(); } catch {}
       return;
