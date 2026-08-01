@@ -304,7 +304,7 @@
 - [x] OpenAPI 3.0 spec at `/v1/openapi.json` + Swagger UI at `/v1/docs`
 - [x] Node.js syntax validation CI (v18, v20, v22)
 - [x] Unit tests — 47 tests for RagEngine, ToolRegistry, SSRF guard
-- [ ] 🔥 Integration tests for all HTTP endpoints
+- [x] 🔥 Integration tests for all HTTP endpoints
 - [ ] End-to-end tests with Playwright
 - [ ] VS Code extension — send selected code to LLM Hub
 - [ ] CLI batch mode — `echo "prompt" | llm-hub --model llama3`
@@ -329,16 +329,16 @@
 | Modern UI | 17 | 7 |
 | Security & Privacy | 8 | 2 |
 | Deployment | 9 | 5 |
-| Developer / Testing | 6 | 5 |
-| **Total** | **158** | **54** |
+| Developer / Testing | 7 | 4 |
+| **Total** | **159** | **53** |
 
 **~75% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell tool)
 4. 🔥 Provider health monitoring + more cloud providers
-5. 🔥 Integration / E2E tests for HTTP endpoints
+5. GGUF drag-and-drop import + model update notifications
 
 ---
 
-*Last updated: 2026-07-30. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-07-31. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
