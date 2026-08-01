@@ -96,27 +96,29 @@ test('walkRepoFiles: collects indexable files and skips build/vendor dirs', () =
       '.git/HEAD': 'ignored',
       'assets/logo.png': 'binary-ish',
     });
-    const files = walkRepoFiles(root).map(f => f.relPath).sort();
-    assert.deepEqual(files, ['README.md', 'src/index.js']);
+    const { files, truncated } = walkRepoFiles(root);
+    assert.deepEqual(files.map(f => f.relPath).sort(), ['README.md', 'src/index.js']);
+    assert.equal(truncated, false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
 
-test('walkRepoFiles: stops after maxFiles', () => {
+test('walkRepoFiles: stops after maxFiles and reports truncated', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ghidx-walk-cap-'));
   try {
     makeTree(root, {
       'a.md': 'a', 'b.md': 'b', 'c.md': 'c', 'd.md': 'd',
     });
-    const files = walkRepoFiles(root, { maxFiles: 2 });
+    const { files, truncated } = walkRepoFiles(root, { maxFiles: 2 });
     assert.equal(files.length, 2);
+    assert.equal(truncated, true);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
 
-test('walkRepoFiles: stops after maxTotalBytes', () => {
+test('walkRepoFiles: stops after maxTotalBytes and reports truncated', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ghidx-walk-bytes-'));
   try {
     makeTree(root, {
@@ -124,8 +126,21 @@ test('walkRepoFiles: stops after maxTotalBytes', () => {
       'b.md': 'x'.repeat(50),
       'c.md': 'x'.repeat(50),
     });
-    const files = walkRepoFiles(root, { maxTotalBytes: 60 });
+    const { files, truncated } = walkRepoFiles(root, { maxTotalBytes: 60 });
     assert.ok(files.length <= 2);
+    assert.equal(truncated, true);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('walkRepoFiles: not truncated when everything fits under the caps', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ghidx-walk-fit-'));
+  try {
+    makeTree(root, { 'a.md': 'a', 'b.md': 'b' });
+    const { files, truncated } = walkRepoFiles(root, { maxFiles: 10, maxTotalBytes: 1000 });
+    assert.equal(files.length, 2);
+    assert.equal(truncated, false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -166,8 +181,8 @@ test('cloneRepo: shallow-clones a local git repo and the files are readable', as
     await cloneRepo(srcRepo, destDir);
 
     assert.ok(fs.existsSync(path.join(destDir, 'README.md')));
-    const files = walkRepoFiles(destDir).map(f => f.relPath).sort();
-    assert.deepEqual(files, ['README.md', 'src/index.js']);
+    const { files } = walkRepoFiles(destDir);
+    assert.deepEqual(files.map(f => f.relPath).sort(), ['README.md', 'src/index.js']);
     assert.equal(fs.readFileSync(path.join(destDir, 'src', 'index.js'), 'utf8'), 'module.exports = 42;');
   } finally {
     fs.rmSync(srcRepo, { recursive: true, force: true });

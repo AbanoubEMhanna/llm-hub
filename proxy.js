@@ -445,6 +445,45 @@ class RagEngine {
   }
 
   /**
+   * Bulk variant of addDocument: embeds every doc's chunks and persists the
+   * collection once at the end, instead of once per document. Used by the
+   * GitHub repo indexer, which can otherwise call addDocument up to
+   * DEFAULT_MAX_FILES times per request — persisting (and re-serializing the
+   * whole collection to disk) after every single file.
+   *
+   * @param {{collectionId?: string, collectionName?: string, docs: Array<{source: string, text: string}>, onProgress?: Function}} args
+   */
+  async addDocuments({ collectionId, collectionName, docs, onProgress }) {
+    const cfg = CONFIG.rag;
+    let col = this.collections.get(collectionId);
+    if (!col) {
+      col = {
+        id: collectionId || crypto.randomBytes(8).toString('hex'),
+        name: collectionName || 'Untitled',
+        chunks: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      this.collections.set(col.id, col);
+    }
+
+    let filesDone = 0, chunksAdded = 0;
+    for (const { source, text } of docs) {
+      const chunks = this.chunkText(text, cfg.chunk_size, cfg.chunk_overlap);
+      for (const chunk of chunks) {
+        const embedding = await this.embed(chunk);
+        col.chunks.push({ id: crypto.randomBytes(6).toString('hex'), source, text: chunk, embedding });
+        chunksAdded++;
+      }
+      filesDone++;
+      if (onProgress) onProgress({ done: filesDone, total: docs.length, chunksAdded });
+    }
+    col.updatedAt = Date.now();
+    this._persist(col);
+    return { collectionId: col.id, chunksAdded };
+  }
+
+  /**
    * Search one collection, an explicit set of collections, or — when neither
    * `collectionId` nor `collectionIds` is given — every collection at once,
    * merging and re-ranking results by score across all of them.
@@ -2114,13 +2153,14 @@ async function handleRequest(req, res) {
         try { res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`); } catch {}
       };
 
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'llm-hub-repo-'));
+      let tmpDir;
       try {
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'llm-hub-repo-'));
         emit('status', { message: `Cloning ${repo_url}…` });
         await cloneRepo(repo_url, tmpDir, { branch });
 
         emit('status', { message: 'Scanning files…' });
-        const files = walkRepoFiles(tmpDir);
+        const { files, truncated } = walkRepoFiles(tmpDir);
         if (!files.length) {
           emit('error', { message: 'No indexable text/code files found in this repo' });
           try { res.end(); } catch {}
@@ -2128,30 +2168,31 @@ async function handleRequest(req, res) {
         }
 
         const repoName = repoDisplayName(repo_url);
-        let currentCollectionId = collection_id || null;
-        let filesDone = 0, chunksAdded = 0;
-
+        const docs = [];
         for (const file of files) {
           let text;
-          try { text = fs.readFileSync(file.absPath, 'utf8'); } catch { filesDone++; continue; }
-          if (!text.trim()) { filesDone++; continue; }
-          const result = await rag.addDocument({
-            collectionId:   currentCollectionId,
-            collectionName: collection_name || repoName,
-            source:         `${repoName}/${file.relPath}`,
-            text,
-          });
-          currentCollectionId = result.collectionId;
-          chunksAdded += result.chunksAdded;
-          filesDone++;
-          emit('progress', { done: filesDone, total: files.length, chunksAdded });
+          try { text = fs.readFileSync(file.absPath, 'utf8'); } catch { continue; }
+          if (!text.trim()) continue;
+          docs.push({ source: `${repoName}/${file.relPath}`, text });
         }
 
-        emit('done', { collectionId: currentCollectionId, filesIndexed: filesDone, chunksAdded });
+        const result = await rag.addDocuments({
+          collectionId:   collection_id || null,
+          collectionName: collection_name || repoName,
+          docs,
+          onProgress: ({ done, total, chunksAdded }) => emit('progress', { done, total, chunksAdded }),
+        });
+
+        emit('done', {
+          collectionId: result.collectionId,
+          filesIndexed: docs.length,
+          chunksAdded:  result.chunksAdded,
+          truncated,
+        });
       } catch (e) {
         emit('error', { message: e.message });
       } finally {
-        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+        if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {} }
       }
       try { res.end(); } catch {}
       return;
