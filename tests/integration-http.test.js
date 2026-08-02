@@ -282,6 +282,30 @@ test('POST /v1/rag/crawl blocks private/local addresses (SSRF guard)', async () 
   assert.match(body.error, /Blocked: cannot fetch private\/local addresses/);
 });
 
+test('POST /v1/rag/github rejects a missing repo_url', async () => {
+  const { res, body } = await postJSON('/v1/rag/github', {});
+  assert.equal(res.status, 400);
+  assert.equal(body.error, 'repo_url required');
+});
+
+test('POST /v1/rag/github rejects an invalid repo_url', async () => {
+  const { res, body } = await postJSON('/v1/rag/github', { repo_url: 'not a url' });
+  assert.equal(res.status, 400);
+  assert.equal(body.error, 'Invalid URL');
+});
+
+test('POST /v1/rag/github rejects non-http(s) schemes (e.g. file://, ssh://)', async () => {
+  const { res, body } = await postJSON('/v1/rag/github', { repo_url: 'file:///etc/passwd' });
+  assert.equal(res.status, 400);
+  assert.match(body.error, /Unsupported protocol/);
+});
+
+test('POST /v1/rag/github blocks private/local addresses (SSRF guard)', async () => {
+  const { res, body } = await postJSON('/v1/rag/github', { repo_url: 'http://127.0.0.1/owner/repo' });
+  assert.equal(res.status, 400);
+  assert.match(body.error, /Blocked: cannot clone from private\/local addresses/);
+});
+
 // ── Error paths — well-defined without a real LLM/Ollama/Whisper backend ──
 
 test('POST /v1/chat without model/messages returns 400', async () => {

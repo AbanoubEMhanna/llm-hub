@@ -4366,6 +4366,8 @@ function openRagUpload() {
   document.getElementById('rag-status').textContent = '';
   document.getElementById('rag-new-name').value = '';
   document.getElementById('rag-url-input').value = '';
+  document.getElementById('rag-github-input').value = '';
+  document.getElementById('rag-github-branch').value = '';
   switchRagTab('files');
 
   const sel = document.getElementById('rag-collection-select');
@@ -4380,14 +4382,59 @@ function openRagUpload() {
 }
 
 function switchRagTab(tab) {
-  const isFiles = tab === 'files';
-  document.getElementById('rag-panel-files').style.display = isFiles ? '' : 'none';
-  document.getElementById('rag-panel-url').style.display  = isFiles ? 'none' : '';
+  const isFiles  = tab === 'files';
+  const isUrl    = tab === 'url';
+  const isGithub = tab === 'github';
+  document.getElementById('rag-panel-files').style.display  = isFiles ? '' : 'none';
+  document.getElementById('rag-panel-url').style.display    = isUrl ? '' : 'none';
+  document.getElementById('rag-panel-github').style.display = isGithub ? '' : 'none';
   document.getElementById('rag-upload-btn').style.display = isFiles ? '' : 'none';
   document.getElementById('rag-tab-files').classList.toggle('active', isFiles);
-  document.getElementById('rag-tab-url').classList.toggle('active', !isFiles);
+  document.getElementById('rag-tab-url').classList.toggle('active', isUrl);
+  document.getElementById('rag-tab-github').classList.toggle('active', isGithub);
   document.getElementById('rag-progress').style.display = 'none';
   document.getElementById('rag-status').textContent = '';
+}
+
+/**
+ * POSTs to one of the RAG ingestion endpoints (crawl / github — both stream
+ * SSE progress the same way) and dispatches each event to `onEvent`. Shared
+ * so the two callers can't drift on the SSE-framing details (buffering,
+ * `data: ` prefix, JSON parsing) or forget the non-SSE error-response check:
+ * a validation failure (e.g. blocked URL) comes back as a plain JSON 400
+ * *before* the response ever switches to `text/event-stream`, so it has to
+ * be handled separately from the SSE loop below.
+ */
+async function streamRagRequest(endpoint, body, onEvent) {
+  const res = await fetch(`${PROXY}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    let msg = `Request failed (${res.status})`;
+    try { msg = (await res.json()).error || msg; } catch {}
+    throw new Error(msg);
+  }
+
+  const reader  = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buf.indexOf('\n\n')) >= 0) {
+      const line = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      if (!line.startsWith('data: ')) continue;
+      let evt; try { evt = JSON.parse(line.slice(6)); } catch { continue; }
+      if (evt.type === 'error') throw new Error(evt.message);
+      await onEvent(evt);
+    }
+  }
 }
 
 async function crawlRagUrl() {
@@ -4407,43 +4454,68 @@ async function crawlRagUrl() {
 
   try {
     const body = { url: urlVal, ...(colId ? { collection_id: colId } : { collection_name: newName }) };
-    const res = await fetch(`${PROXY}/v1/rag/crawl`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    const reader  = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      let idx;
-      while ((idx = buf.indexOf('\n\n')) >= 0) {
-        const line = buf.slice(0, idx);
-        buf = buf.slice(idx + 2);
-        if (!line.startsWith('data: ')) continue;
-        let evt; try { evt = JSON.parse(line.slice(6)); } catch { continue; }
-        if (evt.type === 'status') {
-          document.getElementById('rag-status').textContent = evt.message;
-        } else if (evt.type === 'progress') {
-          const pct = Math.round((evt.done / evt.total) * 100);
-          document.getElementById('rag-progress-fill').style.width = pct + '%';
-        } else if (evt.type === 'done') {
-          document.getElementById('rag-status').textContent = '✓ Crawled and embedded';
-          await loadRagCollections();
-          setTimeout(() => closeModal('rag-modal'), 700);
-          toast('Page crawled and embedded', 'success');
-        } else if (evt.type === 'error') {
-          throw new Error(evt.message);
-        }
+    await streamRagRequest('/v1/rag/crawl', body, async (evt) => {
+      if (evt.type === 'status') {
+        document.getElementById('rag-status').textContent = evt.message;
+      } else if (evt.type === 'progress') {
+        const pct = Math.round((evt.done / evt.total) * 100);
+        document.getElementById('rag-progress-fill').style.width = pct + '%';
+      } else if (evt.type === 'done') {
+        document.getElementById('rag-status').textContent = '✓ Crawled and embedded';
+        await loadRagCollections();
+        setTimeout(() => closeModal('rag-modal'), 700);
+        toast('Page crawled and embedded', 'success');
       }
-    }
+    });
   } catch (e) {
     document.getElementById('rag-status').textContent = '❌ ' + e.message;
     toast('Crawl failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function indexRagGithubRepo() {
+  const repoUrl = document.getElementById('rag-github-input').value.trim();
+  if (!repoUrl) return toast('Enter a repo URL first', 'error');
+
+  const sel     = document.getElementById('rag-collection-select');
+  const colId   = sel.value === '__new__' ? null : sel.value;
+  const newName = document.getElementById('rag-new-name').value.trim();
+  if (!colId && !newName) return toast('Name the new collection', 'error');
+
+  const branch = document.getElementById('rag-github-branch').value.trim();
+
+  const btn = document.getElementById('rag-github-btn');
+  btn.disabled = true;
+  document.getElementById('rag-progress').style.display = 'block';
+  document.getElementById('rag-progress-fill').style.width = '0%';
+  document.getElementById('rag-status').textContent = 'Sending request…';
+
+  try {
+    const body = {
+      repo_url: repoUrl,
+      ...(branch ? { branch } : {}),
+      ...(colId ? { collection_id: colId } : { collection_name: newName }),
+    };
+    await streamRagRequest('/v1/rag/github', body, async (evt) => {
+      if (evt.type === 'status') {
+        document.getElementById('rag-status').textContent = evt.message;
+      } else if (evt.type === 'progress') {
+        const pct = Math.round((evt.done / evt.total) * 100);
+        document.getElementById('rag-progress-fill').style.width = pct + '%';
+        document.getElementById('rag-status').textContent = `Indexed ${evt.done}/${evt.total} files…`;
+      } else if (evt.type === 'done') {
+        const truncatedNote = evt.truncated ? ' (repo was larger than the indexing limit — partial coverage)' : '';
+        document.getElementById('rag-status').textContent = `✓ Indexed ${evt.filesIndexed} files, ${evt.chunksAdded} chunks${truncatedNote}`;
+        await loadRagCollections();
+        setTimeout(() => closeModal('rag-modal'), 700);
+        toast(evt.truncated ? 'Repo partially indexed (size limit reached)' : 'Repo indexed and embedded', 'success');
+      }
+    });
+  } catch (e) {
+    document.getElementById('rag-status').textContent = '❌ ' + e.message;
+    toast('Repo indexing failed: ' + e.message, 'error');
   } finally {
     btn.disabled = false;
   }
