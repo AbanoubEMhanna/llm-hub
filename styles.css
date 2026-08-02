@@ -1776,6 +1776,15 @@ del.diff-del {
   font-family: var(--mono); font-size: 11px; color: var(--muted);
 }
 
+.mm-gguf-row { margin-bottom: 8px; }
+.mm-gguf-dropzone {
+  border: 1px dashed var(--border); border-radius: var(--radius); padding: 18px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: var(--transition);
+  color: var(--muted); font-family: var(--mono); font-size: 12px; text-align: center;
+}
+.mm-gguf-dropzone:hover, .mm-gguf-dropzone.drag-over { border-color: var(--accent); color: var(--accent); }
+
 .mm-model-list {
   display: flex; flex-direction: column; gap: 6px;
   max-height: 320px; overflow-y: auto;

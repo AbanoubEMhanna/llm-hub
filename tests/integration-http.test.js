@@ -326,6 +326,33 @@ test('POST /v1/models/pull rejects a missing model name', async () => {
   assert.match(body.error, /Valid model name required/);
 });
 
+test('POST /v1/models/import-gguf rejects a missing/invalid model name', async () => {
+  const { res, body } = await requestJSON('/v1/models/import-gguf?filename=model.gguf', {
+    method: 'POST',
+    body: 'irrelevant for this validation path',
+  });
+  assert.equal(res.status, 400);
+  assert.match(body.error, /Valid model name required/);
+});
+
+test('POST /v1/models/import-gguf rejects a filename not ending in .gguf', async () => {
+  const { res, body } = await requestJSON('/v1/models/import-gguf?name=my-model&filename=model.bin', {
+    method: 'POST',
+    body: 'irrelevant for this validation path',
+  });
+  assert.equal(res.status, 400);
+  assert.match(body.error, /filename ending in \.gguf/);
+});
+
+test('POST /v1/models/import-gguf fails cleanly with no Ollama running', async () => {
+  const { res, body } = await requestJSON('/v1/models/import-gguf?name=my-model&filename=model.gguf', {
+    method: 'POST',
+    body: 'fake gguf bytes for a validation-only upload',
+  });
+  assert.equal(res.status, 502);
+  assert.match(body.error, /Cannot reach Ollama/);
+});
+
 test('DELETE /v1/models/:name fails cleanly with no Ollama running', async () => {
   const { res, body } = await requestJSON('/v1/models/no-such-model', { method: 'DELETE' });
   assert.equal(res.status, 502);

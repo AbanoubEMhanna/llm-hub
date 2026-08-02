@@ -51,7 +51,7 @@
 - [x] Model family grouping in dropdown (Llama, Qwen, Mistral, etc.)
 - [x] Favorite / pin models to top of selector
 - [x] Model search in the main selector (filter as you type)
-- [ ] 🔥 GGUF drag-and-drop import — load any `.gguf` directly without CLI
+- [x] 🔥 GGUF drag-and-drop import — load any `.gguf` directly without CLI
 - [ ] 🔥 Model update notifications — alert when a newer version is available
 - [x] ⚡ Model tags & friendly aliases — rename `llama3.2:3b` → `"Fast Llama"`
 - [x] Model comparison spec sheet — side-by-side table (ctx, quant, size, license)
@@ -317,7 +317,7 @@
 | Area | ✅ Done | ⬜ To Do |
 |------|---------|----------|
 | Providers & Connectivity | 16 | 2 |
-| Local Model Management | 11 | 3 |
+| Local Model Management | 12 | 2 |
 | Hardware Awareness | 9 | 3 |
 | Chat Interface | 27 | 4 |
 | Model Parameters | 11 | 1 |
@@ -330,15 +330,15 @@
 | Security & Privacy | 8 | 2 |
 | Deployment | 9 | 5 |
 | Developer / Testing | 7 | 4 |
-| **Total** | **160** | **52** |
+| **Total** | **161** | **51** |
 
 **~75% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell command tool — needs a new tool-call confirmation flow, see Developer notes)
-4. GGUF drag-and-drop import + model update notifications
-5. More cloud providers (AI21 / Perplexity) + per-provider timeout/retry config
+4. Model update notifications — alert when a newer version is available
+5. More cloud providers (AI21 / Perplexity) — held back so far: neither has a documented `/models` list endpoint, so they don't slot into the existing discovery-based `CLOUD_PROVIDERS` pattern without extra design work (a static model-ID list injected regardless of live discovery); needs to be verified against current docs before shipping, not guessed.
 
 ---
 
-*Last updated: 2026-08-01. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-08-02. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
