@@ -38,7 +38,7 @@ const { applyProviderTokenParam } = require('./lib/provider-params');
 const { parseNvidiaSmi, parseRocmSmi } = require('./lib/gpu-info');
 const { validateCustomTool, buildCustomToolDef, sanitizeCustomTools } = require('./lib/custom-tools');
 const { isAllowedRepoUrl, walkRepoFiles, cloneRepo, repoDisplayName } = require('./lib/github-index');
-const { isValidModelName: isValidGgufModelName, isValidGgufFilename, streamToFileWithHash, uploadBlob, createModel: createOllamaModelFromBlob } = require('./lib/gguf-import');
+const { isValidModelName: isValidGgufModelName, isValidGgufFilename, streamToFileWithHash, uploadBlob, createModel: createOllamaModelFromBlob, DEFAULT_MAX_GGUF_BYTES } = require('./lib/gguf-import');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § CONFIG & STORAGE
@@ -2377,7 +2377,7 @@ async function handleRequest(req, res) {
     if (req.method === 'POST' && url.pathname === '/v1/models/pull') {
       const body = await readBody(req);
       const { name } = body;
-      if (!name || typeof name !== 'string' || !/^[a-zA-Z0-9_.:/\-]+$/.test(name.trim())) {
+      if (!isValidGgufModelName(name)) {
         sendJSON(res, 400, { error: 'Valid model name required (e.g. llama3.2, mistral:7b)' });
         return;
       }
@@ -2469,6 +2469,11 @@ async function handleRequest(req, res) {
         sendJSON(res, 400, { error: 'A filename ending in .gguf is required' });
         return;
       }
+      const contentLength = parseInt(req.headers['content-length'] || '', 10);
+      if (Number.isFinite(contentLength) && contentLength > DEFAULT_MAX_GGUF_BYTES) {
+        sendJSON(res, 400, { error: `File exceeds the ${Math.round(DEFAULT_MAX_GGUF_BYTES / (1024 ** 3))}GB import limit` });
+        return;
+      }
 
       const ollamaCfg = CONFIG.providers.ollama;
       let tmpDir;
@@ -2489,8 +2494,7 @@ async function handleRequest(req, res) {
         console.log(`[Models] Imported GGUF: ${modelName} (${formatBytes(bytes)})`);
         sendJSON(res, 200, { ok: true, model: modelName, bytes });
       } catch (e) {
-        const status = /exceeds the .*import limit/.test(e.message) ? 400 : 502;
-        sendJSON(res, status, { error: e.message });
+        sendJSON(res, e.code === 'GGUF_LIMIT_EXCEEDED' ? 400 : 502, { error: e.message });
       } finally {
         if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {} }
       }

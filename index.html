@@ -1511,7 +1511,9 @@
             placeholder="Model name for this import (e.g. my-model)"/>
         </div>
         <div class="mm-gguf-dropzone" id="mm-gguf-dropzone"
+          tabindex="0" role="button" aria-label="Choose or drop a .gguf file to import"
           onclick="document.getElementById('mm-gguf-file-input').click()"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('mm-gguf-file-input').click()}"
           ondragover="event.preventDefault();this.classList.add('drag-over')"
           ondragleave="this.classList.remove('drag-over')"
           ondrop="handleGgufDrop(event)">

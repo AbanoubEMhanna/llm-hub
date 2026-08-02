@@ -7170,7 +7170,13 @@ async function importGgufFile(file) {
   const fill      = document.getElementById('mm-gguf-progress-fill');
   const detail    = document.getElementById('mm-gguf-progress-detail');
 
-  const modelName = (nameInput.value.trim() || file.name.replace(/\.gguf$/i, '')).replace(/\s+/g, '-');
+  // The server's model-name validator only allows [a-zA-Z0-9_.:/-], so a
+  // filename-derived fallback (e.g. "model (Q4_K_M).gguf") needs the same
+  // punctuation stripped, not just whitespace, or the import silently fails
+  // with a generic "Valid model name required" error.
+  const modelName = (nameInput.value.trim() || file.name.replace(/\.gguf$/i, ''))
+    .replace(/[^a-zA-Z0-9_.:/\-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 
   nameInput.disabled = true;
   dropzone.style.pointerEvents = 'none';

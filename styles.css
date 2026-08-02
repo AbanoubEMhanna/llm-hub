@@ -1783,7 +1783,7 @@ del.diff-del {
   cursor: pointer; transition: var(--transition);
   color: var(--muted); font-family: var(--mono); font-size: 12px; text-align: center;
 }
-.mm-gguf-dropzone:hover, .mm-gguf-dropzone.drag-over { border-color: var(--accent); color: var(--accent); }
+.mm-gguf-dropzone:hover, .mm-gguf-dropzone.drag-over, .mm-gguf-dropzone:focus-visible { border-color: var(--accent); color: var(--accent); }
 
 .mm-model-list {
   display: flex; flex-direction: column; gap: 6px;

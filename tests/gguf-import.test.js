@@ -37,6 +37,18 @@ test('isValidModelName: rejects names with spaces or shell-unsafe characters', (
   assert.equal(isValidModelName('$(rm -rf /)'), false);
 });
 
+test('isValidModelName: rejects path-traversal segments (Ollama stores manifests by name)', () => {
+  assert.equal(isValidModelName('ns/../../x'), false);
+  assert.equal(isValidModelName('..'), false);
+  assert.equal(isValidModelName('.'), false);
+  assert.equal(isValidModelName('a/./b'), false);
+});
+
+test('isValidModelName: still accepts dots within a single segment (version-like tags)', () => {
+  assert.equal(isValidModelName('llama3.2:3b'), true);
+  assert.equal(isValidModelName('my-model:q4_K_M.gguf'), true);
+});
+
 // ── isValidGgufFilename ──────────────────────────────────────────────────────
 
 test('isValidGgufFilename: accepts a plain .gguf filename', () => {
@@ -113,6 +125,37 @@ test('streamToFileWithHash: propagates a mid-stream source error and cleans up',
 
     await assert.rejects(resultPromise, /boom/);
     assert.equal(fs.existsSync(dest), false);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('streamToFileWithHash: rejects (does not hang) when the source is destroyed without an error — e.g. a client disconnecting mid-upload', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gguf-hash-abort-'));
+  const dest = path.join(dir, 'out.bin');
+  try {
+    const src = new PassThrough();
+    const resultPromise = streamToFileWithHash(src, dest);
+    src.write(Buffer.alloc(10));
+    src.destroy(); // no error — mirrors an aborted HTTP request stream
+
+    await assert.rejects(resultPromise, /aborted/);
+    assert.equal(fs.existsSync(dest), false);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('streamToFileWithHash: a stream that closes normally after end() is not mistaken for an abort', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gguf-hash-normal-close-'));
+  const dest = path.join(dir, 'out.bin');
+  try {
+    const src = new PassThrough();
+    const resultPromise = streamToFileWithHash(src, dest);
+    src.end(Buffer.from('hello'));
+
+    const { bytes } = await resultPromise;
+    assert.equal(bytes, 5);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
