@@ -9,6 +9,7 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
+const http = require('node:http');
 const net = require('node:net');
 const path = require('node:path');
 const os = require('node:os');
@@ -324,6 +325,99 @@ test('POST /v1/models/pull rejects a missing model name', async () => {
   const { res, body } = await postJSON('/v1/models/pull', {});
   assert.equal(res.status, 400);
   assert.match(body.error, /Valid model name required/);
+});
+
+test('POST /v1/models/import-gguf rejects a missing/invalid model name', async () => {
+  const { res, body } = await requestJSON('/v1/models/import-gguf?filename=model.gguf', {
+    method: 'POST',
+    body: 'irrelevant for this validation path',
+  });
+  assert.equal(res.status, 400);
+  assert.match(body.error, /Valid model name required/);
+});
+
+test('POST /v1/models/import-gguf rejects a filename not ending in .gguf', async () => {
+  const { res, body } = await requestJSON('/v1/models/import-gguf?name=my-model&filename=model.bin', {
+    method: 'POST',
+    body: 'irrelevant for this validation path',
+  });
+  assert.equal(res.status, 400);
+  assert.match(body.error, /filename ending in \.gguf/);
+});
+
+test('POST /v1/models/import-gguf fails cleanly with no Ollama running', async () => {
+  const { res, body } = await requestJSON('/v1/models/import-gguf?name=my-model&filename=model.gguf', {
+    method: 'POST',
+    body: 'fake gguf bytes for a validation-only upload',
+  });
+  assert.equal(res.status, 502);
+  assert.match(body.error, /Cannot reach Ollama/);
+});
+
+// This one needs a real (stub) Ollama to reach, so it spawns its own proxy.js
+// child pointed at a throwaway HTTP server via OLLAMA_HOST/OLLAMA_PORT — the
+// module-level `child` above deliberately has no Ollama to reach, so every
+// other test in this file can rely on that "unreachable" behavior.
+test('POST /v1/models/import-gguf succeeds end-to-end against a stub Ollama', async () => {
+  const fileContent = 'fake gguf bytes for an end-to-end import test';
+  const stubOllama = http.createServer((req, res) => {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => {
+      if (req.method === 'POST' && req.url.startsWith('/api/blobs/sha256:')) {
+        res.writeHead(201); res.end(); return;
+      }
+      if (req.method === 'POST' && req.url === '/api/create') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'success' }));
+        return;
+      }
+      res.writeHead(404); res.end();
+    });
+  });
+  await new Promise((resolve) => stubOllama.listen(0, '127.0.0.1', resolve));
+  const stubPort = stubOllama.address().port;
+
+  const port2 = await getFreePort();
+  const base2 = `http://127.0.0.1:${port2}`;
+  const storageDir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'llm-hub-inttest-gguf-'));
+  const child2 = spawn(process.execPath, ['proxy.js'], {
+    cwd: REPO_ROOT,
+    env: {
+      ...process.env, PORT: String(port2), HOST: '127.0.0.1', STORAGE_DIR: storageDir2,
+      OLLAMA_HOST: '127.0.0.1', OLLAMA_PORT: String(stubPort),
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  child2.stdout.on('data', () => {});
+  child2.stderr.on('data', () => {});
+
+  try {
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline) {
+      try {
+        const r = await fetch(`${base2}/health`, { signal: AbortSignal.timeout(2000) });
+        await r.body?.cancel?.();
+        if (r.status === 200) break;
+      } catch { /* not up yet */ }
+      await new Promise((r) => setTimeout(r, 150));
+    }
+
+    const res = await fetch(`${base2}/v1/models/import-gguf?name=my-model&filename=model.gguf`, {
+      method: 'POST',
+      body: fileContent,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    const body = await res.json();
+    assert.equal(res.status, 200);
+    assert.deepEqual(body, { ok: true, model: 'my-model', bytes: fileContent.length });
+  } finally {
+    stubOllama.close();
+    if (child2.exitCode === null && child2.signalCode === null) {
+      await new Promise((resolve) => { child2.once('close', resolve); child2.kill(); });
+    }
+    fs.rmSync(storageDir2, { recursive: true, force: true });
+  }
 });
 
 test('DELETE /v1/models/:name fails cleanly with no Ollama running', async () => {

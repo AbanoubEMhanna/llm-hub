@@ -38,6 +38,7 @@ const { applyProviderTokenParam } = require('./lib/provider-params');
 const { parseNvidiaSmi, parseRocmSmi } = require('./lib/gpu-info');
 const { validateCustomTool, buildCustomToolDef, sanitizeCustomTools } = require('./lib/custom-tools');
 const { isAllowedRepoUrl, walkRepoFiles, cloneRepo, repoDisplayName } = require('./lib/github-index');
+const { isValidModelName: isValidGgufModelName, isValidGgufFilename, streamToFileWithHash, uploadBlob, createModel: createOllamaModelFromBlob, DEFAULT_MAX_GGUF_BYTES } = require('./lib/gguf-import');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § CONFIG & STORAGE
@@ -2376,7 +2377,7 @@ async function handleRequest(req, res) {
     if (req.method === 'POST' && url.pathname === '/v1/models/pull') {
       const body = await readBody(req);
       const { name } = body;
-      if (!name || typeof name !== 'string' || !/^[a-zA-Z0-9_.:/\-]+$/.test(name.trim())) {
+      if (!isValidGgufModelName(name)) {
         sendJSON(res, 400, { error: 'Valid model name required (e.g. llama3.2, mistral:7b)' });
         return;
       }
@@ -2447,6 +2448,56 @@ async function handleRequest(req, res) {
       req.on('close', () => { try { pullReq.destroy(); } catch {} });
       pullReq.write(pullBody);
       pullReq.end();
+      return;
+    }
+
+    // ── MODELS: import a local GGUF file directly into Ollama, no CLI needed.
+    // Ollama's own model-creation flow is two calls: upload the raw file as a
+    // content-addressed "blob" (POST /api/blobs/sha256:<digest>), then point
+    // `/api/create` at that digest. The digest has to be known before the
+    // blob upload starts (it's in the URL), so the incoming request is first
+    // streamed to a temp file on disk while hashing it — never buffered in
+    // memory, since GGUF files routinely run tens of gigabytes.
+    if (req.method === 'POST' && url.pathname === '/v1/models/import-gguf') {
+      const modelName = (url.searchParams.get('name') || '').trim();
+      const filename   = (url.searchParams.get('filename') || '').trim();
+      if (!isValidGgufModelName(modelName)) {
+        sendJSON(res, 400, { error: 'Valid model name required (e.g. my-model, my-model:latest)' });
+        return;
+      }
+      if (!isValidGgufFilename(filename)) {
+        sendJSON(res, 400, { error: 'A filename ending in .gguf is required' });
+        return;
+      }
+      const contentLength = parseInt(req.headers['content-length'] || '', 10);
+      if (Number.isFinite(contentLength) && contentLength > DEFAULT_MAX_GGUF_BYTES) {
+        sendJSON(res, 400, { error: `File exceeds the ${Math.round(DEFAULT_MAX_GGUF_BYTES / (1024 ** 3))}GB import limit` });
+        return;
+      }
+
+      const ollamaCfg = CONFIG.providers.ollama;
+      let tmpDir;
+      try {
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'llm-hub-gguf-'));
+        const tmpFile = path.join(tmpDir, 'model.gguf');
+
+        console.log(`[Models] Importing GGUF: ${filename} → ${modelName}`);
+        const { bytes, digest } = await streamToFileWithHash(req, tmpFile);
+        if (bytes === 0) {
+          sendJSON(res, 400, { error: 'Uploaded file is empty' });
+          return;
+        }
+
+        await uploadBlob(ollamaCfg, tmpFile, digest);
+        await createOllamaModelFromBlob(ollamaCfg, modelName, filename, digest);
+
+        console.log(`[Models] Imported GGUF: ${modelName} (${formatBytes(bytes)})`);
+        sendJSON(res, 200, { ok: true, model: modelName, bytes });
+      } catch (e) {
+        sendJSON(res, e.code === 'GGUF_LIMIT_EXCEEDED' ? 400 : 502, { error: e.message });
+      } finally {
+        if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {} }
+      }
       return;
     }
 

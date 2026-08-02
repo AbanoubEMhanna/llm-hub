@@ -7143,6 +7143,90 @@ async function pullModel() {
   }
 }
 
+function handleGgufDrop(event) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over');
+  const file = event.dataTransfer?.files?.[0];
+  if (file) importGgufFile(file);
+}
+
+function handleGgufFileSelect(event) {
+  const file = event.target.files?.[0];
+  event.target.value = ''; // allow re-selecting the same file later
+  if (file) importGgufFile(file);
+}
+
+async function importGgufFile(file) {
+  if (!/\.gguf$/i.test(file.name)) {
+    showToast('Only .gguf files are supported', 'error');
+    return;
+  }
+
+  const nameInput = document.getElementById('mm-gguf-name-input');
+  const dropzone  = document.getElementById('mm-gguf-dropzone');
+  const dzLabel   = document.getElementById('mm-gguf-dropzone-label');
+  const prog      = document.getElementById('mm-gguf-progress');
+  const label     = document.getElementById('mm-gguf-progress-label');
+  const fill      = document.getElementById('mm-gguf-progress-fill');
+  const detail    = document.getElementById('mm-gguf-progress-detail');
+
+  // The server's model-name validator only allows [a-zA-Z0-9_.:/-], so a
+  // filename-derived fallback (e.g. "model (Q4_K_M).gguf") needs the same
+  // punctuation stripped, not just whitespace, or the import silently fails
+  // with a generic "Valid model name required" error.
+  const modelName = (nameInput.value.trim() || file.name.replace(/\.gguf$/i, ''))
+    .replace(/[^a-zA-Z0-9_.:/\-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  nameInput.disabled = true;
+  dropzone.style.pointerEvents = 'none';
+  dropzone.style.opacity = '0.6';
+  dzLabel.textContent = file.name;
+  prog.style.display = 'block';
+  label.textContent  = `Uploading ${file.name}…`;
+  fill.style.width    = '0%';
+  detail.textContent  = formatMM(file.size);
+
+  const qs = new URLSearchParams({ name: modelName, filename: file.name });
+
+  try {
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${PROXY}/v1/models/import-gguf?${qs}`);
+      xhr.upload.onprogress = (e) => {
+        if (!e.lengthComputable) return;
+        const pct = Math.round((e.loaded / e.total) * 100);
+        fill.style.width = pct + '%';
+        detail.textContent = `${formatMM(e.loaded)} / ${formatMM(e.total)} (${pct}%)`;
+        if (pct >= 100) label.textContent = 'Processing on Ollama…';
+      };
+      xhr.onload = () => {
+        let data = {};
+        try { data = JSON.parse(xhr.responseText); } catch {}
+        if (xhr.status >= 200 && xhr.status < 300 && data.ok) resolve(data);
+        else reject(new Error(data.error || `Import failed (HTTP ${xhr.status})`));
+      };
+      xhr.onerror = () => reject(new Error('Network error during upload'));
+      xhr.send(file);
+    });
+
+    label.textContent  = `${modelName} imported successfully!`;
+    fill.style.width    = '100%';
+    showToast(`${modelName} is ready`, 'success');
+    nameInput.value = '';
+    await loadModels();
+    await refreshModelManagerList();
+  } catch (e) {
+    label.textContent = `Failed: ${e.message}`;
+    showToast(e.message, 'error');
+  } finally {
+    nameInput.disabled = false;
+    dropzone.style.pointerEvents = '';
+    dropzone.style.opacity = '';
+    dzLabel.textContent = 'Drag a .gguf file here, or click to browse';
+  }
+}
+
 async function deleteModelFromManager(modelName, btnEl) {
   if (!confirm(`Delete "${modelName}" from disk? This cannot be undone.`)) return;
 

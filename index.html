@@ -1503,6 +1503,32 @@
         </div>
       </div>
 
+      <!-- Import a local GGUF file directly, no CLI needed -->
+      <div class="mm-section">
+        <div class="mm-section-title">Import a local GGUF file</div>
+        <div class="mm-gguf-row">
+          <input type="text" id="mm-gguf-name-input" class="mm-pull-input"
+            placeholder="Model name for this import (e.g. my-model)"/>
+        </div>
+        <div class="mm-gguf-dropzone" id="mm-gguf-dropzone"
+          tabindex="0" role="button" aria-label="Choose or drop a .gguf file to import"
+          onclick="document.getElementById('mm-gguf-file-input').click()"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('mm-gguf-file-input').click()}"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="handleGgufDrop(event)">
+          <span id="mm-gguf-dropzone-label">Drag a .gguf file here, or click to browse</span>
+          <input type="file" id="mm-gguf-file-input" accept=".gguf" style="display:none" onchange="handleGgufFileSelect(event)"/>
+        </div>
+        <div class="mm-pull-progress" id="mm-gguf-progress" style="display:none">
+          <div class="mm-progress-label" id="mm-gguf-progress-label">Uploading…</div>
+          <div class="mm-progress-bar">
+            <div class="mm-progress-fill" id="mm-gguf-progress-fill" style="width:0%"></div>
+          </div>
+          <div class="mm-progress-detail" id="mm-gguf-progress-detail"></div>
+        </div>
+      </div>
+
       <!-- Installed models list -->
       <div class="mm-section">
         <div class="mm-section-title">Installed Ollama models</div>
