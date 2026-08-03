@@ -2653,6 +2653,10 @@ function readStdinIfPiped() {
 }
 
 async function runCliBatch(args) {
+  if (args.error) {
+    console.error(`Error: ${args.error}`);
+    return 1;
+  }
   if (args.help) {
     console.log(CLI_HELP_TEXT);
     return 0;
@@ -2700,7 +2704,7 @@ async function runCliBatch(args) {
 const cliArgs = parseCliArgs(process.argv.slice(2));
 
 if (cliArgs.batchMode) {
-  runCliBatch(cliArgs).then((code) => process.exit(code));
+  runCliBatch(cliArgs).then((code) => { process.exitCode = code; });
 } else {
 (async () => {
   await registry.init();

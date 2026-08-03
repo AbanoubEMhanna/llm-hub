@@ -50,6 +50,35 @@ test('invalid --temperature falls back to null instead of NaN', () => {
   assert.equal(args.temperature, null);
 });
 
+test('a value-taking flag followed by another flag is a parse error, not a swallowed value', () => {
+  const args = parseCliArgs(['--model', '--json', 'prompt text']);
+  assert.equal(args.error, '--model requires a value');
+  assert.equal(args.model, null);
+  // "--json" was not consumed as --model's value, so the parser reaches it
+  // on the next iteration and parses it as its own flag, as it should.
+  assert.equal(args.json, true);
+  assert.equal(args.prompt, 'prompt text');
+});
+
+test('a value-taking flag at the end of argv with no value is a parse error', () => {
+  const args = parseCliArgs(['--model', 'llama3.2', '--system']);
+  assert.equal(args.error, '--system requires a value');
+  assert.equal(args.system, null);
+});
+
+test('--provider, --temperature, and --prompt also reject a following flag as their value', () => {
+  assert.equal(parseCliArgs(['--model', 'x', '--provider', '--json']).error, '--provider requires a value');
+  assert.equal(parseCliArgs(['--model', 'x', '--temperature', '--json']).error, '--temperature requires a value');
+  assert.equal(parseCliArgs(['--model', 'x', '--prompt', '--json']).error, '--prompt requires a value');
+});
+
+test('a parse error on --model itself still enables batch mode (surfaces the error instead of silently starting the server)', () => {
+  const args = parseCliArgs(['--model', '--json', 'hello']);
+  assert.equal(args.error, '--model requires a value');
+  assert.equal(args.model, null);
+  assert.equal(args.batchMode, true);
+});
+
 test('buildBatchMessages omits system role when no system prompt given', () => {
   const messages = buildBatchMessages({ system: null, prompt: 'hi' });
   assert.deepEqual(messages, [{ role: 'user', content: 'hi' }]);
