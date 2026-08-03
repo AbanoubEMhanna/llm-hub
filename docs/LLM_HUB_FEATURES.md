@@ -307,7 +307,7 @@
 - [x] 🔥 Integration tests for all HTTP endpoints
 - [ ] End-to-end tests with Playwright
 - [ ] VS Code extension — send selected code to LLM Hub
-- [ ] CLI batch mode — `echo "prompt" | llm-hub --model llama3`
+- [x] CLI batch mode — `echo "prompt" | llm-hub --model llama3`
 - [ ] Plugin system — load `.js` modules at startup
 
 ---
@@ -329,16 +329,16 @@
 | Modern UI | 17 | 7 |
 | Security & Privacy | 8 | 2 |
 | Deployment | 9 | 5 |
-| Developer / Testing | 7 | 4 |
-| **Total** | **161** | **51** |
+| Developer / Testing | 8 | 3 |
+| **Total** | **162** | **50** |
 
-**~75% complete. Top priorities to close the gap:**
+**~76% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
-3. 🔥 Agent tooling (shell command tool — needs a new tool-call confirmation flow, see Developer notes)
+3. 🔥 Agent tooling (shell command tool — needs a new tool-call confirmation flow: the agent loop that executes tools runs entirely server-side in `runAgentLoop`/`proxy.js`, so a per-execution confirmation means pausing mid-loop for a client round-trip — a bigger lift than the other 🔥 items, hence still open)
 4. Model update notifications — alert when a newer version is available
 5. More cloud providers (AI21 / Perplexity) — held back so far: neither has a documented `/models` list endpoint, so they don't slot into the existing discovery-based `CLOUD_PROVIDERS` pattern without extra design work (a static model-ID list injected regardless of live discovery); needs to be verified against current docs before shipping, not guessed.
 
 ---
 
-*Last updated: 2026-08-02. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-08-03. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*

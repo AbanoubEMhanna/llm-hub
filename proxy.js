@@ -39,6 +39,7 @@ const { parseNvidiaSmi, parseRocmSmi } = require('./lib/gpu-info');
 const { validateCustomTool, buildCustomToolDef, sanitizeCustomTools } = require('./lib/custom-tools');
 const { isAllowedRepoUrl, walkRepoFiles, cloneRepo, repoDisplayName } = require('./lib/github-index');
 const { isValidModelName: isValidGgufModelName, isValidGgufFilename, streamToFileWithHash, uploadBlob, createModel: createOllamaModelFromBlob, DEFAULT_MAX_GGUF_BYTES } = require('./lib/gguf-import');
+const { HELP_TEXT: CLI_HELP_TEXT, parseCliArgs, buildBatchMessages, extractAssistantText } = require('./lib/cli-batch');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § CONFIG & STORAGE
@@ -328,7 +329,7 @@ class RagEngine {
           this.collections.set(col.id, col);
         } catch (e) { console.error('[RAG] failed to load', f, e.message); }
       }
-      console.log(`[RAG] Loaded ${this.collections.size} collection(s)`);
+      console.error(`[RAG] Loaded ${this.collections.size} collection(s)`);
     } catch { /* dir empty */ }
   }
 
@@ -2634,9 +2635,73 @@ const server = http.createServer((req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § CLI BATCH MODE
+// ─────────────────────────────────────────────────────────────────────────────
+// `node proxy.js --model llama3.2 "explain closures"` or
+// `echo "explain closures" | node proxy.js --model llama3.2` — a single
+// non-streaming completion printed to stdout, no HTTP server started.
+
+function readStdinIfPiped() {
+  return new Promise((resolve) => {
+    if (process.stdin.isTTY) { resolve(''); return; }
+    let data = '';
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (chunk) => (data += chunk));
+    process.stdin.on('end', () => resolve(data.trim()));
+    process.stdin.on('error', () => resolve(''));
+  });
+}
+
+async function runCliBatch(args) {
+  if (args.help) {
+    console.log(CLI_HELP_TEXT);
+    return 0;
+  }
+  if (!args.model) {
+    console.error('Error: --model is required for CLI batch mode. Run with --help for usage.');
+    return 1;
+  }
+  const providerCfg = CONFIG.providers?.[args.provider];
+  if (!providerCfg) {
+    console.error(`Error: unknown provider "${args.provider}". Use "ollama" or "lmstudio".`);
+    return 1;
+  }
+
+  const prompt = args.prompt || (await readStdinIfPiped());
+  if (!prompt) {
+    console.error('Error: no prompt given. Pass one as an argument, --prompt "...", or pipe it via stdin.');
+    return 1;
+  }
+
+  const body = { model: args.model, messages: buildBatchMessages({ system: args.system, prompt }), stream: false };
+  if (args.temperature != null) body.temperature = args.temperature;
+
+  let result;
+  try {
+    result = await httpPost(providerCfg.host, providerCfg.port, '/v1/chat/completions', body, 120000);
+  } catch (e) {
+    console.error(`Error: could not reach ${args.provider} at ${providerCfg.host}:${providerCfg.port} — ${e.message}`);
+    return 1;
+  }
+
+  if (result.status >= 400) {
+    console.error(`Error (${result.status}): ${extractAssistantText(result.data) || JSON.stringify(result.data)}`);
+    return 1;
+  }
+
+  console.log(args.json ? JSON.stringify(result.data, null, 2) : extractAssistantText(result.data));
+  return 0;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § STARTUP
 // ─────────────────────────────────────────────────────────────────────────────
 
+const cliArgs = parseCliArgs(process.argv.slice(2));
+
+if (cliArgs.batchMode) {
+  runCliBatch(cliArgs).then((code) => process.exit(code));
+} else {
 (async () => {
   await registry.init();
 
@@ -2663,3 +2728,4 @@ const server = http.createServer((req, res) => {
     process.exit(0);
   });
 })();
+}
