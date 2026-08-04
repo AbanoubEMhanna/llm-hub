@@ -6680,6 +6680,17 @@ async function loadSystemInfo() {
   }
 }
 
+// Renders a "68°C" badge into `el`, hiding it when `tempC` isn't a number
+// (macOS/Windows have no zero-dependency sysfs-style read, and some GPU
+// tools omit the reading entirely).
+function renderTempBadge(el, tempC) {
+  if (!el) return;
+  if (typeof tempC !== 'number' || !Number.isFinite(tempC)) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.textContent = `${Math.round(tempC)}°C`;
+  el.className = 'sys-mem-temp' + (tempC >= 90 ? ' danger' : tempC >= 80 ? ' warn' : '');
+}
+
 function updateSystemDisplay() {
   if (!systemInfo) return;
   const m = systemInfo.memory;
@@ -6690,6 +6701,7 @@ function updateSystemDisplay() {
     fillEl.style.width = m.usage_pct + '%';
     fillEl.className = 'sys-mem-fill' + (m.usage_pct > 90 ? ' danger' : m.usage_pct > 75 ? ' warn' : '');
   }
+  renderTempBadge(document.getElementById('sys-cpu-temp'), systemInfo.cpu_temp_c);
 
   // Detected GPU hardware (nvidia-smi / rocm-smi) — total VRAM capacity, distinct
   // from the "loaded models" section below which only reflects what Ollama/LM
@@ -6698,6 +6710,7 @@ function updateSystemDisplay() {
   const gpuText    = document.getElementById('sys-gpu-text');
   const gpuFill    = document.getElementById('sys-gpu-fill');
   const gpuLabel   = document.getElementById('sys-gpu-label');
+  const gpuTempEl  = document.getElementById('sys-gpu-temp');
   const gpus       = systemInfo.gpus || [];
   if (gpuSection) {
     if (gpus.length > 0) {
@@ -6705,11 +6718,13 @@ function updateSystemDisplay() {
       const totalMb = gpus.reduce((sum, g) => sum + g.vram_total_mb, 0);
       const usedMb  = gpus.reduce((sum, g) => sum + g.vram_used_mb, 0);
       const pct = totalMb > 0 ? Math.round((usedMb / totalMb) * 100) : 0;
+      const temps = gpus.map(g => g.temp_c).filter(t => typeof t === 'number' && Number.isFinite(t));
       if (gpuLabel) gpuLabel.textContent = gpus.length > 1 ? `GPU (${gpus.length})` : 'GPU';
       if (gpuText) {
         gpuText.textContent = `${formatMM(usedMb * 1048576)} / ${formatMM(totalMb * 1048576)} (${pct}%)`;
         gpuText.title = gpus.map(g => `${g.name}: ${formatMM(g.vram_used_mb * 1048576)} / ${formatMM(g.vram_total_mb * 1048576)}`).join('\n');
       }
+      renderTempBadge(gpuTempEl, temps.length ? Math.max(...temps) : null);
       if (gpuFill) {
         gpuFill.style.width = pct + '%';
         gpuFill.className = 'sys-mem-fill' + (pct > 90 ? ' danger' : pct > 75 ? ' warn' : '');
