@@ -8,7 +8,7 @@ test('parseNvidiaSmi parses a single-GPU CSV line', () => {
   const out = 'NVIDIA GeForce RTX 4090, 24564, 1187\n';
   const gpus = parseNvidiaSmi(out);
   assert.equal(gpus.length, 1);
-  assert.deepEqual(gpus[0], { name: 'NVIDIA GeForce RTX 4090', vram_total_mb: 24564, vram_used_mb: 1187 });
+  assert.deepEqual(gpus[0], { name: 'NVIDIA GeForce RTX 4090', vram_total_mb: 24564, vram_used_mb: 1187, temp_c: null });
 });
 
 test('parseNvidiaSmi parses multiple GPUs', () => {
@@ -46,6 +46,16 @@ test('parseNvidiaSmi skips a GPU with a blank total-VRAM field instead of treati
   assert.deepEqual(parseNvidiaSmi(out), []);
 });
 
+test('parseNvidiaSmi parses the optional temperature.gpu column', () => {
+  const out = 'NVIDIA GeForce RTX 4090, 24564, 1187, 65\n';
+  assert.equal(parseNvidiaSmi(out)[0].temp_c, 65);
+});
+
+test('parseNvidiaSmi reports null temp_c when the column is missing or unparsable', () => {
+  assert.equal(parseNvidiaSmi('NVIDIA GeForce RTX 4090, 24564, 1187\n')[0].temp_c, null);
+  assert.equal(parseNvidiaSmi('NVIDIA GeForce RTX 4090, 24564, 1187, N/A\n')[0].temp_c, null);
+});
+
 test('parseRocmSmi parses a single card', () => {
   const json = JSON.stringify({
     card0: { 'VRAM Total Memory (B)': '17179869184', 'VRAM Total Used Memory (B)': '1073741824' },
@@ -55,6 +65,7 @@ test('parseRocmSmi parses a single card', () => {
   assert.equal(gpus[0].name, 'card0');
   assert.equal(gpus[0].vram_total_mb, 16384);
   assert.equal(gpus[0].vram_used_mb, 1024);
+  assert.equal(gpus[0].temp_c, null);
 });
 
 test('parseRocmSmi parses multiple cards', () => {
@@ -81,4 +92,15 @@ test('parseRocmSmi skips a card with a blank or whitespace-only total field inst
   const whitespace = JSON.stringify({ card0: { 'VRAM Total Memory (B)': '   ', 'VRAM Total Used Memory (B)': '1073741824' } });
   assert.deepEqual(parseRocmSmi(blank), []);
   assert.deepEqual(parseRocmSmi(whitespace), []);
+});
+
+test('parseRocmSmi parses the optional temperature reading from --showtemp', () => {
+  const json = JSON.stringify({
+    card0: {
+      'VRAM Total Memory (B)': '17179869184',
+      'VRAM Total Used Memory (B)': '1073741824',
+      'Temperature (Sensor edge) (C)': '52.0',
+    },
+  });
+  assert.equal(parseRocmSmi(json)[0].temp_c, 52);
 });

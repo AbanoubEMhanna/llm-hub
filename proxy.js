@@ -36,6 +36,7 @@ const { ToolCallCache }    = require('./lib/tool-cache');
 const { detectPromptInjection, formatInjectionWarning } = require('./lib/prompt-injection');
 const { applyProviderTokenParam } = require('./lib/provider-params');
 const { parseNvidiaSmi, parseRocmSmi } = require('./lib/gpu-info');
+const { parseThermalZones } = require('./lib/cpu-temp');
 const { validateCustomTool, buildCustomToolDef, sanitizeCustomTools } = require('./lib/custom-tools');
 const { isAllowedRepoUrl, walkRepoFiles, cloneRepo, repoDisplayName } = require('./lib/github-index');
 const { isValidModelName: isValidGgufModelName, isValidGgufFilename, streamToFileWithHash, uploadBlob, createModel: createOllamaModelFromBlob, DEFAULT_MAX_GGUF_BYTES } = require('./lib/gguf-import');
@@ -1340,11 +1341,11 @@ function runCommandCapture(cmd, args, timeoutMs = 3000) {
   });
 }
 
-/** Detect total GPU VRAM via `nvidia-smi` (NVIDIA) and/or `rocm-smi` (AMD). Returns [] if neither is present. */
+/** Detect GPU VRAM + temperature via `nvidia-smi` (NVIDIA) and/or `rocm-smi` (AMD). Returns [] if neither is present. */
 async function detectGpus() {
   const [nvOut, rocmOut] = await Promise.all([
-    runCommandCapture('nvidia-smi', ['--query-gpu=name,memory.total,memory.used', '--format=csv,noheader,nounits']),
-    runCommandCapture('rocm-smi', ['--showmeminfo', 'vram', '--json']),
+    runCommandCapture('nvidia-smi', ['--query-gpu=name,memory.total,memory.used,temperature.gpu', '--format=csv,noheader,nounits']),
+    runCommandCapture('rocm-smi', ['--showmeminfo', 'vram', '--showtemp', '--json']),
   ]);
   return [...parseNvidiaSmi(nvOut), ...parseRocmSmi(rocmOut)];
 }
@@ -1357,6 +1358,40 @@ async function getGpuInfo() {
   if (now - gpuInfoCache.ts < GPU_CACHE_MS) return gpuInfoCache.data;
   const data = await detectGpus();
   gpuInfoCache = { data, ts: now };
+  return data;
+}
+
+/**
+ * Best-effort CPU temperature via Linux's `/sys/class/thermal/thermal_zone*`
+ * sysfs tree — no equivalent zero-dependency read exists on macOS/Windows.
+ * Returns null there, and on any read error (permissions, missing tree, etc).
+ */
+async function detectCpuTemp() {
+  if (os.platform() !== 'linux') return null;
+  try {
+    const entries = await fs.promises.readdir('/sys/class/thermal').catch(() => []);
+    const zoneDirs = entries.filter(e => /^thermal_zone\d+$/.test(e));
+    const zones = await Promise.all(zoneDirs.map(async (dir) => {
+      try {
+        const [type, temp] = await Promise.all([
+          fs.promises.readFile(`/sys/class/thermal/${dir}/type`, 'utf8'),
+          fs.promises.readFile(`/sys/class/thermal/${dir}/temp`, 'utf8'),
+        ]);
+        return { type: type.trim(), milliC: Number(temp.trim()) };
+      } catch { return null; }
+    }));
+    return parseThermalZones(zones.filter(Boolean));
+  } catch { return null; }
+}
+
+let cpuTempCache = { data: null, ts: 0 };
+const CPU_TEMP_CACHE_MS = 10000;
+/** Cached wrapper around detectCpuTemp() — same rationale as getGpuInfo(). */
+async function getCpuTemp() {
+  const now = Date.now();
+  if (now - cpuTempCache.ts < CPU_TEMP_CACHE_MS) return cpuTempCache.data;
+  const data = await detectCpuTemp();
+  cpuTempCache = { data, ts: now };
   return data;
 }
 
@@ -1831,8 +1866,9 @@ async function handleRequest(req, res) {
     // ── SYSTEM INFO (memory, CPU)
     if (req.method === 'GET' && url.pathname === '/v1/system') {
       const sysInfo = getSystemInfo();
-      const [running, gpus] = await Promise.all([getRunningModels(), getGpuInfo()]);
+      const [running, gpus, cpuTempC] = await Promise.all([getRunningModels(), getGpuInfo(), getCpuTemp()]);
       sysInfo.gpus = gpus;
+      sysInfo.cpu_temp_c = cpuTempC;
       sendJSON(res, 200, { system: sysInfo, running_models: running });
       return;
     }
