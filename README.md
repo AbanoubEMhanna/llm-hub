@@ -151,6 +151,30 @@ error        → { message }
 
 ---
 
+## 🖥 CLI Batch Mode
+
+Pass `--model` and `node proxy.js` runs a single one-shot completion and exits instead of starting the web server — handy for scripts and pipelines.
+
+```bash
+node proxy.js --model llama3.2 "explain closures in one sentence"
+echo "explain closures in one sentence" | node proxy.js --model llama3.2
+node proxy.js --model llama3.2 --provider lmstudio --system "be terse" --json "hi"
+```
+
+| Flag | Description |
+|------|-------------|
+| `--model <name>` | Model to use (required) |
+| `--provider <name>` | `ollama` (default) or `lmstudio` |
+| `--system <text>` | System prompt |
+| `--temperature <n>` | Sampling temperature |
+| `--prompt <text>` | Prompt text (alternative to a positional arg / stdin) |
+| `--json` | Print the raw provider response instead of just the text |
+| `-h`, `--help` | Show usage |
+
+Response text goes to stdout; diagnostics go to stderr, so it's safe to pipe (`node proxy.js --model llama3.2 "..." | tee out.txt`).
+
+---
+
 ## 🛠 Adding MCP Servers
 
 Edit `config.json` and set `"enabled": true`:
