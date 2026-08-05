@@ -35,7 +35,8 @@ const { parseContextLength } = require('./lib/context-length');
 const { ToolCallCache }    = require('./lib/tool-cache');
 const { detectPromptInjection, formatInjectionWarning } = require('./lib/prompt-injection');
 const { applyProviderTokenParam } = require('./lib/provider-params');
-const { resolveTimeoutConfig, backoffDelay } = require('./lib/provider-timeouts');
+const { resolveTimeoutConfig } = require('./lib/provider-timeouts');
+const { runStreamRound } = require('./lib/stream-round');
 const { parseNvidiaSmi, parseRocmSmi } = require('./lib/gpu-info');
 const { parseThermalZones } = require('./lib/cpu-temp');
 const { validateCustomTool, buildCustomToolDef, sanitizeCustomTools } = require('./lib/custom-tools');
@@ -1509,50 +1510,6 @@ function streamCustom(baseUrl, body, extraHeaders, { onChunk, onDone, onError, s
 // ─────────────────────────────────────────────────────────────────────────────
 // § AGENT LOOP
 // ─────────────────────────────────────────────────────────────────────────────
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/**
- * Runs one streamed chat-completion round and retries it (with exponential
- * backoff) when the failure happens before any chunk arrived — safe to redo,
- * since nothing has been emitted to the client yet. A failure after partial
- * output is never retried, to avoid duplicating already-streamed content.
- */
-async function runStreamRound(startStream, { retries, retryDelayMs }, signal, { onTextDelta, onUsage }) {
-  for (let attempt = 0; ; attempt++) {
-    if (signal?.aborted) return { ok: false, error: 'aborted' };
-    const result = await new Promise((resolve) => {
-      let content = '';
-      const toolCalls = [];
-      let receivedAnyChunk = false;
-      startStream({
-        signal,
-        onChunk(chunk) {
-          receivedAnyChunk = true;
-          const delta = chunk.choices?.[0]?.delta || {};
-          if (typeof delta.content === 'string' && delta.content.length) {
-            content += delta.content;
-            onTextDelta(delta.content);
-          }
-          if (Array.isArray(delta.tool_calls)) {
-            for (const tc of delta.tool_calls) {
-              const i = tc.index ?? 0;
-              if (!toolCalls[i]) toolCalls[i] = { id: '', type: 'function', function: { name: '', arguments: '' } };
-              if (tc.id)                  toolCalls[i].id = tc.id;
-              if (tc.function?.name)      toolCalls[i].function.name      += tc.function.name;
-              if (tc.function?.arguments) toolCalls[i].function.arguments += tc.function.arguments;
-            }
-          }
-          if (chunk.usage) onUsage(chunk.usage);
-        },
-        onDone()  { resolve({ ok: true, content, toolCalls: toolCalls.filter(tc => tc?.function?.name) }); },
-        onError(e){ resolve({ ok: false, error: e, receivedAnyChunk }); },
-      });
-    });
-    if (result.ok || result.receivedAnyChunk || attempt >= retries) return result;
-    await sleep(backoffDelay(attempt, retryDelayMs));
-  }
-}
 
 async function executeWithCache(toolCache, toolName, toolArgs) {
   if (toolCache.has(toolName, toolArgs)) {

@@ -46,6 +46,18 @@ test('enforces a minimum timeout floor', () => {
   assert.equal(result.timeoutMs, 1000);
 });
 
+test('enforces a maximum timeout ceiling', () => {
+  const result = resolveTimeoutConfig('x', { default: { timeoutMs: 900000 } });
+  assert.equal(result.timeoutMs, 600000);
+});
+
+test('clamps values above the 32-bit timer limit instead of letting Node normalize them to 1ms', () => {
+  // Node silently turns any setTimeout/socket timeout above 2^31-1 into 1ms —
+  // resolveTimeoutConfig must never pass a value that large through.
+  const result = resolveTimeoutConfig('x', { default: { timeoutMs: 2147483648 } });
+  assert.equal(result.timeoutMs, 600000);
+});
+
 test('ignores non-numeric config values', () => {
   const cfg = { default: { timeoutMs: 'fast', retries: null, retryDelayMs: NaN } };
   const result = resolveTimeoutConfig('x', cfg);

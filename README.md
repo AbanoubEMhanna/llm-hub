@@ -208,10 +208,10 @@ Reload the config from the UI (⚙️ icon) and the server will connect without 
 
 ## ⏱ Per-Provider Timeouts & Retries
 
-Every provider request — Ollama, LM Studio, OpenAI, Anthropic, Groq, DeepSeek, custom
-OpenAI-compatible endpoints, all of them — has a request timeout and will retry a failed request
-before it has streamed anything back, so a transient network blip or a slow cold model load no
-longer kills the whole response. Tune it in `config.json`:
+Every streaming chat request through `/v1/chat` — Ollama, LM Studio, OpenAI, Anthropic, Groq,
+DeepSeek, custom OpenAI-compatible endpoints, all of them — has a request timeout and will retry
+a failed request before it has streamed anything back, so a transient network blip or a slow
+cold model load no longer kills the whole response. Tune it in `config.json`:
 
 ```json
 {
@@ -227,6 +227,9 @@ longer kills the whole response. Tune it in `config.json`:
 it only fires when a provider goes fully silent — it's not a hard cap on total response time.
 Retries use exponential backoff and only ever kick in when nothing has streamed yet, so a
 partially-received answer is never duplicated.
+
+> The non-streaming `/v1/chat/completions` passthrough (for external OpenAI-compatible clients)
+> is unaffected by this setting — it keeps its own fixed request timeout and does not retry.
 
 ---
 
