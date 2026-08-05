@@ -206,6 +206,30 @@ Reload the config from the UI (⚙️ icon) and the server will connect without 
 
 ---
 
+## ⏱ Per-Provider Timeouts & Retries
+
+Every provider request — Ollama, LM Studio, OpenAI, Anthropic, Groq, DeepSeek, custom
+OpenAI-compatible endpoints, all of them — has a request timeout and will retry a failed request
+before it has streamed anything back, so a transient network blip or a slow cold model load no
+longer kills the whole response. Tune it in `config.json`:
+
+```json
+{
+  "providerTimeouts": {
+    "default":   { "timeoutMs": 120000, "retries": 1, "retryDelayMs": 500 },
+    "overrides": { "openai": { "timeoutMs": 30000, "retries": 2 } }
+  }
+}
+```
+
+`default` applies to every provider; `overrides` sets per-provider values (falling back to
+`default`, then to the built-in defaults above). The timeout resets on every streamed token, so
+it only fires when a provider goes fully silent — it's not a hard cap on total response time.
+Retries use exponential backoff and only ever kick in when nothing has streamed yet, so a
+partially-received answer is never duplicated.
+
+---
+
 ## 🐛 Troubleshooting
 
 ### "Cannot reach proxy"

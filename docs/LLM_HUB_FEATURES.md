@@ -21,7 +21,7 @@
 - [x] Custom OpenAI-compatible endpoint (vLLM, LocalAI, Koboldcpp, etc.)
 - [x] Per-provider connection test button
 - [x] 🔥 Provider health monitoring with auto-reconnect + exponential backoff
-- [ ] Per-provider timeout and retry configuration
+- [x] Per-provider timeout and retry configuration
 
 ### Cloud Providers
 - [x] OpenAI (GPT-4o, o3, o4-mini)
