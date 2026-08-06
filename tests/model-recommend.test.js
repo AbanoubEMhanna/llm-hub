@@ -78,3 +78,34 @@ test('returns an empty array for a non-array catalog', () => {
   assert.deepEqual(recommendModels(null, { gpus: [], freeRamBytes: 1e9 }), []);
   assert.deepEqual(recommendModels(undefined, { gpus: [], freeRamBytes: 1e9 }), []);
 });
+
+test('a model tagged both "code" and "vision" is never recommended twice', () => {
+  const catalog = [
+    ...CATALOG,
+    { name: 'llava-code', org: 'Test', size: '9.3 GB', tags: ['code', 'vision'] },
+  ];
+  const hardware = { gpus: [], freeRamBytes: 12e9 };
+  const picks = recommendModels(catalog, hardware);
+
+  const names = picks.map(p => p.model.name);
+  assert.equal(new Set(names).size, names.length); // no duplicate cards
+
+  const code = picks.find(p => p.category === 'code');
+  assert.equal(code.model.name, 'llava-code'); // largest fitting code-tagged entry
+
+  const vision = picks.find(p => p.category === 'vision');
+  assert.equal(vision.model.name, 'llama3.2-vision'); // llava-code already claimed by 'code'
+});
+
+test('"general" excludes code-tagged models, not just vision-tagged ones', () => {
+  // A catalog where the largest fitting model is code-tagged: general must
+  // skip it in favor of a smaller, truly general-purpose model.
+  const catalog = [
+    { name: 'big-coder', org: 'Test', size: '9 GB', tags: ['code'] },
+    { name: 'small-general', org: 'Test', size: '3 GB', tags: [] },
+  ];
+  const hardware = { gpus: [], freeRamBytes: 12e9 };
+  const picks = recommendModels(catalog, hardware);
+  const general = picks.find(p => p.category === 'general');
+  assert.equal(general.model.name, 'small-general');
+});

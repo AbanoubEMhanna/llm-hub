@@ -6014,12 +6014,27 @@ async function wizardPullRecommended(name, btnEl) {
   btnEl.disabled = true;
   btnEl.classList.add('pulling');
   btnEl.textContent = 'Pulling…';
+
+  const fail = (message) => {
+    btnEl.textContent = original;
+    btnEl.disabled = false;
+    btnEl.classList.remove('pulling');
+    showToast(message, 'error');
+  };
+
+  // Tracks the terminal SSE event actually seen, so a stream that ends
+  // without one (dropped connection, proxy restart) doesn't leave the
+  // button stuck on "Pulling…", and a loadModels() failure after a real
+  // 'done' can't be mistaken for the pull itself having failed.
+  let terminal = null; // 'done' | 'error' | null
   try {
-    const res    = await fetch(`${PROXY}/v1/models/pull`, {
+    const res = await fetch(`${PROXY}/v1/models/pull`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ name }),
     });
+    if (!res.ok) { fail(`Pull failed — HTTP ${res.status}`); return; }
+
     const reader = res.body.getReader();
     const dec    = new TextDecoder();
     let   buf    = '';
@@ -6036,23 +6051,25 @@ async function wizardPullRecommended(name, btnEl) {
           if (evt.type === 'progress' && evt.total > 0) {
             btnEl.textContent = `${Math.round((evt.completed / evt.total) * 100)}%`;
           } else if (evt.type === 'done') {
+            terminal = 'done';
             btnEl.textContent = '✓ Installed';
             showToast(`${name} is ready`, 'success');
-            await loadModels();
           } else if (evt.type === 'error') {
-            btnEl.textContent = original;
-            btnEl.disabled = false;
-            btnEl.classList.remove('pulling');
-            showToast(evt.message, 'error');
+            terminal = 'error';
+            fail(evt.message);
           }
         } catch {}
       }
     }
   } catch (e) {
-    btnEl.textContent = original;
-    btnEl.disabled = false;
-    btnEl.classList.remove('pulling');
-    showToast('Pull failed — is Ollama running?', 'error');
+    if (terminal !== 'done') fail('Pull failed — is Ollama running?');
+    return;
+  }
+
+  if (terminal === 'done') {
+    loadModels().catch(() => showToast(`${name} installed, but the model list failed to refresh — reload to see it`, 'warning'));
+  } else if (terminal === null) {
+    fail('Pull failed — connection closed unexpectedly');
   }
 }
 
