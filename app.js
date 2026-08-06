@@ -5907,7 +5907,7 @@ function wizardNext() {
   if (_wizardStep < _WIZARD_STEPS) {
     _wizardStep++;
     _renderWizardStep();
-    if (_wizardStep === 2) _runWizardDetection();
+    if (_wizardStep === 2) { _runWizardDetection(); _runWizardRecommendations(); }
   } else {
     closeOnboardingWizard();
   }
@@ -5965,6 +5965,94 @@ async function _runWizardDetection() {
     }).join('');
   } catch {
     status.innerHTML = `<p style="color:var(--red);font-size:13px">Could not reach proxy. Make sure <code>node proxy.js</code> is running.</p>`;
+  }
+}
+
+// First-launch model suggestions, sized to the detected hardware (RAM/VRAM
+// from /v1/system) via lib/model-recommend.js's recommendModels(). Silent
+// no-op on any failure — recommendations are a nice-to-have and must never
+// block the rest of onboarding.
+async function _runWizardRecommendations() {
+  const section = document.getElementById('wizard-recommend-section');
+  const list    = document.getElementById('wizard-recommend-list');
+  if (!section || !list || typeof recommendModels !== 'function') return;
+  try {
+    if (!systemInfo) await loadSystemInfo();
+    if (!systemInfo) return;
+
+    const modelsRes  = await fetch(`${PROXY}/v1/models`, { headers: apiKeyHeader() });
+    const modelsData = await modelsRes.json();
+    const installed  = (modelsData.data || [])
+      .filter(m => m.owned_by === 'ollama' || m.id?.startsWith('ollama/'))
+      .map(m => m.id.replace(/^ollama\//, ''));
+
+    const picks = recommendModels(OLLAMA_LIBRARY, {
+      gpus: systemInfo.gpus,
+      freeRamBytes: systemInfo.memory?.free,
+    }, installed, 3);
+    if (!picks.length) return;
+
+    list.innerHTML = picks.map(({ category, model }) => `
+      <div class="wizard-recommend-card">
+        <span class="wizard-recommend-icon">${model.icon || '🧠'}</span>
+        <div class="wizard-recommend-info">
+          <div class="wizard-recommend-name">${escHtml(model.name)}</div>
+          <div class="wizard-recommend-meta">${escHtml(model.org || '')} &middot; ${escHtml(model.size || '')} &middot; ${escHtml(category)}</div>
+        </div>
+        <button type="button" class="wizard-recommend-pull-btn" onclick="wizardPullRecommended('${model.name}', this)">&darr; Pull</button>
+      </div>
+    `).join('');
+    section.style.display = 'block';
+  } catch {
+    // proxy unreachable or /v1/models failed — leave the section hidden
+  }
+}
+
+async function wizardPullRecommended(name, btnEl) {
+  if (btnEl.disabled) return;
+  const original = btnEl.textContent;
+  btnEl.disabled = true;
+  btnEl.classList.add('pulling');
+  btnEl.textContent = 'Pulling…';
+  try {
+    const res    = await fetch(`${PROXY}/v1/models/pull`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name }),
+    });
+    const reader = res.body.getReader();
+    const dec    = new TextDecoder();
+    let   buf    = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const evt = JSON.parse(line.slice(6));
+          if (evt.type === 'progress' && evt.total > 0) {
+            btnEl.textContent = `${Math.round((evt.completed / evt.total) * 100)}%`;
+          } else if (evt.type === 'done') {
+            btnEl.textContent = '✓ Installed';
+            showToast(`${name} is ready`, 'success');
+            await loadModels();
+          } else if (evt.type === 'error') {
+            btnEl.textContent = original;
+            btnEl.disabled = false;
+            btnEl.classList.remove('pulling');
+            showToast(evt.message, 'error');
+          }
+        } catch {}
+      }
+    }
+  } catch (e) {
+    btnEl.textContent = original;
+    btnEl.disabled = false;
+    btnEl.classList.remove('pulling');
+    showToast('Pull failed — is Ollama running?', 'error');
   }
 }
 
