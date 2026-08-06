@@ -35,6 +35,8 @@ const { parseContextLength } = require('./lib/context-length');
 const { ToolCallCache }    = require('./lib/tool-cache');
 const { detectPromptInjection, formatInjectionWarning } = require('./lib/prompt-injection');
 const { applyProviderTokenParam } = require('./lib/provider-params');
+const { resolveTimeoutConfig } = require('./lib/provider-timeouts');
+const { runStreamRound } = require('./lib/stream-round');
 const { parseNvidiaSmi, parseRocmSmi } = require('./lib/gpu-info');
 const { parseThermalZones } = require('./lib/cpu-temp');
 const { validateCustomTool, buildCustomToolDef, sanitizeCustomTools } = require('./lib/custom-tools');
@@ -62,6 +64,7 @@ function loadConfig() {
       rag: { enabled: true, embedding_provider: 'ollama', embedding_model: 'nomic-embed-text', chunk_size: 800, chunk_overlap: 100, top_k: 5, hybrid_search: false },
       logging: { enabled: false },
       agentHistory: { enabled: false },
+      providerTimeouts: { default: { timeoutMs: 120000, retries: 1, retryDelayMs: 500 }, overrides: {} },
       mcp_servers: [],
     };
   }
@@ -219,10 +222,10 @@ function httpsPost(hostname, pathStr, body, headers = {}, timeout = 60000) {
   });
 }
 
-function streamHTTPS(hostname, pathStr, body, headers, { onChunk, onDone, onError, signal }) {
+function streamHTTPS(hostname, pathStr, body, headers, { onChunk, onDone, onError, signal }, timeoutMs = 60000) {
   const data = JSON.stringify({ ...body, stream: true });
   const req = https.request(
-    { hostname, path: pathStr, method: 'POST',
+    { hostname, path: pathStr, method: 'POST', timeout: timeoutMs,
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data), ...headers } },
     (res) => {
       if (res.statusCode >= 400) {
@@ -250,6 +253,7 @@ function streamHTTPS(hostname, pathStr, body, headers, { onChunk, onDone, onErro
     }
   );
   req.on('error', (e) => onError(e.message));
+  req.on('timeout', () => { req.destroy(); onError(`Request timed out after ${timeoutMs}ms`); });
   if (signal) signal.onAbort = () => { try { req.destroy(); } catch {} };
   req.write(data);
   req.end();
@@ -257,10 +261,10 @@ function streamHTTPS(hostname, pathStr, body, headers, { onChunk, onDone, onErro
 }
 
 // Anthropic SSE → OpenAI-compatible chunk converter
-function streamAnthropic(hostname, pathStr, body, headers, { onChunk, onDone, onError, signal }) {
+function streamAnthropic(hostname, pathStr, body, headers, { onChunk, onDone, onError, signal }, timeoutMs = 60000) {
   const data = JSON.stringify({ ...body, stream: true });
   const req = https.request(
-    { hostname, path: pathStr, method: 'POST',
+    { hostname, path: pathStr, method: 'POST', timeout: timeoutMs,
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data), ...headers } },
     (res) => {
       if (res.statusCode >= 400) {
@@ -305,6 +309,7 @@ function streamAnthropic(hostname, pathStr, body, headers, { onChunk, onDone, on
     }
   );
   req.on('error', (e) => onError(e.message));
+  req.on('timeout', () => { req.destroy(); onError(`Request timed out after ${timeoutMs}ms`); });
   if (signal) signal.onAbort = () => { try { req.destroy(); } catch {} };
   req.write(data);
   req.end();
@@ -1421,10 +1426,10 @@ function getSystemInfo() {
 // § STREAMING PROVIDER
 // ─────────────────────────────────────────────────────────────────────────────
 
-function streamProvider(host, port, pathStr, body, { onChunk, onDone, onError, signal }) {
+function streamProvider(host, port, pathStr, body, { onChunk, onDone, onError, signal }, timeoutMs = 60000) {
   const data = JSON.stringify({ ...body, stream: true });
   const req  = http.request(
-    { hostname: host, port, path: pathStr, method: 'POST',
+    { hostname: host, port, path: pathStr, method: 'POST', timeout: timeoutMs,
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } },
     (res) => {
       if (res.statusCode >= 400) {
@@ -1452,13 +1457,14 @@ function streamProvider(host, port, pathStr, body, { onChunk, onDone, onError, s
     }
   );
   req.on('error', (e) => onError(e.message));
+  req.on('timeout', () => { req.destroy(); onError(`Request timed out after ${timeoutMs}ms`); });
   if (signal) signal.onAbort = () => { try { req.destroy(); } catch {} };
   req.write(data);
   req.end();
   return req;
 }
 
-function streamCustom(baseUrl, body, extraHeaders, { onChunk, onDone, onError, signal }) {
+function streamCustom(baseUrl, body, extraHeaders, { onChunk, onDone, onError, signal }, timeoutMs = 60000) {
   let parsedUrl;
   try { parsedUrl = new URL(baseUrl); } catch { onError('Invalid custom provider URL: ' + baseUrl); return; }
   const isHttps = parsedUrl.protocol === 'https:';
@@ -1466,7 +1472,7 @@ function streamCustom(baseUrl, body, extraHeaders, { onChunk, onDone, onError, s
   const port = parsedUrl.port ? parseInt(parsedUrl.port) : (isHttps ? 443 : 80);
   const data = JSON.stringify({ ...body, stream: true });
   const req = transport.request(
-    { hostname: parsedUrl.hostname, port, path: '/v1/chat/completions', method: 'POST',
+    { hostname: parsedUrl.hostname, port, path: '/v1/chat/completions', method: 'POST', timeout: timeoutMs,
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data), ...extraHeaders } },
     (res) => {
       if (res.statusCode >= 400) {
@@ -1494,6 +1500,7 @@ function streamCustom(baseUrl, body, extraHeaders, { onChunk, onDone, onError, s
     }
   );
   req.on('error', (e) => onError(e.message));
+  req.on('timeout', () => { req.destroy(); onError(`Request timed out after ${timeoutMs}ms`); });
   if (signal) signal.onAbort = () => { try { req.destroy(); } catch {} };
   req.write(data);
   req.end();
@@ -1534,6 +1541,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
     const cpConfig = customProviderConfigs.get(provider);
     if (!cpConfig) { emit('error', { message: `Custom provider "${provider}" not found. Re-open Settings to reload.` }); return; }
     const cpHeaders = cpConfig.key ? { Authorization: `Bearer ${cpConfig.key}` } : {};
+    const timeoutCfg = resolveTimeoutConfig(provider, CONFIG.providerTimeouts);
     for (let round = 0; round < MAX_ROUNDS; round++) {
       if (signal?.aborted) return;
       const body = { model: actualModel, messages: history, temperature: temperature ?? 0.7, max_tokens: max_tokens ?? 2048 };
@@ -1544,29 +1552,15 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
       if (stop.length > 0) body.stop = stop;
       if (seed !== undefined) body.seed = seed;
       if (tools.length > 0) body.tools = tools;
-      const roundResult = await new Promise((resolve) => {
-        let content = '';
-        const toolCalls = [];
-        streamCustom(cpConfig.url, body, cpHeaders, {
-          signal,
-          onChunk(chunk) {
-            const delta = chunk.choices?.[0]?.delta || {};
-            if (typeof delta.content === 'string' && delta.content.length) { content += delta.content; emit('text_delta', { delta: delta.content }); }
-            if (Array.isArray(delta.tool_calls)) {
-              for (const tc of delta.tool_calls) {
-                const i = tc.index ?? 0;
-                if (!toolCalls[i]) toolCalls[i] = { id: '', type: 'function', function: { name: '', arguments: '' } };
-                if (tc.id) toolCalls[i].id = tc.id;
-                if (tc.function?.name) toolCalls[i].function.name += tc.function.name;
-                if (tc.function?.arguments) toolCalls[i].function.arguments += tc.function.arguments;
-              }
-            }
-            if (chunk.usage) { usage.prompt_tokens += chunk.usage.prompt_tokens || 0; usage.completion_tokens += chunk.usage.completion_tokens || 0; }
-          },
-          onDone()  { resolve({ ok: true, content, toolCalls: toolCalls.filter(tc => tc?.function?.name) }); },
-          onError(e){ resolve({ ok: false, error: e }); },
-        });
-      });
+      const roundResult = await runStreamRound(
+        (handlers) => streamCustom(cpConfig.url, body, cpHeaders, handlers, timeoutCfg.timeoutMs),
+        timeoutCfg,
+        signal,
+        {
+          onTextDelta: (d) => emit('text_delta', { delta: d }),
+          onUsage: (u) => { usage.prompt_tokens += u.prompt_tokens || 0; usage.completion_tokens += u.completion_tokens || 0; },
+        }
+      );
       if (signal?.aborted) return;
       if (!roundResult.ok) { emit('error', { message: roundResult.error }); return; }
       if (roundResult.toolCalls.length > 0) {
@@ -1595,6 +1589,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
     const apiKey = apiKeys[cfg.keyProp];
     if (!apiKey) { emit('error', { message: `No API key for ${provider}. Add it in Settings → Providers.` }); return; }
     const headers = buildCloudHeaders(provider, apiKey);
+    const timeoutCfg = resolveTimeoutConfig(provider, CONFIG.providerTimeouts);
 
     for (let round = 0; round < MAX_ROUNDS; round++) {
       if (signal?.aborted) return;
@@ -1613,7 +1608,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
             input_schema: t.function.parameters,
           }));
         }
-        streamFn = (cb) => streamAnthropic(cfg.hostname, cfg.chatPath, body, headers, cb);
+        streamFn = (cb) => streamAnthropic(cfg.hostname, cfg.chatPath, body, headers, cb, timeoutCfg.timeoutMs);
       } else {
         body = {
           model:       actualModel,
@@ -1626,37 +1621,12 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
         if (seed !== undefined)   body.seed   = seed;
         if (tools.length > 0)     body.tools  = tools;
         applyProviderTokenParam(provider, body);
-        streamFn = (cb) => streamHTTPS(cfg.hostname, cfg.chatPath, body, headers, cb);
+        streamFn = (cb) => streamHTTPS(cfg.hostname, cfg.chatPath, body, headers, cb, timeoutCfg.timeoutMs);
       }
 
-      const roundResult = await new Promise((resolve) => {
-        let content = '';
-        const toolCalls = [];
-        streamFn({
-          signal,
-          onChunk(chunk) {
-            const delta = chunk.choices?.[0]?.delta || {};
-            if (typeof delta.content === 'string' && delta.content.length) {
-              content += delta.content;
-              emit('text_delta', { delta: delta.content });
-            }
-            if (Array.isArray(delta.tool_calls)) {
-              for (const tc of delta.tool_calls) {
-                const i = tc.index ?? 0;
-                if (!toolCalls[i]) toolCalls[i] = { id: '', type: 'function', function: { name: '', arguments: '' } };
-                if (tc.id)                  toolCalls[i].id = tc.id;
-                if (tc.function?.name)      toolCalls[i].function.name      += tc.function.name;
-                if (tc.function?.arguments) toolCalls[i].function.arguments += tc.function.arguments;
-              }
-            }
-            if (chunk.usage) {
-              usage.prompt_tokens     += chunk.usage.prompt_tokens     || 0;
-              usage.completion_tokens += chunk.usage.completion_tokens || 0;
-            }
-          },
-          onDone()  { resolve({ ok: true, content, toolCalls: toolCalls.filter(tc => tc?.function?.name) }); },
-          onError(e){ resolve({ ok: false, error: e }); },
-        });
+      const roundResult = await runStreamRound(streamFn, timeoutCfg, signal, {
+        onTextDelta: (d) => emit('text_delta', { delta: d }),
+        onUsage: (u) => { usage.prompt_tokens += u.prompt_tokens || 0; usage.completion_tokens += u.completion_tokens || 0; },
       });
 
       if (signal?.aborted) return;
@@ -1685,6 +1655,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
   }
 
   // ── Local provider (Ollama / LM Studio) ──
+  const timeoutCfg = resolveTimeoutConfig(provider, CONFIG.providerTimeouts);
   for (let round = 0; round < MAX_ROUNDS; round++) {
     if (signal?.aborted) return;
 
@@ -1705,35 +1676,15 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
     if (numCtx !== undefined && provider === 'ollama') body.options = { num_ctx: numCtx };
     if (tools.length > 0) body.tools = tools;
 
-    const roundResult = await new Promise((resolve) => {
-      let content = '';
-      const toolCalls = [];
-      streamProvider(cfg.host, cfg.port, '/v1/chat/completions', body, {
-        signal,
-        onChunk(chunk) {
-          const delta = chunk.choices?.[0]?.delta || {};
-          if (typeof delta.content === 'string' && delta.content.length) {
-            content += delta.content;
-            emit('text_delta', { delta: delta.content });
-          }
-          if (Array.isArray(delta.tool_calls)) {
-            for (const tc of delta.tool_calls) {
-              const i = tc.index ?? 0;
-              if (!toolCalls[i]) toolCalls[i] = { id: '', type: 'function', function: { name: '', arguments: '' } };
-              if (tc.id)                  toolCalls[i].id = tc.id;
-              if (tc.function?.name)      toolCalls[i].function.name      += tc.function.name;
-              if (tc.function?.arguments) toolCalls[i].function.arguments += tc.function.arguments;
-            }
-          }
-          if (chunk.usage) {
-            usage.prompt_tokens     += chunk.usage.prompt_tokens     || 0;
-            usage.completion_tokens += chunk.usage.completion_tokens || 0;
-          }
-        },
-        onDone()  { resolve({ ok: true, content, toolCalls: toolCalls.filter(tc => tc?.function?.name) }); },
-        onError(e){ resolve({ ok: false, error: e }); },
-      });
-    });
+    const roundResult = await runStreamRound(
+      (handlers) => streamProvider(cfg.host, cfg.port, '/v1/chat/completions', body, handlers, timeoutCfg.timeoutMs),
+      timeoutCfg,
+      signal,
+      {
+        onTextDelta: (d) => emit('text_delta', { delta: d }),
+        onUsage: (u) => { usage.prompt_tokens += u.prompt_tokens || 0; usage.completion_tokens += u.completion_tokens || 0; },
+      }
+    );
 
     if (signal?.aborted) return;
     if (!roundResult.ok) { emit('error', { message: roundResult.error }); return; }
