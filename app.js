@@ -73,7 +73,7 @@ let compareAbActualB     = null;    // which model ended up in pane B this round
 let compareAbRevealed    = false;   // has the user clicked "Reveal" this round?
 let compareHistory       = JSON.parse(localStorage.getItem('llm-compare-history') || '[]');
 let currentCompareSessionId = null; // id of the in-progress session; new session starts on next send after clear
-let benchmarkHistory     = JSON.parse(localStorage.getItem('llm-bench-history') || '{}');
+let benchmarkHistory     = (() => { try { return JSON.parse(localStorage.getItem('llm-bench-history') || '{}'); } catch { return {}; } })();
 
 // Compare grading (reset on clearCompare / mode toggle)
 // Grades are stored as data-cmp-grade attributes on each assistant msg-wrap
@@ -7698,7 +7698,7 @@ function recordBenchmarkRun(modelId, result) {
     totalMs: result.totalMs,
     timestamp: Date.now(),
   });
-  localStorage.setItem('llm-bench-history', JSON.stringify(benchmarkHistory));
+  try { localStorage.setItem('llm-bench-history', JSON.stringify(benchmarkHistory)); } catch { /* quota / private mode — keep in-memory trend for this session */ }
 }
 
 function renderBenchmarkTrend(selectedModelId) {
