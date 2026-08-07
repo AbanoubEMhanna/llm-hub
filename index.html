@@ -1685,6 +1685,10 @@
       <div class="wizard-desc">Detecting which AI providers are available on your system.</div>
       <div id="wizard-detect-status" class="wizard-detect-list"></div>
       <p class="wizard-setup-hint">No provider yet? <button type="button" class="btn-link" onclick="closeOnboardingWizard(false);openApiKeySettings()">Add an API key in Settings → Providers</button></p>
+      <div id="wizard-recommend-section" class="wizard-recommend-section" style="display:none">
+        <div class="wizard-recommend-title">Recommended for your system</div>
+        <div id="wizard-recommend-list" class="wizard-recommend-list"></div>
+      </div>
     </div>
     <!-- Step 3: Ready -->
     <div class="wizard-body" id="wizard-step-3" style="display:none">
@@ -1736,6 +1740,7 @@
 <script src="lib/comparison-history.js"></script>
 <script src="lib/model-spec.js"></script>
 <script src="lib/hardware-fit.js"></script>
+<script src="lib/model-recommend.js"></script>
 <script src="app.js"></script>
 <script>
 function applySamplingPreset(name) {

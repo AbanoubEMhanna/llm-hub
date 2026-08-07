@@ -55,7 +55,7 @@
 - [ ] 🔥 Model update notifications — alert when a newer version is available
 - [x] ⚡ Model tags & friendly aliases — rename `llama3.2:3b` → `"Fast Llama"`
 - [x] Model comparison spec sheet — side-by-side table (ctx, quant, size, license)
-- [ ] Auto-recommend models based on detected hardware at first launch
+- [x] Auto-recommend models based on detected hardware at first launch
 
 ### Hardware Awareness
 - [x] System RAM bar — live used / total in sidebar
@@ -316,8 +316,8 @@
 
 | Area | ✅ Done | ⬜ To Do |
 |------|---------|----------|
-| Providers & Connectivity | 16 | 2 |
-| Local Model Management | 12 | 2 |
+| Providers & Connectivity | 17 | 1 |
+| Local Model Management | 13 | 1 |
 | Hardware Awareness | 10 | 2 |
 | Chat Interface | 27 | 4 |
 | Model Parameters | 11 | 1 |
@@ -330,9 +330,9 @@
 | Security & Privacy | 8 | 2 |
 | Deployment | 9 | 5 |
 | Developer / Testing | 8 | 3 |
-| **Total** | **163** | **49** |
+| **Total** | **165** | **47** |
 
-**~77% complete. Top priorities to close the gap:**
+**~78% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell command tool — needs a new tool-call confirmation flow: the agent loop that executes tools runs entirely server-side in `runAgentLoop`/`proxy.js`, so a per-execution confirmation means pausing mid-loop for a client round-trip — a bigger lift than the other 🔥 items, hence still open)
@@ -341,4 +341,4 @@
 
 ---
 
-*Last updated: 2026-08-04. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-08-06. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*

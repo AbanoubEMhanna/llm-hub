@@ -2401,6 +2401,25 @@ del.diff-del {
 .wizard-detect-status.checking { color: var(--accent); }
 .wizard-setup-hint { font-size: 12px; color: var(--muted); margin-top: 12px; }
 .wizard-setup-hint a, .wizard-setup-hint .btn-link { color: var(--accent); cursor: pointer; text-decoration: underline; }
+.wizard-recommend-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.wizard-recommend-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 10px; }
+.wizard-recommend-list { display: flex; flex-direction: column; gap: 8px; }
+.wizard-recommend-card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--s2);
+}
+.wizard-recommend-icon { font-size: 18px; flex-shrink: 0; }
+.wizard-recommend-info { flex: 1; min-width: 0; }
+.wizard-recommend-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.wizard-recommend-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.wizard-recommend-pull-btn {
+  flex-shrink: 0; font-size: 12px; padding: 5px 10px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--s1); color: var(--text); cursor: pointer;
+}
+.wizard-recommend-pull-btn:hover { border-color: var(--accent); color: var(--accent); }
+.wizard-recommend-pull-btn:disabled { opacity: 0.6; cursor: default; }
+.wizard-recommend-pull-btn.pulling { color: var(--accent); border-color: var(--accent); }
 .btn-link { background: none; border: none; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; }
 .wizard-tips { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
 .wizard-tip-row {
