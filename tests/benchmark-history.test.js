@@ -7,6 +7,7 @@ const {
   getHistoryForModel,
   listBenchmarkedModels,
   computeTrendStats,
+  computeLatencyHistogram,
   MAX_RUNS_PER_MODEL,
 } = require('../lib/benchmark-history.js');
 
@@ -87,4 +88,31 @@ test('computeTrendStats reports positive deltaPct when the latest run improves o
 test('computeTrendStats reports zero deltaPct for a single run (no prior average)', () => {
   const stats = computeTrendStats([{ tokPerSec: 42 }]);
   assert.equal(stats.deltaPct, 0);
+});
+
+test('computeLatencyHistogram on empty/missing ttft values returns no buckets', () => {
+  assert.deepEqual(computeLatencyHistogram([]), { buckets: [], min: 0, max: 0 });
+  assert.deepEqual(computeLatencyHistogram([{ ttft: null }, { ttft: undefined }]), { buckets: [], min: 0, max: 0 });
+});
+
+test('computeLatencyHistogram collapses identical ttft values into a single bucket', () => {
+  const hist = computeLatencyHistogram([{ ttft: 100 }, { ttft: 100 }, { ttft: 100 }]);
+  assert.deepEqual(hist.buckets, [{ min: 100, max: 100, count: 3 }]);
+});
+
+test('computeLatencyHistogram buckets values into the requested number of equal-width ranges', () => {
+  const entries = [{ ttft: 0 }, { ttft: 10 }, { ttft: 50 }, { ttft: 90 }, { ttft: 100 }];
+  const hist = computeLatencyHistogram(entries, 5);
+  assert.equal(hist.min, 0);
+  assert.equal(hist.max, 100);
+  assert.equal(hist.buckets.length, 5);
+  assert.equal(hist.buckets.reduce((sum, b) => sum + b.count, 0), entries.length);
+  assert.equal(hist.buckets[0].count, 2); // 0 and 10 fall in the first [0,20) bucket
+  assert.equal(hist.buckets[4].count, 2); // 90 and 100 fall in the last, inclusive [80,100] bucket
+});
+
+test('computeLatencyHistogram ignores non-numeric or negative ttft values', () => {
+  const hist = computeLatencyHistogram([{ ttft: 100 }, { ttft: -5 }, { ttft: 'x' }, { ttft: 200 }]);
+  const total = hist.buckets.reduce((sum, b) => sum + b.count, 0);
+  assert.equal(total, 2);
 });

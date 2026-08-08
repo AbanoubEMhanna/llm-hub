@@ -69,7 +69,7 @@
 - [x] VRAM-aware load warning before pulling large models
 - [x] CPU / GPU temperature display (where OS exposes it)
 - [x] Performance dashboard — tokens/sec trend chart over time
-- [ ] Response latency histogram per model
+- [x] Response latency histogram per model
 
 ---
 
@@ -318,7 +318,7 @@
 |------|---------|----------|
 | Providers & Connectivity | 17 | 1 |
 | Local Model Management | 13 | 1 |
-| Hardware Awareness | 11 | 1 |
+| Hardware Awareness | 12 | 0 |
 | Chat Interface | 27 | 4 |
 | Model Parameters | 11 | 1 |
 | AI Agent & Tools | 9 | 7 |
@@ -330,9 +330,9 @@
 | Security & Privacy | 8 | 2 |
 | Deployment | 9 | 5 |
 | Developer / Testing | 8 | 3 |
-| **Total** | **166** | **46** |
+| **Total** | **167** | **45** |
 
-**~78% complete. Top priorities to close the gap:**
+**~79% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell command tool — needs a new tool-call confirmation flow: the agent loop that executes tools runs entirely server-side in `runAgentLoop`/`proxy.js`, so a per-execution confirmation means pausing mid-loop for a client round-trip — a bigger lift than the other 🔥 items, hence still open)
@@ -341,4 +341,4 @@
 
 ---
 
-*Last updated: 2026-08-07. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-08-08. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*

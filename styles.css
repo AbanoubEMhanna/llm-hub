@@ -1993,6 +1993,24 @@ del.diff-del {
 .mm-bench-trend-stats .trend-up { color: var(--green); }
 .mm-bench-trend-stats .trend-down { color: var(--orange); }
 
+.mm-bench-histogram-title {
+  margin-top: 12px; font-size: 11px; color: var(--muted); font-family: var(--mono);
+}
+.mm-bench-histogram {
+  display: flex; align-items: flex-end; gap: 4px; height: 48px; margin-top: 6px;
+}
+.mm-bench-histogram-bar-wrap {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  height: 100%; gap: 4px; cursor: default;
+}
+.mm-bench-histogram-bar {
+  width: 100%; min-height: 4px; background: var(--accent); border-radius: 3px 3px 0 0; opacity: 0.75;
+}
+.mm-bench-histogram-bar-wrap:hover .mm-bench-histogram-bar { opacity: 1; }
+.mm-bench-histogram-label {
+  font-size: 9px; color: var(--muted); font-family: var(--mono); white-space: nowrap;
+}
+
 /* ═══════════════════ BACKUP PANEL ═══════════════════ */
 .backup-section-label {
   font-family: var(--mono); font-size: 10px; text-transform: uppercase;
