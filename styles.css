@@ -2004,7 +2004,7 @@ del.diff-del {
   height: 100%; gap: 4px; cursor: default;
 }
 .mm-bench-histogram-bar {
-  width: 100%; min-height: 4px; background: var(--accent); border-radius: 3px 3px 0 0; opacity: 0.75;
+  width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; opacity: 0.75;
 }
 .mm-bench-histogram-bar-wrap:hover .mm-bench-histogram-bar { opacity: 1; }
 .mm-bench-histogram-label {

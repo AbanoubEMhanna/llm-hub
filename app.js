@@ -7730,13 +7730,14 @@ function renderBenchmarkTrend(selectedModelId) {
 
   const hist = computeLatencyHistogram(entries);
   const maxBucketCount = hist.buckets.length ? Math.max(...hist.buckets.map(b => b.count), 1) : 1;
+  const formatLatency = ms => `${Number(ms.toPrecision(3))}ms`;
   const histogramHtml = hist.buckets.length ? `
     <div class="mm-bench-histogram-title">Latency distribution (TTFT)</div>
     <div class="mm-bench-histogram">
       ${hist.buckets.map(b => `
-        <div class="mm-bench-histogram-bar-wrap" title="${Math.round(b.min)}–${Math.round(b.max)}ms · ${b.count} run${b.count !== 1 ? 's' : ''}">
-          <div class="mm-bench-histogram-bar" style="height:${Math.max(4, (b.count / maxBucketCount) * 100)}%"></div>
-          <span class="mm-bench-histogram-label">${Math.round(b.min)}</span>
+        <div class="mm-bench-histogram-bar-wrap" title="${formatLatency(b.min)}–${formatLatency(b.max)} · ${b.count} run${b.count !== 1 ? 's' : ''}">
+          <div class="mm-bench-histogram-bar" style="height:${b.count ? Math.max(4, (b.count / maxBucketCount) * 100) : 0}%"></div>
+          <span class="mm-bench-histogram-label">${formatLatency(b.min)}</span>
         </div>`).join('')}
     </div>` : '';
 

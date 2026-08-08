@@ -116,3 +116,16 @@ test('computeLatencyHistogram ignores non-numeric or negative ttft values', () =
   const total = hist.buckets.reduce((sum, b) => sum + b.count, 0);
   assert.equal(total, 2);
 });
+
+test('computeLatencyHistogram normalizes a non-finite bucketCount instead of throwing', () => {
+  const entries = [{ ttft: 0 }, { ttft: 100 }];
+  const hist = computeLatencyHistogram(entries, Infinity);
+  assert.equal(hist.buckets.length, 5); // falls back to the default of 5 buckets
+  assert.equal(hist.buckets.reduce((sum, b) => sum + b.count, 0), entries.length);
+});
+
+test('computeLatencyHistogram caps an unreasonably large bucketCount', () => {
+  const entries = [{ ttft: 0 }, { ttft: 100 }];
+  const hist = computeLatencyHistogram(entries, 1e9);
+  assert.ok(hist.buckets.length <= 100);
+});
