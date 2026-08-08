@@ -1577,6 +1577,14 @@
         <div id="mm-bench-table" class="mm-bench-table"></div>
       </div>
 
+      <div id="mm-bench-trend" class="mm-bench-trend" style="display:none">
+        <div class="mm-section-title">
+          Performance Trend
+          <select id="mm-bench-trend-select" class="mm-bench-trend-select" onchange="renderBenchmarkTrend(this.value)"></select>
+        </div>
+        <div id="mm-bench-trend-body" class="mm-bench-trend-body"></div>
+      </div>
+
     </div>
 
   </div>
@@ -1741,6 +1749,7 @@
 <script src="lib/model-spec.js"></script>
 <script src="lib/hardware-fit.js"></script>
 <script src="lib/model-recommend.js"></script>
+<script src="lib/benchmark-history.js"></script>
 <script src="app.js"></script>
 <script>
 function applySamplingPreset(name) {

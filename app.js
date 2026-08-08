@@ -73,6 +73,7 @@ let compareAbActualB     = null;    // which model ended up in pane B this round
 let compareAbRevealed    = false;   // has the user clicked "Reveal" this round?
 let compareHistory       = JSON.parse(localStorage.getItem('llm-compare-history') || '[]');
 let currentCompareSessionId = null; // id of the in-progress session; new session starts on next send after clear
+let benchmarkHistory     = (() => { try { return JSON.parse(localStorage.getItem('llm-bench-history') || '{}'); } catch { return {}; } })();
 
 // Compare grading (reset on clearCompare / mode toggle)
 // Grades are stored as data-cmp-grade attributes on each assistant msg-wrap
@@ -7128,7 +7129,7 @@ function useWelcomePrompt(text) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function openModelManager() {
-  document.getElementById('model-manager-modal').classList.add('open');
+  document.getElementById('model-manager-modal').classList.add('active');
   await refreshModelManagerList();
 }
 
@@ -7541,6 +7542,7 @@ let benchmarkRunning = false;
 async function openBenchmarkTab() {
   const listEl = document.getElementById('mm-bench-model-list');
   listEl.innerHTML = '<div class="loading-row"><div class="spinner"></div> Loading…</div>';
+  renderBenchmarkTrend();
 
   try {
     const res = await fetch(`${PROXY}/v1/models`);
@@ -7658,6 +7660,7 @@ async function runBenchmark() {
         );
       });
       results.push({ ...result, state: 'done' });
+      recordBenchmarkRun(modelId, result);
     } catch (e) {
       results.push({ modelId, state: 'error', error: e.message });
     }
@@ -7680,6 +7683,62 @@ async function runBenchmark() {
 
   // Final sorted render
   renderBenchmarkTable(models.map(id => ({ modelId: id, state: 'done' })), results, true);
+
+  renderBenchmarkTrend();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § BENCHMARK HISTORY & TREND CHART
+// ─────────────────────────────────────────────────────────────────────────────
+
+function recordBenchmarkRun(modelId, result) {
+  benchmarkHistory = addBenchmarkRun(benchmarkHistory, modelId, {
+    tokPerSec: result.tokPerSec,
+    ttft: result.ttft,
+    totalMs: result.totalMs,
+    timestamp: Date.now(),
+  });
+  try { localStorage.setItem('llm-bench-history', JSON.stringify(benchmarkHistory)); } catch { /* quota / private mode — keep in-memory trend for this session */ }
+}
+
+function renderBenchmarkTrend(selectedModelId) {
+  const wrapEl   = document.getElementById('mm-bench-trend');
+  const selectEl = document.getElementById('mm-bench-trend-select');
+  const bodyEl   = document.getElementById('mm-bench-trend-body');
+  const models   = listBenchmarkedModels(benchmarkHistory);
+
+  if (!models.length) { wrapEl.style.display = 'none'; return; }
+  wrapEl.style.display = '';
+
+  const modelId = models.includes(selectedModelId) ? selectedModelId : models[0];
+  selectEl.innerHTML = models.map(id =>
+    `<option value="${escHtml(id)}" ${id === modelId ? 'selected' : ''}>${escHtml(id)}</option>`
+  ).join('');
+
+  const entries = getHistoryForModel(benchmarkHistory, modelId);
+  const stats   = computeTrendStats(entries);
+  const toks    = entries.map(e => e.tokPerSec || 0);
+  const maxTok  = Math.max(...toks, 1);
+
+  const W = 100, H = 32;
+  const points = toks.length > 1
+    ? toks.map((t, i) => `${(i / (toks.length - 1)) * W},${H - (t / maxTok) * H}`).join(' ')
+    : `0,${H - (toks[0] / maxTok) * H} ${W},${H - (toks[0] / maxTok) * H}`;
+
+  const deltaSign = stats.deltaPct > 0 ? '+' : '';
+  const deltaClass = stats.deltaPct > 0 ? 'trend-up' : stats.deltaPct < 0 ? 'trend-down' : '';
+
+  bodyEl.innerHTML = `
+    <svg class="mm-bench-trend-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <polyline points="${points}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" />
+    </svg>
+    <div class="mm-bench-trend-stats">
+      <span><strong>${Math.round(stats.latestTokPerSec)}</strong> tok/s latest</span>
+      <span><strong>${Math.round(stats.avgTokPerSec)}</strong> tok/s avg</span>
+      <span><strong>${Math.round(stats.bestTokPerSec)}</strong> tok/s best</span>
+      <span>${stats.count} run${stats.count !== 1 ? 's' : ''}</span>
+      ${stats.deltaPct ? `<span class="${deltaClass}">${deltaSign}${stats.deltaPct.toFixed(1)}%</span>` : ''}
+    </div>`;
 }
 
 function renderBenchmarkTable(modelStates, results, sorted = false) {
