@@ -1655,9 +1655,20 @@ function renderConvList() {
     }
   });
 
-  // Unfiled conversations
+  // Unfiled conversations — grouped by recency (Today / Yesterday / …) so a
+  // long, folder-less list stays scannable, mirroring the "project" grouping
+  // folders already provide.
   const unfiled = unpinned.filter(c => !c.folderId || !folders.find(f => f.id === c.folderId));
-  html += unfiled.map((c, i) => convItemHtml(c, idx + i)).join('');
+  const dateGroups = typeof groupConversationsByDate === 'function'
+    ? groupConversationsByDate(unfiled)
+    : [{ key: 'all', label: null, items: unfiled }];
+  dateGroups.forEach(group => {
+    if (group.label) {
+      html += `<div class="conv-date-header">${escHtml(group.label)}</div>`;
+    }
+    html += group.items.map((c, i) => convItemHtml(c, idx + i)).join('');
+    idx += group.items.length;
+  });
 
   list.innerHTML = html;
 }
