@@ -7728,6 +7728,19 @@ function renderBenchmarkTrend(selectedModelId) {
   const deltaSign = stats.deltaPct > 0 ? '+' : '';
   const deltaClass = stats.deltaPct > 0 ? 'trend-up' : stats.deltaPct < 0 ? 'trend-down' : '';
 
+  const hist = computeLatencyHistogram(entries);
+  const maxBucketCount = hist.buckets.length ? Math.max(...hist.buckets.map(b => b.count), 1) : 1;
+  const formatLatency = ms => `${Number(ms.toPrecision(3))}ms`;
+  const histogramHtml = hist.buckets.length ? `
+    <div class="mm-bench-histogram-title">Latency distribution (TTFT)</div>
+    <div class="mm-bench-histogram">
+      ${hist.buckets.map(b => `
+        <div class="mm-bench-histogram-bar-wrap" title="${formatLatency(b.min)}–${formatLatency(b.max)} · ${b.count} run${b.count !== 1 ? 's' : ''}">
+          <div class="mm-bench-histogram-bar" style="height:${b.count ? Math.max(4, (b.count / maxBucketCount) * 100) : 0}%"></div>
+          <span class="mm-bench-histogram-label">${formatLatency(b.min)}</span>
+        </div>`).join('')}
+    </div>` : '';
+
   bodyEl.innerHTML = `
     <svg class="mm-bench-trend-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
       <polyline points="${points}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" />
@@ -7738,7 +7751,8 @@ function renderBenchmarkTrend(selectedModelId) {
       <span><strong>${Math.round(stats.bestTokPerSec)}</strong> tok/s best</span>
       <span>${stats.count} run${stats.count !== 1 ? 's' : ''}</span>
       ${stats.deltaPct ? `<span class="${deltaClass}">${deltaSign}${stats.deltaPct.toFixed(1)}%</span>` : ''}
-    </div>`;
+    </div>
+    ${histogramHtml}`;
 }
 
 function renderBenchmarkTable(modelStates, results, sorted = false) {
