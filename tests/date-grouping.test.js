@@ -69,6 +69,38 @@ test('missing/non-numeric ts is treated as epoch 0 (Older)', () => {
   assert.equal(groups[0].items.length, 2);
 });
 
+test('DST spring-forward: a 23-hour local day does not widen the Yesterday boundary', () => {
+  const originalTZ = process.env.TZ;
+  process.env.TZ = 'America/New_York';
+  try {
+    // Spring-forward day: 2026-03-08 (clocks jump 02:00 -> 03:00, a 23h day).
+    const now = new Date(2026, 2, 9, 10, 0, 0).getTime(); // Mar 9, 10:00 local
+    // 30 minutes before local midnight on Mar 8 — older than "Yesterday"
+    // (Mar 8 00:00 local), not just "less than 24h before now".
+    const ts = new Date(2026, 2, 7, 23, 30, 0).getTime();
+    const groups = groupConversationsByDate([{ id: 'dst-spring', ts }], now);
+    assert.equal(groups[0].key, 'week');
+  } finally {
+    process.env.TZ = originalTZ;
+  }
+});
+
+test('DST fall-back: a 25-hour local day does not narrow the Yesterday boundary', () => {
+  const originalTZ = process.env.TZ;
+  process.env.TZ = 'America/New_York';
+  try {
+    // Fall-back day: 2026-11-01 (clocks repeat 01:00-02:00, a 25h day).
+    const now = new Date(2026, 10, 2, 10, 0, 0).getTime(); // Nov 2, 10:00 local
+    // 30 minutes after local midnight on Nov 1 — should count as "Yesterday"
+    // even though it's more than 24h before `now` in wall-clock terms.
+    const ts = new Date(2026, 10, 1, 0, 30, 0).getTime();
+    const groups = groupConversationsByDate([{ id: 'dst-fall', ts }], now);
+    assert.equal(groups[0].key, 'yesterday');
+  } finally {
+    process.env.TZ = originalTZ;
+  }
+});
+
 test('preserves input order within a group', () => {
   const items = [
     { id: 'x', ts: todayStart + 500 },
