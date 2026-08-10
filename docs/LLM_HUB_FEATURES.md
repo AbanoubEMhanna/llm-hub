@@ -103,7 +103,7 @@
 - [x] Chat fuzzy search (⌘K)
 - [ ] 🔥 🏗️ Multi-tab chat — tab bar, multiple conversations open simultaneously
 - [x] ⚡ Conversation archive (hide from list without deleting)
-- [ ] Smart conversation grouping by date / project
+- [x] Smart conversation grouping by date / project
 
 ### Import & Export
 - [x] Chat export — Markdown, JSON, standalone offline HTML
@@ -319,7 +319,7 @@
 | Providers & Connectivity | 17 | 1 |
 | Local Model Management | 13 | 1 |
 | Hardware Awareness | 12 | 0 |
-| Chat Interface | 27 | 4 |
+| Chat Interface | 28 | 3 |
 | Model Parameters | 11 | 1 |
 | AI Agent & Tools | 9 | 7 |
 | Code-First Workflow | 7 | 10 |
@@ -330,7 +330,7 @@
 | Security & Privacy | 8 | 2 |
 | Deployment | 9 | 5 |
 | Developer / Testing | 8 | 3 |
-| **Total** | **167** | **45** |
+| **Total** | **168** | **44** |
 
 **~79% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, git integration)
@@ -341,4 +341,4 @@
 
 ---
 
-*Last updated: 2026-08-08. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-08-09. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
