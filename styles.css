@@ -2150,19 +2150,24 @@ del.diff-del {
    Deepens borders/muted text and gives every focused control a visible ring,
    without touching --bg/--text (already at max contrast in both themes). */
 :root[data-highcontrast="true"] {
-  --border:  #52525b;
-  --border2: #a1a1aa;
-  --muted:   #d4d4d8;
-  --text2:   #ffffff;
+  --border:    #52525b;
+  --border2:   #a1a1aa;
+  --muted:     #d4d4d8;
+  --text2:     #ffffff;
+  --hc-focus:  #ffffff;
 }
 [data-theme="light"][data-highcontrast="true"] {
-  --border:  #52525b;
-  --border2: #27272a;
-  --muted:   #27272a;
-  --text2:   #000000;
+  --border:    #52525b;
+  --border2:   #27272a;
+  --muted:     #27272a;
+  --text2:     #000000;
+  --hc-focus:  #000000;
 }
+/* Dedicated focus color rather than --accent — the accent is user-customizable
+   (custom color picker) and could be low-contrast against the surface,
+   which would defeat the point of high-contrast mode. */
 :root[data-highcontrast="true"] :is(button, a, input, textarea, select, [tabindex]):focus-visible {
-  outline: 2px solid var(--accent) !important;
+  outline: 2px solid var(--hc-focus) !important;
   outline-offset: 2px !important;
 }
 
