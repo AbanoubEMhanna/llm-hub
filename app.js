@@ -3074,7 +3074,7 @@ function openApiKeySettings() {
 }
 
 function switchSettingsTab(tab) {
-  ['general', 'config', 'apikeys', 'appearance', 'backup', 'voice', 'tools', 'custom-tools', 'rag', 'logs', 'agent-history'].forEach(t => {
+  ['general', 'config', 'apikeys', 'appearance', 'shortcuts', 'backup', 'voice', 'tools', 'custom-tools', 'rag', 'logs', 'agent-history'].forEach(t => {
     document.getElementById(`settings-panel-${t}`).style.display = t === tab ? '' : 'none';
     document.getElementById(`settings-footer-${t}`).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById(`tab-${t}`);
@@ -3082,6 +3082,7 @@ function switchSettingsTab(tab) {
   });
   if (tab === 'backup')     renderBackupSummary();
   if (tab === 'appearance') _syncAppearanceUI();
+  if (tab === 'shortcuts')  _syncShortcutsUI();
   if (tab === 'apikeys')    renderCustomProvidersList();
   if (tab === 'voice')      initTtsVoiceSelect();
   if (tab === 'tools')      loadToolsSettings();
@@ -5682,6 +5683,103 @@ function openAppearanceSettings() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// § KEYBOARD SHORTCUT REMAPPING
+// ─────────────────────────────────────────────────────────────────────────────
+
+let _recordingShortcutAction = null;
+
+function setShortcut(action, combo) {
+  if (!Object.prototype.hasOwnProperty.call(DEFAULT_SHORTCUTS, action) || !isValidCombo(combo)) return;
+  userSettings.shortcuts = userSettings.shortcuts || {};
+  userSettings.shortcuts[action] = combo;
+  localStorage.setItem('llm-settings', JSON.stringify(userSettings));
+  _syncShortcutsUI();
+
+  const conflicts = findConflicts(getShortcutMap());
+  const clashers = (conflicts[combo] || []).filter(a => a !== action);
+  if (clashers.length) {
+    const names = clashers.map(a => DEFAULT_SHORTCUTS[a].label).join(', ');
+    toast(`${formatCombo(combo)} is already used by ${names}`, 'error');
+  } else {
+    toast(`${DEFAULT_SHORTCUTS[action].label} → ${formatCombo(combo)}`);
+  }
+}
+
+function resetShortcut(action) {
+  if (userSettings.shortcuts) delete userSettings.shortcuts[action];
+  localStorage.setItem('llm-settings', JSON.stringify(userSettings));
+  _syncShortcutsUI();
+}
+
+function resetAllShortcuts() {
+  delete userSettings.shortcuts;
+  localStorage.setItem('llm-settings', JSON.stringify(userSettings));
+  _syncShortcutsUI();
+  toast('Keyboard shortcuts reset to defaults');
+}
+
+function startRecordingShortcut(action) {
+  if (_recordingShortcutAction) _stopRecordingShortcut();
+  _recordingShortcutAction = action;
+  const btn = document.getElementById(`shortcut-remap-btn-${action}`);
+  if (btn) { btn.classList.add('recording'); btn.textContent = 'Press keys…'; }
+  document.addEventListener('keydown', _onRecordShortcutKey, true);
+}
+
+function _stopRecordingShortcut() {
+  document.removeEventListener('keydown', _onRecordShortcutKey, true);
+  _recordingShortcutAction = null;
+}
+
+function _onRecordShortcutKey(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  if (e.key === 'Escape') { _stopRecordingShortcut(); _syncShortcutsUI(); return; }
+  const combo = comboFromEvent(e);
+  if (!combo) return; // bare modifier press — keep listening for the real key
+  const action = _recordingShortcutAction;
+  _stopRecordingShortcut();
+  setShortcut(action, combo);
+}
+
+function _syncShortcutsUI() {
+  const list = document.getElementById('shortcut-remap-list');
+  if (!list) return;
+  const map = getShortcutMap();
+  const conflicts = findConflicts(map);
+  list.innerHTML = Object.keys(DEFAULT_SHORTCUTS).map(action => {
+    const combo = map[action];
+    const isConflict = (conflicts[combo] || []).length > 1;
+    const isCustom = combo !== DEFAULT_SHORTCUTS[action].combo;
+    return `
+      <div class="shortcut-remap-row${isConflict ? ' conflict' : ''}">
+        <span class="shortcut-remap-label">${escHtml(DEFAULT_SHORTCUTS[action].label)}</span>
+        <button class="shortcut-remap-kbd" id="shortcut-remap-btn-${action}" onclick="startRecordingShortcut('${action}')" title="Click, then press a key combination">${escHtml(formatCombo(combo))}</button>
+        ${isCustom ? `<button class="icon-btn shortcut-remap-reset" title="Reset to default" onclick="resetShortcut('${action}')">↺</button>` : '<span class="shortcut-remap-reset-spacer"></span>'}
+      </div>`;
+  }).join('');
+  _syncShortcutsHelpModal();
+}
+
+function _syncShortcutsHelpModal() {
+  const map = getShortcutMap();
+  Object.keys(DEFAULT_SHORTCUTS).forEach(action => {
+    const el = document.getElementById(`shortcut-kbd-${action}`);
+    if (el) el.textContent = formatCombo(map[action]);
+  });
+}
+
+function openShortcutsHelp() {
+  _syncShortcutsHelpModal();
+  openModal('shortcuts-modal');
+}
+
+function openShortcutSettings() {
+  switchSettingsTab('shortcuts');
+  openModal('config-modal');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // § MODALS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -5703,11 +5801,12 @@ let paletteItems       = [];
 
 function buildPaletteCommands() {
   const conv = currentConv();
+  const map = getShortcutMap();
   return [
-    { group: 'Actions',   icon: '✏️',  label: 'New Conversation',         kbd: '⌘J',   action: () => newConversation() },
-    { group: 'Actions',   icon: '🔍',  label: 'Search Conversations',      kbd: '⌘K',   action: () => openSearch() },
-    { group: 'Actions',   icon: '🔎',  label: 'Search in Conversation',    kbd: '⌘F',   action: () => openConvSearch() },
-    { group: 'Actions',   icon: '⛶',   label: 'Toggle Focus Mode',         kbd: '⌘⇧F', action: () => toggleFocusMode() },
+    { group: 'Actions',   icon: '✏️',  label: 'New Conversation',         kbd: formatCombo(map.newConversation), action: () => newConversation() },
+    { group: 'Actions',   icon: '🔍',  label: 'Search Conversations',      kbd: formatCombo(map.search),          action: () => openSearch() },
+    { group: 'Actions',   icon: '🔎',  label: 'Search in Conversation',    kbd: formatCombo(map.convSearch),      action: () => openConvSearch() },
+    { group: 'Actions',   icon: '⛶',   label: 'Toggle Focus Mode',         kbd: formatCombo(map.focusMode),       action: () => toggleFocusMode() },
     { group: 'Actions',   icon: '🎨',  label: 'Toggle Theme',                            action: () => toggleTheme() },
     ...(conv ? [
       { group: 'Chat',    icon: '📋',  label: 'Export Chat as Markdown',                 action: () => exportConv('md') },
@@ -5721,13 +5820,14 @@ function buildPaletteCommands() {
     { group: 'Settings',  icon: '📥',  label: 'Import Conversations (merge)',             action: () => { openConfigEditor(); setTimeout(() => { switchSettingsTab('backup'); document.getElementById('conv-import-file-input')?.click(); }, 300); } },
     { group: 'Settings',  icon: '🔑',  label: 'API Keys',                                action: () => openApiKeySettings() },
     { group: 'Settings',  icon: '🎨',  label: 'Appearance — accent color, font, density', action: () => openAppearanceSettings() },
+    { group: 'Settings',  icon: '⌨️',  label: 'Keyboard Shortcuts — remap keys',          action: () => openShortcutSettings() },
     { group: 'Settings',  icon: '💰',  label: 'Reset session cost total',                action: () => resetSessionCost() },
     { group: 'Tools',     icon: '⚖️',  label: 'Compare Models',                          action: () => { if (!compareMode) toggleCompareMode(); } },
     { group: 'Tools',     icon: '🎲',  label: 'Compare — A/B Test Mode',                  action: () => { if (!compareMode) toggleCompareMode(); toggleAbMode(); } },
-    { group: 'Tools',     icon: '🔧',  label: 'Toggle Agent Tools',        kbd: '⌘/',   action: () => document.getElementById('tools-toggle').click() },
+    { group: 'Tools',     icon: '🔧',  label: 'Toggle Agent Tools',        kbd: formatCombo(map.toggleTools), action: () => document.getElementById('tools-toggle').click() },
     { group: 'Tools',     icon: '📄',  label: 'Prompt Templates',                        action: () => openTemplates() },
     { group: 'Tools',     icon: '📚',  label: 'Add to Knowledge Base',                   action: () => openRagUpload() },
-    { group: 'Help',      icon: '⌨️',  label: 'Keyboard Shortcuts',        kbd: '?',    action: () => openModal('shortcuts-modal') },
+    { group: 'Help',      icon: '⌨️',  label: 'Keyboard Shortcuts',        kbd: formatCombo(map.showHelp), action: () => openShortcutsHelp() },
   ];
 }
 
@@ -5804,10 +5904,40 @@ function runPaletteItem(idx) {
 // § HOTKEYS
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Actions the user isn't allowed to steal while typing in a text field —
+// mirrors the guards the pre-remapping literal `if (e.key === ...)` checks
+// used to have inline.
+const HOTKEY_BLOCKED_WHILE_TYPING = new Set(['toggleTimestamps', 'showHelp', 'editLast']);
+
+const HOTKEY_HANDLERS = {
+  palette:         () => openPalette(),
+  search:          () => openSearch(),
+  convSearch:      () => openConvSearch(),
+  newConversation: () => newConversation(),
+  toggleTools:     () => document.getElementById('tools-toggle').classList.toggle('on'),
+  regenerate:      () => {
+    const conv = currentConv(); if (!conv) return;
+    for (let i = conv.messages.length - 1; i >= 0; i--) {
+      if (conv.messages[i].role === 'assistant') { regenerateMessage(i); break; }
+    }
+  },
+  editLast: () => {
+    const conv = currentConv(); if (!conv) return;
+    for (let i = conv.messages.length - 1; i >= 0; i--) {
+      if (conv.messages[i].role === 'user') { openEditMessage(i); break; }
+    }
+  },
+  focusMode:        () => toggleFocusMode(),
+  toggleTimestamps: () => toggleTimestamps(),
+  showHelp:         () => openShortcutsHelp(),
+};
+
+function getShortcutMap() {
+  return mergeShortcuts(userSettings.shortcuts);
+}
+
 function initHotkeys() {
   document.addEventListener('keydown', (e) => {
-    const meta = e.metaKey || e.ctrlKey;
-
     // Escape closes modals / exits bulk mode
     if (e.key === 'Escape') {
       if (bulkSelectMode) { exitBulkMode(); return; }
@@ -5815,46 +5945,17 @@ function initHotkeys() {
       return;
     }
 
-    // ? shows keyboard shortcuts (only if not typing in an input)
-    if (e.key === '?' && !meta && document.activeElement?.tagName !== 'TEXTAREA' && document.activeElement?.tagName !== 'INPUT') {
-      openModal('shortcuts-modal');
-      return;
-    }
+    const combo = comboFromEvent(e);
+    if (!combo) return;
+    const map = getShortcutMap();
+    const action = Object.keys(map).find(a => map[a] === combo);
+    if (!action || !HOTKEY_HANDLERS[action]) return;
 
-    // T toggles message timestamps (only if not typing)
-    if ((e.key === 't' || e.key === 'T') && !meta && document.activeElement?.tagName !== 'TEXTAREA' && document.activeElement?.tagName !== 'INPUT') {
-      toggleTimestamps();
-      return;
-    }
+    const isTyping = document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT';
+    if (isTyping && HOTKEY_BLOCKED_WHILE_TYPING.has(action)) return;
 
-    if (!meta) return;
-
-    if (e.key === 'p' || e.key === 'P') { e.preventDefault(); openPalette(); return; }
-    if (e.key === 'k' || e.key === 'K') { e.preventDefault(); openSearch(); return; }
-    if (e.key === 'j' || e.key === 'J') { e.preventDefault(); newConversation(); return; }
-    if ((e.key === 'f' || e.key === 'F') && e.shiftKey) { e.preventDefault(); toggleFocusMode(); return; }
-    if ((e.key === 'f' || e.key === 'F') && !e.shiftKey) { e.preventDefault(); openConvSearch(); return; }
-
-    if (e.key === '/') { e.preventDefault(); document.getElementById('tools-toggle').classList.toggle('on'); return; }
-
-    if (e.key === 'r' || e.key === 'R') {
-      e.preventDefault();
-      const conv = currentConv(); if (!conv) return;
-      for (let i = conv.messages.length - 1; i >= 0; i--) {
-        if (conv.messages[i].role === 'assistant') { regenerateMessage(i); break; }
-      }
-      return;
-    }
-    if (e.key === 'e' || e.key === 'E') {
-      // Don't steal ⌘E while typing
-      if (document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT') return;
-      e.preventDefault();
-      const conv = currentConv(); if (!conv) return;
-      for (let i = conv.messages.length - 1; i >= 0; i--) {
-        if (conv.messages[i].role === 'user') { openEditMessage(i); break; }
-      }
-      return;
-    }
+    e.preventDefault();
+    HOTKEY_HANDLERS[action]();
   });
 }
 

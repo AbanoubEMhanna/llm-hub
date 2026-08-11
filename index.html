@@ -737,6 +737,7 @@
       <button class="settings-tab active" id="tab-config" onclick="switchSettingsTab('config')">Config JSON</button>
       <button class="settings-tab" id="tab-apikeys" onclick="switchSettingsTab('apikeys')">Providers</button>
       <button class="settings-tab" id="tab-appearance" onclick="switchSettingsTab('appearance')">Appearance</button>
+      <button class="settings-tab" id="tab-shortcuts" onclick="switchSettingsTab('shortcuts')">Shortcuts</button>
       <button class="settings-tab" id="tab-voice" onclick="switchSettingsTab('voice')">Voice</button>
       <button class="settings-tab" id="tab-backup" onclick="switchSettingsTab('backup')">Backup</button>
       <button class="settings-tab" id="tab-tools" onclick="switchSettingsTab('tools')">Tools</button>
@@ -1017,6 +1018,19 @@
     </div>
     <div class="modal-footer" id="settings-footer-appearance" style="display:none">
       <button class="btn" onclick="resetAppearance()">Reset to defaults</button>
+      <button class="btn" onclick="closeModal('config-modal')">Close</button>
+    </div>
+
+    <!-- Tab: Keyboard Shortcuts -->
+    <div class="modal-body" id="settings-panel-shortcuts" style="display:none">
+      <div class="appearance-section-label">Keyboard Shortcuts</div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:14px">
+        Click a shortcut, then press a new key combination to remap it. Press <kbd>Esc</kbd> to cancel while recording.
+      </p>
+      <div class="shortcut-remap-list" id="shortcut-remap-list"></div>
+    </div>
+    <div class="modal-footer" id="settings-footer-shortcuts" style="display:none">
+      <button class="btn" onclick="resetAllShortcuts()">Reset all to defaults</button>
       <button class="btn" onclick="closeModal('config-modal')">Close</button>
     </div>
 
@@ -1461,19 +1475,23 @@
     </div>
     <div class="modal-body">
       <div class="shortcut-grid">
-        <div class="shortcut-row"><kbd>⌘ P</kbd><span>Command palette</span></div>
-        <div class="shortcut-row"><kbd>⌘ K</kbd><span>Search all chats</span></div>
-        <div class="shortcut-row"><kbd>⌘ F</kbd><span>Search in conversation</span></div>
-        <div class="shortcut-row"><kbd>⌘ J</kbd><span>New conversation</span></div>
-        <div class="shortcut-row"><kbd>⌘ /</kbd><span>Toggle tools</span></div>
-        <div class="shortcut-row"><kbd>⌘ R</kbd><span>Regenerate last response</span></div>
-        <div class="shortcut-row"><kbd>⌘ E</kbd><span>Edit last user message</span></div>
+        <div class="shortcut-row"><kbd id="shortcut-kbd-palette">⌘ P</kbd><span>Command palette</span></div>
+        <div class="shortcut-row"><kbd id="shortcut-kbd-search">⌘ K</kbd><span>Search all chats</span></div>
+        <div class="shortcut-row"><kbd id="shortcut-kbd-convSearch">⌘ F</kbd><span>Search in conversation</span></div>
+        <div class="shortcut-row"><kbd id="shortcut-kbd-newConversation">⌘ J</kbd><span>New conversation</span></div>
+        <div class="shortcut-row"><kbd id="shortcut-kbd-toggleTools">⌘ /</kbd><span>Toggle tools</span></div>
+        <div class="shortcut-row"><kbd id="shortcut-kbd-regenerate">⌘ R</kbd><span>Regenerate last response</span></div>
+        <div class="shortcut-row"><kbd id="shortcut-kbd-editLast">⌘ E</kbd><span>Edit last user message</span></div>
         <div class="shortcut-row"><kbd>Enter</kbd><span>Send message</span></div>
         <div class="shortcut-row"><kbd>⇧ Enter</kbd><span>New line</span></div>
         <div class="shortcut-row"><kbd>Esc</kbd><span>Close modal</span></div>
-        <div class="shortcut-row"><kbd>⌘ ⇧ F</kbd><span>Toggle focus mode</span></div>
-        <div class="shortcut-row"><kbd>?</kbd><span>Show this help</span></div>
+        <div class="shortcut-row"><kbd id="shortcut-kbd-focusMode">⌘ ⇧ F</kbd><span>Toggle focus mode</span></div>
+        <div class="shortcut-row"><kbd id="shortcut-kbd-toggleTimestamps">T</kbd><span>Toggle message timestamps</span></div>
+        <div class="shortcut-row"><kbd id="shortcut-kbd-showHelp">?</kbd><span>Show this help</span></div>
       </div>
+      <p style="color:var(--muted);font-size:12px;margin-top:12px">
+        Want different keys? Remap these in <a href="#" onclick="closeModal('shortcuts-modal'); openShortcutSettings(); return false;">Settings → Shortcuts</a>.
+      </p>
     </div>
   </div>
 </div>
@@ -1760,6 +1778,7 @@
 <script src="lib/model-recommend.js"></script>
 <script src="lib/benchmark-history.js"></script>
 <script src="lib/date-grouping.js"></script>
+<script src="lib/shortcut-remap.js"></script>
 <script src="app.js"></script>
 <script>
 function applySamplingPreset(name) {
