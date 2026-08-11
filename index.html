@@ -1005,6 +1005,15 @@
         </button>
       </div>
 
+      <div class="appearance-section-label" style="margin-top:20px">Accessibility</div>
+      <label class="hc-toggle-row" for="highcontrast-toggle">
+        <input type="checkbox" id="highcontrast-toggle" onchange="setHighContrast(this.checked)" style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0"/>
+        <span>
+          <span class="ao-label" style="display:block">High-contrast mode</span>
+          <span class="ao-desc" style="display:block">Stronger borders, text, and focus outlines for better readability</span>
+        </span>
+      </label>
+
     </div>
     <div class="modal-footer" id="settings-footer-appearance" style="display:none">
       <button class="btn" onclick="resetAppearance()">Reset to defaults</button>

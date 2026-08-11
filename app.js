@@ -5596,7 +5596,7 @@ function _darkenHex(hex) {
 }
 
 function applyAppearance() {
-  const { accentColor, fontSize = 'normal', density = 'comfortable' } = userSettings;
+  const { accentColor, fontSize = 'normal', density = 'comfortable', highContrast = false } = userSettings;
   const root = document.documentElement;
 
   if (accentColor) {
@@ -5609,6 +5609,11 @@ function applyAppearance() {
 
   root.setAttribute('data-fontsize', fontSize);
   root.setAttribute('data-density',  density);
+  if (highContrast) {
+    root.setAttribute('data-highcontrast', 'true');
+  } else {
+    root.removeAttribute('data-highcontrast');
+  }
 }
 
 function setAccentColor(color) {
@@ -5632,10 +5637,18 @@ function setChatDensity(density) {
   _syncAppearanceUI();
 }
 
+function setHighContrast(enabled) {
+  userSettings.highContrast = !!enabled;
+  localStorage.setItem('llm-settings', JSON.stringify(userSettings));
+  applyAppearance();
+  _syncAppearanceUI();
+}
+
 function resetAppearance() {
   delete userSettings.accentColor;
   delete userSettings.fontSize;
   delete userSettings.density;
+  delete userSettings.highContrast;
   localStorage.setItem('llm-settings', JSON.stringify(userSettings));
   applyAppearance();
   _syncAppearanceUI();
@@ -5643,7 +5656,7 @@ function resetAppearance() {
 }
 
 function _syncAppearanceUI() {
-  const { accentColor, fontSize = 'normal', density = 'comfortable' } = userSettings;
+  const { accentColor, fontSize = 'normal', density = 'comfortable', highContrast = false } = userSettings;
 
   document.querySelectorAll('.accent-swatch[data-color]').forEach(el => {
     el.classList.toggle('active', el.dataset.color === accentColor);
@@ -5657,6 +5670,9 @@ function _syncAppearanceUI() {
   document.querySelectorAll('#density-options .appearance-option').forEach(el => {
     el.classList.toggle('active', el.dataset.val === density);
   });
+
+  const hcToggle = document.getElementById('highcontrast-toggle');
+  if (hcToggle) hcToggle.checked = highContrast;
 }
 
 function openAppearanceSettings() {
