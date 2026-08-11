@@ -41,9 +41,18 @@ test('comboFromEvent returns null for a bare modifier keypress or missing key', 
   assert.equal(comboFromEvent(null), null);
 });
 
+test('comboFromEvent encodes a literal + keypress as an unambiguous token', () => {
+  // A raw "+" combo string would be indistinguishable from the "+" join
+  // separator (splits into two empty parts) — must round-trip through a
+  // named token instead so binding the + key actually works.
+  assert.equal(comboFromEvent({ key: '+', ctrlKey: true }), 'mod+plus');
+  assert.equal(isValidCombo(comboFromEvent({ key: '+', ctrlKey: true })), true);
+});
+
 test('isValidCombo accepts well-formed combos and rejects garbage', () => {
   assert.equal(isValidCombo('mod+p'), true);
   assert.equal(isValidCombo('mod+shift+f'), true);
+  assert.equal(isValidCombo('mod+shift+alt+p'), true);
   assert.equal(isValidCombo('t'), true);
   assert.equal(isValidCombo(''), false);
   assert.equal(isValidCombo('bogus+p'), false);
@@ -51,11 +60,20 @@ test('isValidCombo accepts well-formed combos and rejects garbage', () => {
   assert.equal(isValidCombo(null), false);
 });
 
+test('isValidCombo rejects combos comboFromEvent could never produce', () => {
+  assert.equal(isValidCombo('mod'), false); // bare modifier, no dispatchable key
+  assert.equal(isValidCombo('shift'), false);
+  assert.equal(isValidCombo('shift+mod+p'), false); // wrong modifier order
+  assert.equal(isValidCombo('mod+mod+p'), false); // duplicate modifier
+  assert.equal(isValidCombo('mod+shift+P'), false); // non-canonical casing — comboFromEvent always lowercases letters
+});
+
 test('formatCombo renders symbols and uppercases single-char keys', () => {
   assert.equal(formatCombo('mod+p'), '⌘ P');
   assert.equal(formatCombo('mod+shift+f'), '⌘ ⇧ F');
   assert.equal(formatCombo('t'), 'T');
   assert.equal(formatCombo('?'), '?');
+  assert.equal(formatCombo('mod+plus'), '⌘ +');
   assert.equal(formatCombo(''), '');
 });
 

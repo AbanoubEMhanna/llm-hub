@@ -5690,19 +5690,26 @@ let _recordingShortcutAction = null;
 
 function setShortcut(action, combo) {
   if (!Object.prototype.hasOwnProperty.call(DEFAULT_SHORTCUTS, action) || !isValidCombo(combo)) return;
+
+  // Check the candidate map *before* persisting — dispatch resolves a combo
+  // to the first action that claims it, so silently saving a clash would
+  // leave the just-bound action unreachable until the user noticed and
+  // fixed it themselves.
+  const candidateMap = getShortcutMap();
+  candidateMap[action] = combo;
+  const clashers = (findConflicts(candidateMap)[combo] || []).filter(a => a !== action);
+  if (clashers.length) {
+    const names = clashers.map(a => DEFAULT_SHORTCUTS[a].label).join(', ');
+    toast(`${formatCombo(combo)} is already used by ${names}`, 'error');
+    _syncShortcutsUI(); // reset the "Press keys…" recording state back to the unchanged binding
+    return;
+  }
+
   userSettings.shortcuts = userSettings.shortcuts || {};
   userSettings.shortcuts[action] = combo;
   localStorage.setItem('llm-settings', JSON.stringify(userSettings));
   _syncShortcutsUI();
-
-  const conflicts = findConflicts(getShortcutMap());
-  const clashers = (conflicts[combo] || []).filter(a => a !== action);
-  if (clashers.length) {
-    const names = clashers.map(a => DEFAULT_SHORTCUTS[a].label).join(', ');
-    toast(`${formatCombo(combo)} is already used by ${names}`, 'error');
-  } else {
-    toast(`${DEFAULT_SHORTCUTS[action].label} → ${formatCombo(combo)}`);
-  }
+  toast(`${DEFAULT_SHORTCUTS[action].label} → ${formatCombo(combo)}`);
 }
 
 function resetShortcut(action) {
