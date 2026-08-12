@@ -53,6 +53,7 @@ let selectedModel        = null;
 let availableModels      = [];
 let modelMetadata        = {};  // { modelId: { context_length, parameter_size, size_label, ... } }
 let runningModels        = [];  // models currently loaded in RAM/VRAM
+let modelUpdateInfo      = {};  // { shortModelName: { update_available, digest, latest_digest } } — from last "Check for Updates"
 let availableRagCollections = [];
 let isLoading            = false;
 let activeAbortController = null;
@@ -7308,6 +7309,7 @@ async function refreshModelManagerList() {
           <div class="mm-model-meta">${parts.length ? parts.join(' &middot; ') : 'Ollama'}</div>
         </div>
         <div class="mm-model-actions">
+          ${modelUpdateInfo[shortName]?.update_available ? '<span class="mm-update-badge" title="A newer version is available on the Ollama registry">&#x2B06; Update available</span>' : ''}
           ${isLoaded ? '<span class="mm-loaded-badge">loaded</span>' : ''}
           <button class="mm-delete-btn" onclick="deleteModelFromManager('${shortName}', this)" title="Delete model from disk">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -7321,6 +7323,36 @@ async function refreshModelManagerList() {
     }
   } catch (e) {
     listEl.innerHTML = `<div class="mm-empty">Could not reach proxy — is it running?</div>`;
+  }
+}
+
+async function checkModelUpdates() {
+  const btn = document.getElementById('mm-check-updates-btn');
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+
+  try {
+    const res  = await fetch(`${PROXY}/v1/models/updates`);
+    const data = await res.json();
+    const updates = data.updates || [];
+
+    modelUpdateInfo = {};
+    for (const u of updates) modelUpdateInfo[u.name] = u;
+
+    const available = updates.filter(u => u.update_available).length;
+    showToast(
+      available > 0
+        ? `${available} model${available === 1 ? '' : 's'} have an update available`
+        : 'All installed models are up to date',
+      available > 0 ? 'info' : 'success'
+    );
+    await refreshModelManagerList();
+  } catch {
+    showToast('Could not check for model updates', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
   }
 }
 

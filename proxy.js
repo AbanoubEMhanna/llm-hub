@@ -43,6 +43,7 @@ const { validateCustomTool, buildCustomToolDef, sanitizeCustomTools } = require(
 const { isAllowedRepoUrl, walkRepoFiles, cloneRepo, repoDisplayName } = require('./lib/github-index');
 const { isValidModelName: isValidGgufModelName, isValidGgufFilename, streamToFileWithHash, uploadBlob, createModel: createOllamaModelFromBlob, DEFAULT_MAX_GGUF_BYTES } = require('./lib/gguf-import');
 const { HELP_TEXT: CLI_HELP_TEXT, parseCliArgs, buildBatchMessages, extractAssistantText } = require('./lib/cli-batch');
+const { parseOllamaRef, buildUpdateReport } = require('./lib/model-updates');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § CONFIG & STORAGE
@@ -1163,6 +1164,7 @@ async function fetchAllModels(apiKeys = {}, customProviders = []) {
         size_bytes: m.size || 0,
         size_label: m.size ? formatBytes(m.size) : '?',
         details: m.details || {},
+        digest: m.digest || null,
       });
     }
     console.log(`[Models] Ollama: ${ol.data.models.length} model(s)`);
@@ -1277,6 +1279,60 @@ function formatBytes(bytes) {
   if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
   if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
   return (bytes / 1073741824).toFixed(1) + ' GB';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § MODEL UPDATE NOTIFICATIONS
+// Compares each installed Ollama model's manifest digest against the digest
+// currently published on the official registry (the same anonymous-pull
+// token flow `ollama pull` itself uses), so we can flag "a newer version is
+// available" without redownloading anything. Failures (offline, unofficial
+// namespace, non-standard ref) just drop that model from the report — never
+// a false "update available".
+// ─────────────────────────────────────────────────────────────────────────────
+
+const OLLAMA_REGISTRY_HOST = 'registry.ollama.ai';
+
+async function fetchOllamaRegistryToken(namespace, model) {
+  const scope = encodeURIComponent(`repository:${namespace}/${model}:pull`);
+  const r = await httpsGet(OLLAMA_REGISTRY_HOST, `/v2/token?service=registry.ollama.ai&scope=${scope}`, {}, 6000);
+  return r.ok && r.data?.token ? r.data.token : null;
+}
+
+function fetchOllamaManifestDigest(namespace, model, tag, token) {
+  return new Promise((resolve) => {
+    const req = https.request({
+      hostname: OLLAMA_REGISTRY_HOST,
+      path: `/v2/${namespace}/${model}/manifests/${encodeURIComponent(tag)}`,
+      method: 'GET',
+      headers: {
+        Accept: 'application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      timeout: 6000,
+    }, (res) => {
+      res.on('data', () => {}); // drain — we only need the digest header
+      res.on('end', () => resolve(res.statusCode < 400 ? (res.headers['docker-content-digest'] || null) : null));
+    });
+    req.on('error',   () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+    req.end();
+  });
+}
+
+/** Checks the official Ollama registry for newer digests of installed models. */
+async function checkOllamaModelUpdates(localModels) {
+  const remoteDigests = {};
+  await Promise.all(localModels.map(async (m) => {
+    const ref = parseOllamaRef(m.name);
+    if (!ref) return;
+    try {
+      const token  = await fetchOllamaRegistryToken(ref.namespace, ref.model);
+      const digest = await fetchOllamaManifestDigest(ref.namespace, ref.model, ref.tag, token);
+      if (digest) remoteDigests[m.name] = digest;
+    } catch { /* skip this model on any failure */ }
+  }));
+  return buildUpdateReport(localModels, remoteDigests);
 }
 
 /** Get currently loaded/running models from Ollama + LM Studio */
@@ -1827,6 +1883,21 @@ async function handleRequest(req, res) {
     // ── RUNNING MODELS (what's loaded in RAM/VRAM)
     if (req.method === 'GET' && url.pathname === '/v1/models/running') {
       sendJSON(res, 200, { models: await getRunningModels() });
+      return;
+    }
+
+    // ── MODEL UPDATE CHECK (installed Ollama models vs. the official registry)
+    if (req.method === 'GET' && url.pathname === '/v1/models/updates') {
+      try {
+        const tags = await httpGet(CONFIG.providers.ollama.host, CONFIG.providers.ollama.port, '/api/tags', 8000);
+        const localModels = (tags.ok && tags.data?.models)
+          ? tags.data.models.filter(m => m.digest).map(m => ({ name: m.name, digest: m.digest }))
+          : [];
+        const updates = await checkOllamaModelUpdates(localModels);
+        sendJSON(res, 200, { updates });
+      } catch {
+        sendJSON(res, 502, { error: { message: 'Failed to check for model updates' } });
+      }
       return;
     }
 
