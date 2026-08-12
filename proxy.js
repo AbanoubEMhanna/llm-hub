@@ -1894,7 +1894,11 @@ async function handleRequest(req, res) {
           ? tags.data.models.filter(m => m.digest).map(m => ({ name: m.name, digest: m.digest }))
           : [];
         const updates = await checkOllamaModelUpdates(localModels);
-        sendJSON(res, 200, { updates });
+        // `checked`/`ollama_reachable` let the UI tell "checked, nothing needs an
+        // update" apart from "nothing was actually checked" (Ollama unreachable,
+        // or no installed models have a resolvable registry ref) — both cases
+        // otherwise return the same empty `updates` array.
+        sendJSON(res, 200, { updates, checked: localModels.length, ollama_reachable: tags.ok });
       } catch {
         sendJSON(res, 502, { error: { message: 'Failed to check for model updates' } });
       }

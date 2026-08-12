@@ -7309,7 +7309,7 @@ async function refreshModelManagerList() {
           <div class="mm-model-meta">${parts.length ? parts.join(' &middot; ') : 'Ollama'}</div>
         </div>
         <div class="mm-model-actions">
-          ${modelUpdateInfo[shortName]?.update_available ? '<span class="mm-update-badge" title="A newer version is available on the Ollama registry">&#x2B06; Update available</span>' : ''}
+          ${modelUpdateInfo[shortName]?.update_available && modelUpdateInfo[shortName].digest === m.digest ? '<span class="mm-update-badge" title="A newer version is available on the Ollama registry">&#x2B06; Update available</span>' : ''}
           ${isLoaded ? '<span class="mm-loaded-badge">loaded</span>' : ''}
           <button class="mm-delete-btn" onclick="deleteModelFromManager('${shortName}', this)" title="Delete model from disk">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -7341,12 +7341,15 @@ async function checkModelUpdates() {
     for (const u of updates) modelUpdateInfo[u.name] = u;
 
     const available = updates.filter(u => u.update_available).length;
-    showToast(
-      available > 0
-        ? `${available} model${available === 1 ? '' : 's'} have an update available`
-        : 'All installed models are up to date',
-      available > 0 ? 'info' : 'success'
-    );
+    if (data.ollama_reachable === false) {
+      showToast('Could not reach Ollama — nothing was checked', 'error');
+    } else if (!data.checked) {
+      showToast('No installed Ollama models to check', 'info');
+    } else if (available > 0) {
+      showToast(`${available} model${available === 1 ? '' : 's'} have an update available`, 'info');
+    } else {
+      showToast('All installed models are up to date', 'success');
+    }
     await refreshModelManagerList();
   } catch {
     showToast('Could not check for model updates', 'error');

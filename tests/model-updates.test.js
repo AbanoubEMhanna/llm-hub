@@ -27,6 +27,12 @@ test('parseOllamaRef: rejects unsupported shapes and empty/non-string input', ()
   assert.equal(parseOllamaRef(undefined), null);
 });
 
+test('parseOllamaRef: rejects a host:port-qualified reference instead of mis-parsing the port as a tag', () => {
+  // Without a "colon must come after the last slash" check, this would
+  // wrongly parse as { namespace: 'library', model: 'registry.example.com', tag: '5000/org/model' }.
+  assert.equal(parseOllamaRef('registry.example.com:5000/org/model'), null);
+});
+
 test('buildUpdateReport: flags a model whose remote digest differs', () => {
   const local = [{ name: 'llama3.2:3b', digest: 'sha256:aaa' }];
   const remote = { 'llama3.2:3b': 'sha256:bbb' };
