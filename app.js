@@ -7335,13 +7335,15 @@ async function checkModelUpdates() {
   try {
     const res  = await fetch(`${PROXY}/v1/models/updates`);
     const data = await res.json();
-    const updates = data.updates || [];
+    if (!res.ok) throw new Error(data?.error?.message || 'Failed to check for model updates');
 
+    const updates = data.updates || [];
     modelUpdateInfo = {};
     for (const u of updates) modelUpdateInfo[u.name] = u;
 
     const available = updates.filter(u => u.update_available).length;
     const failures  = data.lookup_failures || 0;
+    const compared  = updates.length; // models actually compared against the registry, not just candidates
     if (data.ollama_reachable === false) {
       showToast('Could not reach Ollama — nothing was checked', 'error');
     } else if (!data.checked) {
@@ -7351,12 +7353,16 @@ async function checkModelUpdates() {
       showToast(`${available} model${available === 1 ? '' : 's'} have an update available`, 'info');
     } else if (failures > 0) {
       showToast(`Could not verify ${failures} model${failures === 1 ? '' : 's'} against the registry — try again`, 'error');
+    } else if (compared === 0) {
+      // Every installed model had an unsupported ref shape (e.g. a custom/third-party
+      // namespace) — nothing was actually compared, so this isn't "up to date".
+      showToast('None of your installed models could be checked against the registry', 'info');
     } else {
       showToast('All installed models are up to date', 'success');
     }
     await refreshModelManagerList();
-  } catch {
-    showToast('Could not check for model updates', 'error');
+  } catch (e) {
+    showToast(e.message || 'Could not check for model updates', 'error');
   } finally {
     btn.disabled = false;
     btn.textContent = originalLabel;
