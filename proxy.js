@@ -1323,6 +1323,13 @@ function fetchOllamaManifestDigest(namespace, model, tag, token) {
 /** Checks the official Ollama registry for newer digests of installed models. */
 async function checkOllamaModelUpdates(localModels) {
   const remoteDigests = {};
+  // A ref that doesn't parse (unofficial/third-party namespace shape) is an
+  // expected, permanent skip — it's not a "lookup failure" and shouldn't read
+  // as one. A ref that *does* parse but whose token/manifest request fails
+  // (network issue, registry down) is a real failure: it means the check
+  // didn't actually run for that model, which the caller needs to know about
+  // to avoid reporting a false "up to date".
+  let lookupFailures = 0;
   await Promise.all(localModels.map(async (m) => {
     const ref = parseOllamaRef(m.name);
     if (!ref) return;
@@ -1330,9 +1337,10 @@ async function checkOllamaModelUpdates(localModels) {
       const token  = await fetchOllamaRegistryToken(ref.namespace, ref.model);
       const digest = await fetchOllamaManifestDigest(ref.namespace, ref.model, ref.tag, token);
       if (digest) remoteDigests[m.name] = digest;
-    } catch { /* skip this model on any failure */ }
+      else lookupFailures++;
+    } catch { lookupFailures++; }
   }));
-  return buildUpdateReport(localModels, remoteDigests);
+  return { updates: buildUpdateReport(localModels, remoteDigests), lookupFailures };
 }
 
 /** Get currently loaded/running models from Ollama + LM Studio */
@@ -1893,12 +1901,18 @@ async function handleRequest(req, res) {
         const localModels = (tags.ok && tags.data?.models)
           ? tags.data.models.filter(m => m.digest).map(m => ({ name: m.name, digest: m.digest }))
           : [];
-        const updates = await checkOllamaModelUpdates(localModels);
-        // `checked`/`ollama_reachable` let the UI tell "checked, nothing needs an
-        // update" apart from "nothing was actually checked" (Ollama unreachable,
-        // or no installed models have a resolvable registry ref) — both cases
+        const { updates, lookupFailures } = await checkOllamaModelUpdates(localModels);
+        // `checked`/`ollama_reachable`/`lookup_failures` let the UI tell "checked,
+        // nothing needs an update" apart from "nothing was actually checked"
+        // (Ollama unreachable, no installed model has a resolvable registry ref,
+        // or every registry lookup that was attempted failed) — all of which
         // otherwise return the same empty `updates` array.
-        sendJSON(res, 200, { updates, checked: localModels.length, ollama_reachable: tags.ok });
+        sendJSON(res, 200, {
+          updates,
+          checked: localModels.length,
+          lookup_failures: lookupFailures,
+          ollama_reachable: tags.ok,
+        });
       } catch {
         sendJSON(res, 502, { error: { message: 'Failed to check for model updates' } });
       }

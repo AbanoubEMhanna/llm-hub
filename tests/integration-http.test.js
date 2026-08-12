@@ -150,6 +150,7 @@ test('GET /v1/models/updates reports the check as unrun (not "up to date") with 
   assert.equal(res.status, 200);
   assert.deepEqual(body.updates, []);
   assert.equal(body.checked, 0);
+  assert.equal(body.lookup_failures, 0);
   assert.equal(body.ollama_reachable, false);
 });
 

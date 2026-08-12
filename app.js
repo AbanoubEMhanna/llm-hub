@@ -7341,12 +7341,16 @@ async function checkModelUpdates() {
     for (const u of updates) modelUpdateInfo[u.name] = u;
 
     const available = updates.filter(u => u.update_available).length;
+    const failures  = data.lookup_failures || 0;
     if (data.ollama_reachable === false) {
       showToast('Could not reach Ollama — nothing was checked', 'error');
     } else if (!data.checked) {
       showToast('No installed Ollama models to check', 'info');
     } else if (available > 0) {
+      // A confirmed update is worth surfacing even if other models' checks failed.
       showToast(`${available} model${available === 1 ? '' : 's'} have an update available`, 'info');
+    } else if (failures > 0) {
+      showToast(`Could not verify ${failures} model${failures === 1 ? '' : 's'} against the registry — try again`, 'error');
     } else {
       showToast('All installed models are up to date', 'success');
     }
