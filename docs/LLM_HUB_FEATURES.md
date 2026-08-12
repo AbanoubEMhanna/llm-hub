@@ -251,7 +251,7 @@
 - [x] Notification / toast history panel
 - [ ] 🔥 🏗️ Fully responsive mobile layout — hamburger nav, touch-friendly
 - [ ] 🔥 🏗️ Multi-tab chat — tab bar, multiple conversations side-by-side
-- [ ] Keyboard shortcut remapping
+- [x] Keyboard shortcut remapping
 - [ ] Custom welcome screen configuration
 
 ### Notifications & Feedback
@@ -326,13 +326,13 @@
 | Attachments & Multimodal | 8 | 2 |
 | RAG / Knowledge Base | 13 | 1 |
 | Model Comparison | 8 | 1 |
-| Modern UI | 19 | 5 |
+| Modern UI | 20 | 4 |
 | Security & Privacy | 8 | 2 |
 | Deployment | 9 | 5 |
 | Developer / Testing | 8 | 3 |
-| **Total** | **170** | **42** |
+| **Total** | **171** | **41** |
 
-**~80% complete. Top priorities to close the gap:**
+**~81% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell command tool — needs a new tool-call confirmation flow: the agent loop that executes tools runs entirely server-side in `runAgentLoop`/`proxy.js`, so a per-execution confirmation means pausing mid-loop for a client round-trip — a bigger lift than the other 🔥 items, hence still open)
@@ -341,4 +341,4 @@
 
 ---
 
-*Last updated: 2026-08-10. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-08-11. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
