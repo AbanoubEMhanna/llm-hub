@@ -1560,7 +1560,11 @@
 
       <!-- Installed models list -->
       <div class="mm-section">
-        <div class="mm-section-title">Installed Ollama models</div>
+        <div class="mm-section-title-row">
+          <div class="mm-section-title">Installed Ollama models</div>
+          <button class="btn btn-sm" id="mm-check-updates-btn" onclick="checkModelUpdates()"
+            title="Compare installed models against the official Ollama registry">Check for Updates</button>
+        </div>
         <div id="mm-model-list" class="mm-model-list">
           <div class="loading-row"><div class="spinner"></div> Loading…</div>
         </div>

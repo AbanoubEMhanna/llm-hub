@@ -1763,6 +1763,10 @@ del.diff-del {
   font-size: 11px; font-weight: 600; text-transform: uppercase;
   letter-spacing: .06em; color: var(--muted); margin-bottom: 10px;
 }
+.mm-section-title-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.mm-section-title-row .mm-section-title { margin-bottom: 0; }
 
 .mm-pull-row { display: flex; gap: 8px; }
 .mm-pull-input {
@@ -1836,6 +1840,13 @@ del.diff-del {
   background: color-mix(in srgb, var(--green) 15%, transparent);
   color: var(--green); font-family: var(--mono); font-weight: 500;
   border: 1px solid color-mix(in srgb, var(--green) 30%, transparent);
+}
+.mm-update-badge {
+  font-size: 10px; padding: 2px 7px; border-radius: 4px;
+  background: color-mix(in srgb, var(--orange) 15%, transparent);
+  color: var(--orange); font-family: var(--mono); font-weight: 500;
+  border: 1px solid color-mix(in srgb, var(--orange) 30%, transparent);
+  white-space: nowrap;
 }
 .mm-empty {
   padding: 24px; text-align: center; color: var(--muted);

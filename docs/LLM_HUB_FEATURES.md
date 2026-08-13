@@ -52,7 +52,7 @@
 - [x] Favorite / pin models to top of selector
 - [x] Model search in the main selector (filter as you type)
 - [x] 🔥 GGUF drag-and-drop import — load any `.gguf` directly without CLI
-- [ ] 🔥 Model update notifications — alert when a newer version is available
+- [x] 🔥 Model update notifications — alert when a newer version is available
 - [x] ⚡ Model tags & friendly aliases — rename `llama3.2:3b` → `"Fast Llama"`
 - [x] Model comparison spec sheet — side-by-side table (ctx, quant, size, license)
 - [x] Auto-recommend models based on detected hardware at first launch
@@ -317,7 +317,7 @@
 | Area | ✅ Done | ⬜ To Do |
 |------|---------|----------|
 | Providers & Connectivity | 17 | 1 |
-| Local Model Management | 13 | 1 |
+| Local Model Management | 14 | 0 |
 | Hardware Awareness | 12 | 0 |
 | Chat Interface | 28 | 3 |
 | Model Parameters | 11 | 1 |
@@ -330,15 +330,14 @@
 | Security & Privacy | 8 | 2 |
 | Deployment | 9 | 5 |
 | Developer / Testing | 8 | 3 |
-| **Total** | **171** | **41** |
+| **Total** | **172** | **40** |
 
 **~81% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell command tool — needs a new tool-call confirmation flow: the agent loop that executes tools runs entirely server-side in `runAgentLoop`/`proxy.js`, so a per-execution confirmation means pausing mid-loop for a client round-trip — a bigger lift than the other 🔥 items, hence still open)
-4. Model update notifications — alert when a newer version is available
-5. More cloud providers (AI21 / Perplexity) — held back so far: neither has a documented `/models` list endpoint, so they don't slot into the existing discovery-based `CLOUD_PROVIDERS` pattern without extra design work (a static model-ID list injected regardless of live discovery); needs to be verified against current docs before shipping, not guessed.
+4. More cloud providers (AI21 / Perplexity) — held back so far: neither has a documented `/models` list endpoint, so they don't slot into the existing discovery-based `CLOUD_PROVIDERS` pattern without extra design work (a static model-ID list injected regardless of live discovery); needs to be verified against current docs before shipping, not guessed.
 
 ---
 
-*Last updated: 2026-08-11. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-08-12. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*

@@ -141,6 +141,19 @@ test('GET /v1/models/running returns no models with no backend running', async (
   assert.deepEqual(body.models, []);
 });
 
+test('GET /v1/models/updates reports the check as unrun (not "up to date") with no Ollama backend', async () => {
+  // No local models to compare means no registry calls are made at all —
+  // this stays offline-safe and doesn't depend on reaching registry.ollama.ai.
+  // ollama_reachable: false / checked: 0 is what lets the UI distinguish this
+  // from "checked N models, none need an update".
+  const { res, body } = await requestJSON('/v1/models/updates');
+  assert.equal(res.status, 200);
+  assert.deepEqual(body.updates, []);
+  assert.equal(body.checked, 0);
+  assert.equal(body.lookup_failures, 0);
+  assert.equal(body.ollama_reachable, false);
+});
+
 test('GET /v1/config echoes the loaded config', async () => {
   const { res, body } = await requestJSON('/v1/config');
   assert.equal(res.status, 200);
