@@ -24,7 +24,7 @@ const os         = require('os');
 const { URL }    = require('url');
 
 const { isPrivateHost, resolveSafeAddress } = require('./lib/ssrf');
-const { chunkText, cosine: cosineSimilarity, computeStats: computeRagStats, rankChunks, hybridRankChunks, removeChunk, replaceChunkText } = require('./lib/rag-utils');
+const { chunkText, cosine: cosineSimilarity, computeStats: computeRagStats, rankChunks, hybridRankChunks, removeChunk, replaceChunkText, isCollectionStale } = require('./lib/rag-utils');
 const { evaluate: calcEvaluate } = require('./lib/calculator');
 const { formatLogEntry, parseLogLines } = require('./lib/request-log');
 const { formatRunEntry, parseRunLines } = require('./lib/agent-history');
@@ -345,6 +345,7 @@ class RagEngine {
   }
 
   listCollections() {
+    const currentModel = CONFIG.rag.embedding_model;
     return [...this.collections.values()].map(c => ({
       id:        c.id,
       name:      c.name,
@@ -352,6 +353,8 @@ class RagEngine {
       sources:   [...new Set((c.chunks||[]).map(ch => ch.source))].length,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt ?? c.createdAt,
+      embeddingModel: c.embeddingModel || null,
+      stale: isCollectionStale(c.embeddingModel, currentModel),
     }));
   }
 
@@ -380,6 +383,29 @@ class RagEngine {
     col.updatedAt = Date.now();
     this._persist(col);
     return true;
+  }
+
+  /**
+   * Re-embeds every chunk in a collection with the currently configured
+   * embedding model — the fix for a collection flagged `stale` by
+   * listCollections() after the user changes `rag.embedding_model`. Old
+   * vectors live in a different embedding space and can't be meaningfully
+   * compared against new query embeddings until this runs.
+   */
+  async reembedCollection(collectionId, onProgress) {
+    const col = this.collections.get(collectionId);
+    if (!col) return null;
+    const chunks = col.chunks || [];
+    let done = 0;
+    for (const chunk of chunks) {
+      chunk.embedding = await this.embed(chunk.text);
+      done++;
+      if (onProgress) onProgress({ done, total: chunks.length });
+    }
+    col.embeddingModel = CONFIG.rag.embedding_model;
+    col.updatedAt = Date.now();
+    this._persist(col);
+    return { collectionId: col.id, chunksReembedded: chunks.length };
   }
 
   /** Re-embeds the new text before persisting — embeddings must match the current text. */
@@ -448,6 +474,7 @@ class RagEngine {
       done++;
       if (onProgress) onProgress({ done, total: chunks.length });
     }
+    col.embeddingModel = cfg.embedding_model;
     col.updatedAt = Date.now();
     this._persist(col);
     return { collectionId: col.id, chunksAdded: chunks.length };
@@ -487,6 +514,7 @@ class RagEngine {
       filesDone++;
       if (onProgress) onProgress({ done: filesDone, total: docs.length, chunksAdded });
     }
+    col.embeddingModel = cfg.embedding_model;
     col.updatedAt = Date.now();
     this._persist(col);
     return { collectionId: col.id, chunksAdded };
@@ -2304,6 +2332,19 @@ async function handleRequest(req, res) {
         const chunk = await rag.updateChunk(collectionId, chunkId, text);
         if (!chunk) { sendJSON(res, 404, { error: 'chunk not found' }); return; }
         sendJSON(res, 200, { ok: true, chunk: { id: chunk.id, source: chunk.source, preview: chunk.text.slice(0, 200) } });
+      } catch (e) { sendJSON(res, 500, { error: e.message }); }
+      return;
+    }
+
+    // ── RAG: re-embed every chunk in a collection with the current embedding
+    // model — the fix for a collection GET /v1/rag/collections flags `stale`
+    // after CONFIG.rag.embedding_model changes.
+    if (req.method === 'POST' && /^\/v1\/rag\/collections\/[^/]+\/reembed$/.test(url.pathname)) {
+      const [, , , , collectionId] = url.pathname.split('/');
+      try {
+        const result = await rag.reembedCollection(collectionId);
+        if (!result) { sendJSON(res, 404, { error: 'collection not found' }); return; }
+        sendJSON(res, 200, { ok: true, ...result });
       } catch (e) { sendJSON(res, 500, { error: e.message }); }
       return;
     }

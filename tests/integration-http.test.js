@@ -266,6 +266,12 @@ test('PUT /v1/rag/collections/:id/chunks/:chunkId rejects an empty text body', a
   assert.equal(body.error, 'text is required');
 });
 
+test('POST /v1/rag/collections/:id/reembed 404s for an unknown collection', async () => {
+  const { res, body } = await postJSON('/v1/rag/collections/no-such-collection/reembed', {});
+  assert.equal(res.status, 404);
+  assert.equal(body.error, 'collection not found');
+});
+
 test('POST /v1/rag/query with no collections returns empty results', async () => {
   const { res, body } = await postJSON('/v1/rag/query', { query: 'anything' });
   assert.equal(res.status, 200);
