@@ -395,14 +395,33 @@ class RagEngine {
   async reembedCollection(collectionId, onProgress) {
     const col = this.collections.get(collectionId);
     if (!col) return null;
+    // Reject a concurrent re-embed of the same collection instead of racing
+    // two loops that both mutate col.chunks.
+    if (col._reembedding) throw new Error('Re-embedding already in progress for this collection');
+    col._reembedding = true;
+
     const chunks = col.chunks || [];
-    let done = 0;
-    for (const chunk of chunks) {
-      chunk.embedding = await this.embed(chunk.text);
-      done++;
-      if (onProgress) onProgress({ done, total: chunks.length });
+    // Captured once so every chunk in this run embeds against the same
+    // model even if CONFIG.rag.embedding_model changes mid-operation.
+    const targetModel = CONFIG.rag.embedding_model;
+    let newEmbeddings;
+    try {
+      newEmbeddings = [];
+      let done = 0;
+      for (const chunk of chunks) {
+        newEmbeddings.push(await this.embed(chunk.text, targetModel));
+        done++;
+        if (onProgress) onProgress({ done, total: chunks.length });
+      }
+    } finally {
+      delete col._reembedding;
     }
-    col.embeddingModel = CONFIG.rag.embedding_model;
+
+    // Only mutate/persist once every chunk has re-embedded successfully —
+    // a failure partway through must leave the collection exactly as it
+    // was, never a mix of old- and new-model vectors.
+    chunks.forEach((chunk, i) => { chunk.embedding = newEmbeddings[i]; });
+    col.embeddingModel = targetModel;
     col.updatedAt = Date.now();
     this._persist(col);
     return { collectionId: col.id, chunksReembedded: chunks.length };
@@ -426,7 +445,7 @@ class RagEngine {
   /** Delegate to shared lib/rag-utils (single source of truth for tests) */
   chunkText(text, chunkSize, overlap) { return chunkText(text, chunkSize, overlap); }
 
-  async embed(text) {
+  async embed(text, model) {
     const cfg = CONFIG.rag;
     if (cfg.embedding_provider !== 'ollama') {
       throw new Error(`Unsupported embedding_provider: ${cfg.embedding_provider}`);
@@ -435,7 +454,7 @@ class RagEngine {
       CONFIG.providers.ollama.host,
       CONFIG.providers.ollama.port,
       '/api/embeddings',
-      { model: cfg.embedding_model, prompt: text },
+      { model: model || cfg.embedding_model, prompt: text },
       60000
     );
     if (res.status >= 400 || !res.data?.embedding) {
@@ -474,7 +493,13 @@ class RagEngine {
       done++;
       if (onProgress) onProgress({ done, total: chunks.length });
     }
-    col.embeddingModel = cfg.embedding_model;
+    // Only stamp embeddingModel when it's unset (brand-new collection) or
+    // already matches — appending chunks under a different model than an
+    // existing (stale) collection's recorded model must never silently
+    // clear `stale` while its older chunks are still on the old model.
+    if (!col.embeddingModel || col.embeddingModel === cfg.embedding_model) {
+      col.embeddingModel = cfg.embedding_model;
+    }
     col.updatedAt = Date.now();
     this._persist(col);
     return { collectionId: col.id, chunksAdded: chunks.length };
@@ -514,7 +539,13 @@ class RagEngine {
       filesDone++;
       if (onProgress) onProgress({ done: filesDone, total: docs.length, chunksAdded });
     }
-    col.embeddingModel = cfg.embedding_model;
+    // Only stamp embeddingModel when it's unset (brand-new collection) or
+    // already matches — appending chunks under a different model than an
+    // existing (stale) collection's recorded model must never silently
+    // clear `stale` while its older chunks are still on the old model.
+    if (!col.embeddingModel || col.embeddingModel === cfg.embedding_model) {
+      col.embeddingModel = cfg.embedding_model;
+    }
     col.updatedAt = Date.now();
     this._persist(col);
     return { collectionId: col.id, chunksAdded };
