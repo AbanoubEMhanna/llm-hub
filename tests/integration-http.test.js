@@ -120,6 +120,36 @@ test('GET /v1/models returns a model list envelope', async () => {
   assert.ok(Array.isArray(body.data));
 });
 
+// ── AI21: no /models discovery endpoint, so its catalog is a static list
+// injected only when a key is configured — never fetched over the network.
+
+test('GET /v1/models omits AI21 models with no API key configured', async () => {
+  const { body } = await requestJSON('/v1/models');
+  assert.ok(!body.data.some((m) => m.id.startsWith('ai21/')));
+});
+
+test('GET /v1/models includes the static AI21 catalog once a key is configured', async () => {
+  const { res, body } = await requestJSON('/v1/models', {
+    headers: { 'X-Api-Keys': JSON.stringify({ ai21: 'fake-key' }) },
+  });
+  assert.equal(res.status, 200);
+  const ids = body.data.map((m) => m.id);
+  assert.ok(ids.includes('ai21/jamba-large'));
+  assert.ok(ids.includes('ai21/jamba-mini'));
+});
+
+test('GET /health reports AI21 as no-key with no key, online once one is configured', async () => {
+  const noKey = await requestJSON('/health');
+  assert.equal(noKey.body.providers.ai21, 'no-key');
+
+  const withKey = await requestJSON('/health', {
+    headers: { 'X-Api-Keys': JSON.stringify({ ai21: 'fake-key' }) },
+  });
+  // AI21 has no free endpoint to verify the key against every 30s, so a
+  // configured key is reported "online" without a live network check.
+  assert.equal(withKey.body.providers.ai21, 'online');
+});
+
 test('GET /v1/tools returns the tool registry status', async () => {
   const { res, body } = await requestJSON('/v1/tools');
   assert.equal(res.status, 200);

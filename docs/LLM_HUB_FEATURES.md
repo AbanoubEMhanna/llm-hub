@@ -34,7 +34,8 @@
 - [x] Cohere
 - [x] DeepSeek
 - [x] Cerebras
-- [ ] AI21 / Perplexity
+- [x] AI21 (Jamba Large / Jamba Mini — static catalog, no `/models` discovery endpoint on their API)
+- [ ] Perplexity — blocked: their Chat Completions API is deprecated in favor of a new "Agent API" (sunset 2026-09-27), which isn't yet documented as OpenAI-compatible. Re-evaluate once the migration guide is final.
 - [x] ⚡ Provider usage cost estimator (token price × message count)
 
 ---
@@ -316,7 +317,7 @@
 
 | Area | ✅ Done | ⬜ To Do |
 |------|---------|----------|
-| Providers & Connectivity | 17 | 1 |
+| Providers & Connectivity | 18 | 1 |
 | Local Model Management | 14 | 0 |
 | Hardware Awareness | 12 | 0 |
 | Chat Interface | 28 | 3 |
@@ -330,14 +331,14 @@
 | Security & Privacy | 8 | 2 |
 | Deployment | 9 | 5 |
 | Developer / Testing | 8 | 3 |
-| **Total** | **172** | **40** |
+| **Total** | **173** | **40** |
 
 **~81% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell command tool — needs a new tool-call confirmation flow: the agent loop that executes tools runs entirely server-side in `runAgentLoop`/`proxy.js`, so a per-execution confirmation means pausing mid-loop for a client round-trip — a bigger lift than the other 🔥 items, hence still open)
-4. More cloud providers (AI21 / Perplexity) — held back so far: neither has a documented `/models` list endpoint, so they don't slot into the existing discovery-based `CLOUD_PROVIDERS` pattern without extra design work (a static model-ID list injected regardless of live discovery); needs to be verified against current docs before shipping, not guessed.
+4. Perplexity — still blocked; their classic Chat Completions API sunsets 2026-09-27 in favor of an undocumented "Agent API". Revisit once Perplexity publishes the OpenAI-compatibility shape of the replacement.
 
 ---
 
-*Last updated: 2026-08-12. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-08-14. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*

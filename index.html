@@ -55,6 +55,7 @@
       <div class="status-dot cloud-dot" id="b-cohere" title="Cohere — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>Cohere</span></div>
       <div class="status-dot cloud-dot" id="b-deepseek" title="DeepSeek — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>DeepSeek</span></div>
       <div class="status-dot cloud-dot" id="b-cerebras" title="Cerebras — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>Cerebras</span></div>
+      <div class="status-dot cloud-dot" id="b-ai21" title="AI21 — add API key in Settings" onclick="openApiKeySettings()"><div class="dot"></div><span>AI21</span></div>
     </div>
   </div>
 
@@ -924,6 +925,16 @@
           <button class="btn btn-sm" onclick="toggleKeyVisibility('key-cerebras', this)">Show</button>
           <button class="btn btn-sm provider-test-btn" id="test-cerebras" onclick="testProvider('cerebras')" title="Ping Cerebras with the current key">Test</button>
           <span class="provider-test-status" id="test-status-cerebras" role="status" aria-live="polite" aria-atomic="true"></span>
+        </div>
+        <div class="api-key-row">
+          <label class="api-key-label">
+            <span class="provider-badge ai21-badge">AI21</span>
+            <span class="provider-hint">Jamba Large, Jamba Mini…</span>
+          </label>
+          <input class="api-key-input" id="key-ai21" type="password" placeholder="…" autocomplete="off"/>
+          <button class="btn btn-sm" onclick="toggleKeyVisibility('key-ai21', this)">Show</button>
+          <button class="btn btn-sm provider-test-btn" id="test-ai21" onclick="testProvider('ai21')" title="AI21 has no lightweight status endpoint — this only confirms a key is entered, not that it's valid">Test</button>
+          <span class="provider-test-status" id="test-status-ai21" role="status" aria-live="polite" aria-atomic="true"></span>
         </div>
       </div>
       <div id="apikey-status" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
