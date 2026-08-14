@@ -35,7 +35,7 @@
 - [x] DeepSeek
 - [x] Cerebras
 - [x] AI21 (Jamba Large / Jamba Mini — static catalog, no `/models` discovery endpoint on their API)
-- [ ] Perplexity — blocked: their Chat Completions API is deprecated in favor of a new "Agent API" (sunset 2026-09-27), which isn't yet documented as OpenAI-compatible. Re-evaluate once the migration guide is final.
+- [ ] Perplexity — blocked: Sonar Chat Completions is supported until 2026-09-27, but the replacement Agent API uses a different contract (`/v1/agent` + the Responses API, not `/v1/chat/completions`), so it doesn't fit this project's `CLOUD_PROVIDERS`/`runAgentLoop` shape without real design work, not just a config entry. Re-evaluate once that mapping is worked out.
 - [x] ⚡ Provider usage cost estimator (token price × message count)
 
 ---
@@ -337,7 +337,7 @@
 1. 🔥 Code-first workflow (file tree, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell command tool — needs a new tool-call confirmation flow: the agent loop that executes tools runs entirely server-side in `runAgentLoop`/`proxy.js`, so a per-execution confirmation means pausing mid-loop for a client round-trip — a bigger lift than the other 🔥 items, hence still open)
-4. Perplexity — still blocked; their classic Chat Completions API sunsets 2026-09-27 in favor of an undocumented "Agent API". Revisit once Perplexity publishes the OpenAI-compatibility shape of the replacement.
+4. Perplexity — still blocked; Sonar Chat Completions is supported until 2026-09-27, but its Agent API replacement (`/v1/agent` + Responses API) isn't a `/v1/chat/completions`-shaped API, so adding it means real integration work, not just another `CLOUD_PROVIDERS` entry.
 
 ---
 
