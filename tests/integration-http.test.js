@@ -239,6 +239,20 @@ test('DELETE /v1/agent-runs clears the agent history', async () => {
   assert.equal(body.cleared, true);
 });
 
+test('GET /v1/audit-log is empty by default (audit.enabled is false)', async () => {
+  const { res, body } = await requestJSON('/v1/audit-log');
+  assert.equal(res.status, 200);
+  assert.equal(body.enabled, false);
+  assert.deepEqual(body.entries, []);
+});
+
+test('DELETE /v1/audit-log clears the audit log', async () => {
+  const res = await request('/v1/audit-log', { method: 'DELETE' });
+  const body = await res.json();
+  assert.equal(res.status, 200);
+  assert.equal(body.cleared, true);
+});
+
 test('GET /v1/rag/collections returns an empty collection list', async () => {
   const { res, body } = await requestJSON('/v1/rag/collections');
   assert.equal(res.status, 200);

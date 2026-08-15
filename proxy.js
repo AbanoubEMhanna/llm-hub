@@ -28,6 +28,7 @@ const { chunkText, cosine: cosineSimilarity, computeStats: computeRagStats, rank
 const { evaluate: calcEvaluate } = require('./lib/calculator');
 const { formatLogEntry, parseLogLines } = require('./lib/request-log');
 const { formatRunEntry, parseRunLines } = require('./lib/agent-history');
+const { formatAuditEntry, parseAuditLines } = require('./lib/audit-log');
 const { buildSpec }        = require('./lib/openapi');
 const { parseStopSequences } = require('./lib/stop-sequences');
 const { parseSeed }        = require('./lib/seed');
@@ -65,6 +66,7 @@ function loadConfig() {
       rag: { enabled: true, embedding_provider: 'ollama', embedding_model: 'nomic-embed-text', chunk_size: 800, chunk_overlap: 100, top_k: 5, hybrid_search: false },
       logging: { enabled: false },
       agentHistory: { enabled: false },
+      audit: { enabled: false },
       providerTimeouts: { default: { timeoutMs: 120000, retries: 1, retryDelayMs: 500 }, overrides: {} },
       mcp_servers: [],
     };
@@ -132,6 +134,28 @@ function appendAgentRun(entry) {
     }
   } catch (e) {
     console.error('[AgentHistory] write failed:', e.message);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § AUDIT LOG (opt-in, see CONFIG.audit.enabled) — every tool/agent execution,
+// unconditionally, across all runAgentLoop provider branches. See lib/audit-log.js.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const AUDIT_LOG_FILE = path.join(LOG_DIR, 'audit.jsonl');
+const AUDIT_LOG_MAX_BYTES = 5 * 1024 * 1024; // rotate once the file crosses this size
+const AUDIT_LOG_KEEP_ENTRIES = 1000;         // entries kept after rotation
+
+function appendAuditLog(entry) {
+  try {
+    if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
+    fs.appendFileSync(AUDIT_LOG_FILE, JSON.stringify(entry) + '\n');
+    if (fs.statSync(AUDIT_LOG_FILE).size > AUDIT_LOG_MAX_BYTES) {
+      const kept = parseAuditLines(fs.readFileSync(AUDIT_LOG_FILE, 'utf8')).slice(-AUDIT_LOG_KEEP_ENTRIES);
+      fs.writeFileSync(AUDIT_LOG_FILE, kept.map(e => JSON.stringify(e)).join('\n') + '\n');
+    }
+  } catch (e) {
+    console.error('[AuditLog] write failed:', e.message);
   }
 }
 
@@ -1650,14 +1674,26 @@ function streamCustom(baseUrl, body, extraHeaders, { onChunk, onDone, onError, s
 // § AGENT LOOP
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function executeWithCache(toolCache, toolName, toolArgs) {
+function auditLog(toolName, toolArgs, result, success, cached, durationMs, provider, model) {
+  if (CONFIG.audit?.enabled !== true) return;
+  appendAuditLog(formatAuditEntry({
+    id: crypto.randomBytes(8).toString('hex'),
+    tool: toolName, provider, model, args: toolArgs, result, success, cached, durationMs,
+  }));
+}
+
+async function executeWithCache(toolCache, toolName, toolArgs, provider, model) {
   if (toolCache.has(toolName, toolArgs)) {
-    return { result: toolCache.get(toolName, toolArgs), cached: true };
+    const result = toolCache.get(toolName, toolArgs);
+    auditLog(toolName, toolArgs, result, true, true, 0, provider, model);
+    return { result, cached: true };
   }
-  let result;
+  let result, success = true;
+  const t0 = Date.now();
   try { result = await registry.execute(toolName, toolArgs); }
-  catch (e) { result = JSON.stringify({ error: e.message }); }
+  catch (e) { result = JSON.stringify({ error: e.message }); success = false; }
   toolCache.set(toolName, toolArgs, result);
+  auditLog(toolName, toolArgs, result, success, false, Date.now() - t0, provider, model);
   return { result, cached: false };
 }
 
@@ -1710,7 +1746,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
           let toolArgs = {};
           try { toolArgs = JSON.parse(tc.function.arguments || '{}'); } catch {}
           emit('tool_call', { id: tc.id, name: toolName, args: toolArgs });
-          const { result: toolResult, cached } = await executeWithCache(toolCache, toolName, toolArgs);
+          const { result: toolResult, cached } = await executeWithCache(toolCache, toolName, toolArgs, provider, actualModel);
           emit('tool_result', { id: tc.id, name: toolName, result: toolResult, cached });
           history.push({ role: 'tool', tool_call_id: tc.id, content: toolResult });
         }
@@ -1779,7 +1815,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
           let toolArgs = {};
           try { toolArgs = JSON.parse(tc.function.arguments || '{}'); } catch {}
           emit('tool_call', { id: tc.id, name: toolName, args: toolArgs });
-          const { result: toolResult, cached } = await executeWithCache(toolCache, toolName, toolArgs);
+          const { result: toolResult, cached } = await executeWithCache(toolCache, toolName, toolArgs, provider, actualModel);
           emit('tool_result', { id: tc.id, name: toolName, result: toolResult, cached });
           history.push({ role: 'tool', tool_call_id: tc.id, name: toolName, content: toolResult });
         }
@@ -1837,7 +1873,7 @@ async function runAgentLoop({ model, messages, temperature, max_tokens, top_p, t
         let   toolArgs = {};
         try { toolArgs = JSON.parse(tc.function.arguments || '{}'); } catch {}
         emit('tool_call', { id: tc.id, name: toolName, args: toolArgs });
-        const { result: toolResult, cached } = await executeWithCache(toolCache, toolName, toolArgs);
+        const { result: toolResult, cached } = await executeWithCache(toolCache, toolName, toolArgs, provider, actualModel);
         emit('tool_result', { id: tc.id, name: toolName, result: toolResult, cached });
         history.push({ role: 'tool', tool_call_id: tc.id, name: toolName, content: toolResult });
       }
@@ -2777,6 +2813,22 @@ async function handleRequest(req, res) {
     // ── AGENT RUNS: clear
     if (req.method === 'DELETE' && url.pathname === '/v1/agent-runs') {
       try { fs.writeFileSync(AGENT_HISTORY_FILE, ''); } catch { /* nothing to clear */ }
+      sendJSON(res, 200, { cleared: true });
+      return;
+    }
+
+    // ── AUDIT LOG: every tool/agent execution (opt-in, see CONFIG.audit.enabled)
+    if (req.method === 'GET' && url.pathname === '/v1/audit-log') {
+      let entries = [];
+      try { entries = parseAuditLines(fs.readFileSync(AUDIT_LOG_FILE, 'utf8')); } catch { /* no audit file yet */ }
+      const limit = Math.min(parseInt(url.searchParams.get('limit') || '200', 10) || 200, 1000);
+      sendJSON(res, 200, { enabled: CONFIG.audit?.enabled === true, entries: entries.slice(-limit).reverse() });
+      return;
+    }
+
+    // ── AUDIT LOG: clear
+    if (req.method === 'DELETE' && url.pathname === '/v1/audit-log') {
+      try { fs.writeFileSync(AUDIT_LOG_FILE, ''); } catch { /* nothing to clear */ }
       sendJSON(res, 200, { cleared: true });
       return;
     }

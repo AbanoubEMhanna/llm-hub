@@ -3077,7 +3077,7 @@ function openApiKeySettings() {
 }
 
 function switchSettingsTab(tab) {
-  ['general', 'config', 'apikeys', 'appearance', 'shortcuts', 'backup', 'voice', 'tools', 'custom-tools', 'rag', 'logs', 'agent-history'].forEach(t => {
+  ['general', 'config', 'apikeys', 'appearance', 'shortcuts', 'backup', 'voice', 'tools', 'custom-tools', 'rag', 'logs', 'agent-history', 'audit-log'].forEach(t => {
     document.getElementById(`settings-panel-${t}`).style.display = t === tab ? '' : 'none';
     document.getElementById(`settings-footer-${t}`).style.display = t === tab ? '' : 'none';
     const btn = document.getElementById(`tab-${t}`);
@@ -3093,6 +3093,7 @@ function switchSettingsTab(tab) {
   if (tab === 'rag')        loadRagSettings();
   if (tab === 'logs')       loadLogsSettings();
   if (tab === 'agent-history') loadAgentHistorySettings();
+  if (tab === 'audit-log')  loadAuditLogSettings();
   if (tab === 'general')    loadGeneralSettings();
 }
 
@@ -4082,6 +4083,131 @@ async function clearAgentRuns() {
     if (!res.ok) throw new Error('clear failed');
     toast('Agent run history cleared', 'success');
     loadAgentRuns();
+  } catch (e) {
+    if (statusEl) { statusEl.textContent = e.message; statusEl.style.color = 'var(--red)'; }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// § AUDIT LOG
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function loadAuditLogSettings() {
+  const statusEl = document.getElementById('audit-log-panel-status');
+  try {
+    const res = await fetch(`${PROXY}/v1/config`);
+    const cfg = await res.json();
+    const toggle = document.getElementById('audit-log-enabled-toggle');
+    if (toggle) toggle.classList.toggle('on', cfg.audit?.enabled === true);
+    if (statusEl) statusEl.textContent = '';
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Failed to load config: ' + e.message;
+  }
+  loadAuditLog();
+}
+
+async function saveAuditLogSettings() {
+  const statusEl = document.getElementById('audit-log-panel-status');
+  try {
+    const res = await fetch(`${PROXY}/v1/config`);
+    const cfg = await res.json();
+    cfg.audit = { ...cfg.audit, enabled: document.getElementById('audit-log-enabled-toggle')?.classList.contains('on') ?? false };
+    const saveRes = await fetch(`${PROXY}/v1/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
+    });
+    const data = await saveRes.json();
+    if (!saveRes.ok) throw new Error(data.error || 'save failed');
+    toast('Audit log settings saved', 'success');
+    closeModal('config-modal');
+  } catch (e) {
+    if (statusEl) { statusEl.textContent = e.message; statusEl.style.color = 'var(--red)'; }
+  }
+}
+
+async function loadAuditLog() {
+  const listEl = document.getElementById('audit-log-list');
+  const statusEl = document.getElementById('audit-log-panel-status');
+  if (!listEl) return;
+  const detailEl = document.getElementById('audit-log-detail');
+  if (detailEl) detailEl.innerHTML = '';
+  try {
+    const res = await fetch(`${PROXY}/v1/audit-log?limit=100`);
+    const data = await res.json();
+    renderAuditLogList(data.entries || [], data.enabled);
+  } catch (e) {
+    listEl.innerHTML = '';
+    if (statusEl) statusEl.textContent = 'Failed to load audit log: ' + e.message;
+  }
+}
+
+function renderAuditLogList(entries, enabled) {
+  const listEl = document.getElementById('audit-log-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  if (!entries.length) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'padding:14px;color:var(--muted);font-size:11px';
+    empty.textContent = enabled === false ? 'Audit log is disabled — enable it above to start recording executions.' : 'No tool executions recorded yet.';
+    listEl.appendChild(empty);
+    return;
+  }
+  entries.forEach((entry) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:10px;padding:6px 10px;border-bottom:1px solid var(--border);align-items:center;cursor:pointer';
+    row.onclick = () => renderAuditLogDetail(entry);
+    const time = document.createElement('span');
+    time.style.cssText = 'color:var(--muted);flex:0 0 66px';
+    time.textContent = entry.ts ? new Date(entry.ts).toLocaleTimeString() : '';
+    const tool = document.createElement('span');
+    tool.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    tool.textContent = entry.tool || '';
+    const provider = document.createElement('span');
+    provider.style.cssText = 'flex:0 0 90px;text-align:right;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    provider.textContent = entry.provider || '';
+    const success = document.createElement('span');
+    success.style.cssText = `flex:0 0 54px;text-align:right;color:${entry.success === false ? 'var(--red)' : 'var(--muted)'}`;
+    success.textContent = entry.success === false ? 'failed' : 'ok';
+    const ms = document.createElement('span');
+    ms.style.cssText = 'flex:0 0 54px;text-align:right;color:var(--muted)';
+    ms.textContent = `${entry.ms ?? 0}ms`;
+    row.append(time, tool, provider, success, ms);
+    listEl.appendChild(row);
+  });
+}
+
+function renderAuditLogDetail(entry) {
+  const el = document.getElementById('audit-log-detail');
+  if (!el) return;
+  el.innerHTML = '';
+  const card = document.createElement('div');
+  card.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:var(--mono);font-size:11px';
+  const title = document.createElement('div');
+  title.style.cssText = 'display:flex;justify-content:space-between;color:var(--accent);font-weight:600;margin-bottom:4px';
+  const nameSpan = document.createElement('span');
+  nameSpan.textContent = `${entry.tool} — ${entry.provider}/${entry.model}${entry.cached ? ' (cached)' : ''}`;
+  const statusSpan = document.createElement('span');
+  statusSpan.style.color = entry.success === false ? 'var(--red)' : 'var(--muted)';
+  statusSpan.textContent = entry.success === false ? 'failed' : 'ok';
+  title.append(nameSpan, statusSpan);
+  const args = document.createElement('div');
+  args.style.cssText = 'color:var(--muted);white-space:pre-wrap;word-break:break-word;margin-bottom:4px';
+  args.textContent = `args: ${entry.args}`;
+  const result = document.createElement('div');
+  result.style.cssText = 'white-space:pre-wrap;word-break:break-word';
+  result.textContent = `result: ${entry.result}`;
+  card.append(title, args, result);
+  el.appendChild(card);
+}
+
+async function clearAuditLog() {
+  const statusEl = document.getElementById('audit-log-panel-status');
+  try {
+    const res = await fetch(`${PROXY}/v1/audit-log`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('clear failed');
+    toast('Audit log cleared', 'success');
+    loadAuditLog();
   } catch (e) {
     if (statusEl) { statusEl.textContent = e.message; statusEl.style.color = 'var(--red)'; }
   }
