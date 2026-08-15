@@ -24,7 +24,7 @@ const os         = require('os');
 const { URL }    = require('url');
 
 const { isPrivateHost, resolveSafeAddress } = require('./lib/ssrf');
-const { chunkText, cosine: cosineSimilarity, computeStats: computeRagStats, rankChunks, hybridRankChunks, removeChunk, replaceChunkText } = require('./lib/rag-utils');
+const { chunkText, cosine: cosineSimilarity, computeStats: computeRagStats, rankChunks, hybridRankChunks, removeChunk, replaceChunkText, isCollectionStale } = require('./lib/rag-utils');
 const { evaluate: calcEvaluate } = require('./lib/calculator');
 const { formatLogEntry, parseLogLines } = require('./lib/request-log');
 const { formatRunEntry, parseRunLines } = require('./lib/agent-history');
@@ -345,6 +345,7 @@ class RagEngine {
   }
 
   listCollections() {
+    const currentModel = CONFIG.rag.embedding_model;
     return [...this.collections.values()].map(c => ({
       id:        c.id,
       name:      c.name,
@@ -352,6 +353,8 @@ class RagEngine {
       sources:   [...new Set((c.chunks||[]).map(ch => ch.source))].length,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt ?? c.createdAt,
+      embeddingModel: c.embeddingModel || null,
+      stale: isCollectionStale(c.embeddingModel, currentModel),
     }));
   }
 
@@ -382,6 +385,48 @@ class RagEngine {
     return true;
   }
 
+  /**
+   * Re-embeds every chunk in a collection with the currently configured
+   * embedding model — the fix for a collection flagged `stale` by
+   * listCollections() after the user changes `rag.embedding_model`. Old
+   * vectors live in a different embedding space and can't be meaningfully
+   * compared against new query embeddings until this runs.
+   */
+  async reembedCollection(collectionId, onProgress) {
+    const col = this.collections.get(collectionId);
+    if (!col) return null;
+    // Reject a concurrent re-embed of the same collection instead of racing
+    // two loops that both mutate col.chunks.
+    if (col._reembedding) throw new Error('Re-embedding already in progress for this collection');
+    col._reembedding = true;
+
+    const chunks = col.chunks || [];
+    // Captured once so every chunk in this run embeds against the same
+    // model even if CONFIG.rag.embedding_model changes mid-operation.
+    const targetModel = CONFIG.rag.embedding_model;
+    let newEmbeddings;
+    try {
+      newEmbeddings = [];
+      let done = 0;
+      for (const chunk of chunks) {
+        newEmbeddings.push(await this.embed(chunk.text, targetModel));
+        done++;
+        if (onProgress) onProgress({ done, total: chunks.length });
+      }
+    } finally {
+      delete col._reembedding;
+    }
+
+    // Only mutate/persist once every chunk has re-embedded successfully —
+    // a failure partway through must leave the collection exactly as it
+    // was, never a mix of old- and new-model vectors.
+    chunks.forEach((chunk, i) => { chunk.embedding = newEmbeddings[i]; });
+    col.embeddingModel = targetModel;
+    col.updatedAt = Date.now();
+    this._persist(col);
+    return { collectionId: col.id, chunksReembedded: chunks.length };
+  }
+
   /** Re-embeds the new text before persisting — embeddings must match the current text. */
   async updateChunk(collectionId, chunkId, text) {
     const col = this.collections.get(collectionId);
@@ -400,7 +445,7 @@ class RagEngine {
   /** Delegate to shared lib/rag-utils (single source of truth for tests) */
   chunkText(text, chunkSize, overlap) { return chunkText(text, chunkSize, overlap); }
 
-  async embed(text) {
+  async embed(text, model) {
     const cfg = CONFIG.rag;
     if (cfg.embedding_provider !== 'ollama') {
       throw new Error(`Unsupported embedding_provider: ${cfg.embedding_provider}`);
@@ -409,7 +454,7 @@ class RagEngine {
       CONFIG.providers.ollama.host,
       CONFIG.providers.ollama.port,
       '/api/embeddings',
-      { model: cfg.embedding_model, prompt: text },
+      { model: model || cfg.embedding_model, prompt: text },
       60000
     );
     if (res.status >= 400 || !res.data?.embedding) {
@@ -447,6 +492,13 @@ class RagEngine {
       });
       done++;
       if (onProgress) onProgress({ done, total: chunks.length });
+    }
+    // Only stamp embeddingModel when it's unset (brand-new collection) or
+    // already matches — appending chunks under a different model than an
+    // existing (stale) collection's recorded model must never silently
+    // clear `stale` while its older chunks are still on the old model.
+    if (!col.embeddingModel || col.embeddingModel === cfg.embedding_model) {
+      col.embeddingModel = cfg.embedding_model;
     }
     col.updatedAt = Date.now();
     this._persist(col);
@@ -486,6 +538,13 @@ class RagEngine {
       }
       filesDone++;
       if (onProgress) onProgress({ done: filesDone, total: docs.length, chunksAdded });
+    }
+    // Only stamp embeddingModel when it's unset (brand-new collection) or
+    // already matches — appending chunks under a different model than an
+    // existing (stale) collection's recorded model must never silently
+    // clear `stale` while its older chunks are still on the old model.
+    if (!col.embeddingModel || col.embeddingModel === cfg.embedding_model) {
+      col.embeddingModel = cfg.embedding_model;
     }
     col.updatedAt = Date.now();
     this._persist(col);
@@ -2304,6 +2363,19 @@ async function handleRequest(req, res) {
         const chunk = await rag.updateChunk(collectionId, chunkId, text);
         if (!chunk) { sendJSON(res, 404, { error: 'chunk not found' }); return; }
         sendJSON(res, 200, { ok: true, chunk: { id: chunk.id, source: chunk.source, preview: chunk.text.slice(0, 200) } });
+      } catch (e) { sendJSON(res, 500, { error: e.message }); }
+      return;
+    }
+
+    // ── RAG: re-embed every chunk in a collection with the current embedding
+    // model — the fix for a collection GET /v1/rag/collections flags `stale`
+    // after CONFIG.rag.embedding_model changes.
+    if (req.method === 'POST' && /^\/v1\/rag\/collections\/[^/]+\/reembed$/.test(url.pathname)) {
+      const [, , , , collectionId] = url.pathname.split('/');
+      try {
+        const result = await rag.reembedCollection(collectionId);
+        if (!result) { sendJSON(res, 404, { error: 'collection not found' }); return; }
+        sendJSON(res, 200, { ok: true, ...result });
       } catch (e) { sendJSON(res, 500, { error: e.message }); }
       return;
     }

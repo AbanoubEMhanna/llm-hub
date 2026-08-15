@@ -4125,7 +4125,7 @@ async function loadRagStats() {
 // Builds one .rag-item row via DOM APIs (not innerHTML) so a crafted collection
 // id or name — e.g. from a client-supplied collection_id on /v1/rag/upload —
 // can't break out of an inline event-handler string and inject script.
-function buildRagItemEl({ active, icon, label, meta, title, onClick, onPreview, onDelete }) {
+function buildRagItemEl({ active, icon, label, meta, title, stale, onClick, onPreview, onReembed, onDelete }) {
   const div = document.createElement('div');
   div.className = 'rag-item' + (active ? ' active' : '');
   div.title = title;
@@ -4136,6 +4136,22 @@ function buildRagItemEl({ active, icon, label, meta, title, onClick, onPreview, 
   metaSpan.className = 'rag-meta';
   metaSpan.textContent = meta;
   div.append(`${icon} `, labelSpan, metaSpan);
+  if (stale) {
+    const staleBadge = document.createElement('span');
+    staleBadge.className = 'rag-stale-badge';
+    staleBadge.title = 'Embedded with a different model than the one currently configured for RAG — re-embed for accurate search results';
+    staleBadge.textContent = '⟳ stale';
+    div.appendChild(staleBadge);
+  }
+  if (onReembed) {
+    const reembedBtn = document.createElement('button');
+    reembedBtn.className = 'icon-btn';
+    reembedBtn.title = 'Re-embed with the current embedding model';
+    reembedBtn.style.marginLeft = '4px';
+    reembedBtn.textContent = '⟳';
+    reembedBtn.addEventListener('click', (e) => { e.stopPropagation(); onReembed(); });
+    div.appendChild(reembedBtn);
+  }
   if (onPreview) {
     const previewBtn = document.createElement('button');
     previewBtn.className = 'icon-btn';
@@ -4183,8 +4199,10 @@ function renderRagList() {
       label: c.name,
       meta:  `${c.chunks ?? c.chunkCount ?? 0} ch`,
       title: `${c.name} — click to ${active ? 'search all collections again' : 'narrow auto-inject to this collection'}`,
+      stale: !!c.stale,
       onClick:   () => setActiveRagCollection(c.id),
       onPreview: () => openRagChunksModal(c.id, c.name),
+      onReembed: c.stale ? () => reembedRagCollection(c.id, c.name) : null,
       onDelete:  () => deleteRag(c.id),
     }));
   }
@@ -4216,6 +4234,23 @@ function updateRagActiveBadge() {
     badge.style.display = 'flex';
   } else {
     badge.style.display = 'none';
+  }
+}
+
+// Re-embeds every chunk in a collection with the currently configured RAG
+// embedding model — the fix offered on a collection flagged `stale` (its
+// chunks were embedded with a model that's since been changed in Settings).
+async function reembedRagCollection(id, name) {
+  try {
+    toast(`Re-embedding "${name}"…`, 'info');
+    const res  = await fetch(`${PROXY}/v1/rag/collections/${id}/reembed`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || 'Failed to re-embed collection');
+    const n = data.chunksReembedded ?? 0;
+    toast(`Re-embedded ${n} chunk${n === 1 ? '' : 's'} in "${name}"`, 'success');
+    await loadRagCollections();
+  } catch (e) {
+    toast(e.message || 'Failed to re-embed collection', 'error');
   }
 }
 
