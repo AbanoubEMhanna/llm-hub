@@ -2,7 +2,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { chunkText, cosine, computeStats, rankChunks, removeChunk, replaceChunkText, tokenize, bm25Scores, hybridRankChunks } = require('../lib/rag-utils.js');
+const { chunkText, cosine, computeStats, rankChunks, removeChunk, replaceChunkText, tokenize, bm25Scores, hybridRankChunks, isCollectionStale } = require('../lib/rag-utils.js');
 
 // ── cosine similarity ──────────────────────────────────────────────────────
 
@@ -344,4 +344,23 @@ test('hybridRankChunks: output shape matches rankChunks (no leaked internal vect
   const collections = [makeCol('c1', [{ id: '1', source: 's', text: 'text', embedding: [1, 0] }])];
   const [result] = hybridRankChunks(collections, [1, 0], 'text', 5);
   assert.deepEqual(Object.keys(result).sort(), ['collectionId', 'collectionName', 'id', 'score', 'source', 'text'].sort());
+});
+
+// ── isCollectionStale ───────────────────────────────────────────────────────
+
+test('isCollectionStale: same model → not stale', () => {
+  assert.equal(isCollectionStale('nomic-embed-text', 'nomic-embed-text'), false);
+});
+
+test('isCollectionStale: different model → stale', () => {
+  assert.equal(isCollectionStale('nomic-embed-text', 'mxbai-embed-large'), true);
+});
+
+test('isCollectionStale: unknown (null/undefined) recorded model → not stale', () => {
+  assert.equal(isCollectionStale(null, 'nomic-embed-text'), false);
+  assert.equal(isCollectionStale(undefined, 'nomic-embed-text'), false);
+});
+
+test('isCollectionStale: empty string recorded model → not stale', () => {
+  assert.equal(isCollectionStale('', 'nomic-embed-text'), false);
 });

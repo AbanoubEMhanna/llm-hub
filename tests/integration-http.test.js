@@ -296,6 +296,95 @@ test('PUT /v1/rag/collections/:id/chunks/:chunkId rejects an empty text body', a
   assert.equal(body.error, 'text is required');
 });
 
+test('POST /v1/rag/collections/:id/reembed 404s for an unknown collection', async () => {
+  const { res, body } = await postJSON('/v1/rag/collections/no-such-collection/reembed', {});
+  assert.equal(res.status, 404);
+  assert.equal(body.error, 'collection not found');
+});
+
+// This one needs a real (stub) Ollama to reach for both /api/tags-less RAG
+// upload and /api/embeddings, so it spawns its own proxy.js child pointed at
+// a throwaway HTTP server — same pattern as the GGUF import end-to-end test.
+test('POST /v1/rag/collections/:id/reembed re-embeds chunks and keeps the collection non-stale', async () => {
+  const stubOllama = http.createServer((req, res) => {
+    if (req.method === 'POST' && req.url === '/api/embeddings') {
+      req.on('data', () => {});
+      req.on('end', () => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ embedding: [0.1, 0.2, 0.3] }));
+      });
+      return;
+    }
+    res.writeHead(404); res.end();
+  });
+  await new Promise((resolve) => stubOllama.listen(0, '127.0.0.1', resolve));
+  const stubPort = stubOllama.address().port;
+
+  const port2 = await getFreePort();
+  const base2 = `http://127.0.0.1:${port2}`;
+  const storageDir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'llm-hub-inttest-reembed-'));
+  const child2 = spawn(process.execPath, ['proxy.js'], {
+    cwd: REPO_ROOT,
+    env: {
+      ...process.env, PORT: String(port2), HOST: '127.0.0.1', STORAGE_DIR: storageDir2,
+      OLLAMA_HOST: '127.0.0.1', OLLAMA_PORT: String(stubPort),
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  child2.stdout.on('data', () => {});
+  child2.stderr.on('data', () => {});
+
+  try {
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline) {
+      try {
+        const r = await fetch(`${base2}/health`, { signal: AbortSignal.timeout(2000) });
+        await r.body?.cancel?.();
+        if (r.status === 200) break;
+      } catch { /* not up yet */ }
+      await new Promise((r) => setTimeout(r, 150));
+    }
+
+    const uploadRes = await fetch(`${base2}/v1/rag/upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ collection_name: 'reembed-test', source: 'doc.txt', text: 'hello world, a small test document for re-embedding.' }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    const uploadRaw = await uploadRes.text();
+    const uploadEvents = uploadRaw.split('\n\n').filter(Boolean).map((l) => JSON.parse(l.replace(/^data: /, '')));
+    const doneEvent = uploadEvents.find((e) => e.type === 'done');
+    assert.ok(doneEvent, `expected a done event, got ${JSON.stringify(uploadEvents)}`);
+    const collectionId = doneEvent.collectionId;
+
+    const listBefore = await fetch(`${base2}/v1/rag/collections`, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }).then((r) => r.json());
+    const colBefore = listBefore.collections.find((c) => c.id === collectionId);
+    assert.equal(colBefore.embeddingModel, 'nomic-embed-text');
+    assert.equal(colBefore.stale, false);
+
+    const reembedRes = await fetch(`${base2}/v1/rag/collections/${collectionId}/reembed`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    const reembedBody = await reembedRes.json();
+    assert.equal(reembedRes.status, 200);
+    assert.equal(reembedBody.ok, true);
+    assert.equal(reembedBody.collectionId, collectionId);
+    assert.ok(reembedBody.chunksReembedded >= 1);
+
+    const listAfter = await fetch(`${base2}/v1/rag/collections`, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }).then((r) => r.json());
+    const colAfter = listAfter.collections.find((c) => c.id === collectionId);
+    assert.equal(colAfter.embeddingModel, 'nomic-embed-text');
+    assert.equal(colAfter.stale, false);
+  } finally {
+    stubOllama.close();
+    if (child2.exitCode === null && child2.signalCode === null) {
+      await new Promise((resolve) => { child2.once('close', resolve); child2.kill(); });
+    }
+    fs.rmSync(storageDir2, { recursive: true, force: true });
+  }
+});
+
 test('POST /v1/rag/query with no collections returns empty results', async () => {
   const { res, body } = await postJSON('/v1/rag/query', { query: 'anything' });
   assert.equal(res.status, 200);

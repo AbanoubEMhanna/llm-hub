@@ -210,7 +210,7 @@
 - [x] Chunk preview and manual editing UI
 - [x] Hybrid search — keyword + vector (BM25)
 - [x] Multi-collection query — search across all collections at once
-- [ ] Re-embedding on model change
+- [x] Re-embedding on model change
 - [x] Knowledge base stats panel — total chunks, sources, last updated
 
 ---
@@ -325,15 +325,15 @@
 | AI Agent & Tools | 9 | 7 |
 | Code-First Workflow | 7 | 10 |
 | Attachments & Multimodal | 8 | 2 |
-| RAG / Knowledge Base | 13 | 1 |
+| RAG / Knowledge Base | 14 | 0 |
 | Model Comparison | 8 | 1 |
 | Modern UI | 20 | 4 |
 | Security & Privacy | 8 | 2 |
 | Deployment | 9 | 5 |
 | Developer / Testing | 8 | 3 |
-| **Total** | **173** | **40** |
+| **Total** | **174** | **39** |
 
-**~81% complete. Top priorities to close the gap:**
+**~82% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell command tool — needs a new tool-call confirmation flow: the agent loop that executes tools runs entirely server-side in `runAgentLoop`/`proxy.js`, so a per-execution confirmation means pausing mid-loop for a client round-trip — a bigger lift than the other 🔥 items, hence still open)
@@ -341,4 +341,4 @@
 
 ---
 
-*Last updated: 2026-08-14. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-08-15. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*

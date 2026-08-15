@@ -583,6 +583,13 @@ input[type=range]::-webkit-slider-thumb {
 .rag-item:hover { background: var(--s2); color: var(--text); }
 .rag-item .rag-meta { margin-left: auto; font-size: 9px; opacity: .6; }
 .rag-item.active { background: var(--s2); color: var(--accent); border: 1px solid var(--accent); }
+.rag-stale-badge {
+  font-size: 9px; padding: 1px 5px; border-radius: 4px; flex-shrink: 0;
+  background: color-mix(in srgb, var(--orange) 15%, transparent);
+  color: var(--orange); font-family: var(--mono); font-weight: 500;
+  border: 1px solid color-mix(in srgb, var(--orange) 30%, transparent);
+  white-space: nowrap;
+}
 
 .rag-chunk-item {
   border: 1px solid var(--border); border-radius: 6px;
