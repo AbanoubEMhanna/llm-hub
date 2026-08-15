@@ -1071,6 +1071,10 @@ const CLOUD_PROVIDERS = {
   cohere:     { hostname: 'api.cohere.com',          modelsPath: '/compatibility/v1/models',  chatPath: '/compatibility/v1/chat/completions',     keyProp: 'cohere' },
   deepseek:   { hostname: 'api.deepseek.com',        modelsPath: '/v1/models',                chatPath: '/v1/chat/completions',                  keyProp: 'deepseek' },
   cerebras:   { hostname: 'api.cerebras.ai',         modelsPath: '/v1/models',                chatPath: '/v1/chat/completions',                  keyProp: 'cerebras' },
+  // AI21 has no /models discovery endpoint, so its catalog is a fixed list
+  // (see staticModels below) instead of the usual live modelsPath fetch.
+  ai21:       { hostname: 'api.ai21.com',            modelsPath: null,                        chatPath: '/studio/v1/chat/completions',           keyProp: 'ai21',
+                staticModels: [{ id: 'jamba-large' }, { id: 'jamba-mini' }] },
 };
 
 
@@ -1186,11 +1190,12 @@ function resolveProvider(m) {
   if (m?.startsWith('cohere/'))     return 'cohere';
   if (m?.startsWith('deepseek/'))   return 'deepseek';
   if (m?.startsWith('cerebras/'))   return 'cerebras';
+  if (m?.startsWith('ai21/'))       return 'ai21';
   const customMatch = m?.match(/^(custom_[^/]+)\//);
   if (customMatch && customProviderConfigs.has(customMatch[1])) return customMatch[1];
   return modelRegistry.get(m) || null;
 }
-function stripPrefix(m) { return m?.replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|together|fireworks|cohere|deepseek|cerebras|custom_[^/]+)\//, '') || m; }
+function stripPrefix(m) { return m?.replace(/^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|together|fireworks|cohere|deepseek|cerebras|ai21|custom_[^/]+)\//, '') || m; }
 
 async function fetchAllModels(apiKeys = {}, customProviders = []) {
   modelRegistry.clear();
@@ -1268,6 +1273,17 @@ async function fetchAllModels(apiKeys = {}, customProviders = []) {
       console.warn(`[Models] ${name}: HTTP ${r.status}`);
     }
   });
+
+  // === STEP 2b: Cloud providers with a fixed catalog (no discovery endpoint) ===
+  for (const [name, cfg] of Object.entries(CLOUD_PROVIDERS)) {
+    if (!cfg.staticModels || !apiKeys[cfg.keyProp]) continue;
+    for (const sm of cfg.staticModels) {
+      const id = `${name}/${sm.id}`;
+      modelRegistry.set(id, name);
+      all.push({ id, object: 'model', owned_by: name, created: Date.now(), context_length: sm.context_length || null });
+    }
+    console.log(`[Models] ${name}: ${cfg.staticModels.length} model(s) (static catalog)`);
+  }
 
   // === STEP 3: Custom OpenAI-compatible provider models ===
   for (const cp of customProviders) {
@@ -1880,6 +1896,10 @@ async function handleRequest(req, res) {
       const cloudChecks = {};
       for (const [name, cfg] of Object.entries(CLOUD_PROVIDERS)) {
         const key = apiKeys[cfg.keyProp];
+        // Providers with no discovery endpoint (see staticModels) have nothing
+        // cheap to poll every 30s, so "key configured" stands in for "online"
+        // instead of guessing at a path or repeatedly hitting a paid endpoint.
+        if (key && cfg.staticModels) continue;
         if (key) {
           cloudChecks[name] = httpsGet(cfg.hostname, cfg.modelsPath || '/v1/models', buildCloudHeaders(name, key), 5000);
         }
@@ -1894,7 +1914,10 @@ async function handleRequest(req, res) {
         catch { cloudStatuses[name] = 'offline'; }
       }
       for (const name of Object.keys(CLOUD_PROVIDERS)) {
-        if (!(name in cloudStatuses)) cloudStatuses[name] = apiKeys[CLOUD_PROVIDERS[name].keyProp] ? 'offline' : 'no-key';
+        if (name in cloudStatuses) continue;
+        const cfg = CLOUD_PROVIDERS[name];
+        const hasKey = !!apiKeys[cfg.keyProp];
+        cloudStatuses[name] = !hasKey ? 'no-key' : cfg.staticModels ? 'online' : 'offline';
       }
       // Custom provider health checks
       const customStatuses = {};

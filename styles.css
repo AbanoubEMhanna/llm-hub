@@ -137,6 +137,7 @@ body {
 .cohere-badge     { background: color-mix(in srgb, #39d353 15%, transparent); color: #2ea043; }
 .deepseek-badge   { background: color-mix(in srgb, #4d6bfe 15%, transparent); color: #4d6bfe; }
 .cerebras-badge   { background: color-mix(in srgb, #f6522e 15%, transparent); color: #f6522e; }
+.ai21-badge       { background: color-mix(in srgb, #e11d48 15%, transparent); color: #e11d48; }
 .provider-hint { font-size: 10px; color: var(--muted); font-family: var(--mono); }
 .api-key-input {
   width: 100%; background: var(--s2); border: 1px solid var(--border);

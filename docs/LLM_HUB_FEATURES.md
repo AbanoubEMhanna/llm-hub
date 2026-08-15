@@ -34,7 +34,8 @@
 - [x] Cohere
 - [x] DeepSeek
 - [x] Cerebras
-- [ ] AI21 / Perplexity
+- [x] AI21 (Jamba Large / Jamba Mini — static catalog, no `/models` discovery endpoint on their API)
+- [ ] Perplexity — blocked: Sonar Chat Completions is supported until 2026-09-27, but the replacement Agent API uses a different contract (`/v1/agent` + the Responses API, not `/v1/chat/completions`), so it doesn't fit this project's `CLOUD_PROVIDERS`/`runAgentLoop` shape without real design work, not just a config entry. Re-evaluate once that mapping is worked out.
 - [x] ⚡ Provider usage cost estimator (token price × message count)
 
 ---
@@ -316,7 +317,7 @@
 
 | Area | ✅ Done | ⬜ To Do |
 |------|---------|----------|
-| Providers & Connectivity | 17 | 1 |
+| Providers & Connectivity | 18 | 1 |
 | Local Model Management | 14 | 0 |
 | Hardware Awareness | 12 | 0 |
 | Chat Interface | 28 | 3 |
@@ -330,14 +331,14 @@
 | Security & Privacy | 8 | 2 |
 | Deployment | 9 | 5 |
 | Developer / Testing | 8 | 3 |
-| **Total** | **173** | **39** |
+| **Total** | **174** | **39** |
 
 **~82% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell command tool — needs a new tool-call confirmation flow: the agent loop that executes tools runs entirely server-side in `runAgentLoop`/`proxy.js`, so a per-execution confirmation means pausing mid-loop for a client round-trip — a bigger lift than the other 🔥 items, hence still open)
-4. More cloud providers (AI21 / Perplexity) — held back so far: neither has a documented `/models` list endpoint, so they don't slot into the existing discovery-based `CLOUD_PROVIDERS` pattern without extra design work (a static model-ID list injected regardless of live discovery); needs to be verified against current docs before shipping, not guessed.
+4. Perplexity — still blocked; Sonar Chat Completions is supported until 2026-09-27, but its Agent API replacement (`/v1/agent` + Responses API) isn't a `/v1/chat/completions`-shaped API, so adding it means real integration work, not just another `CLOUD_PROVIDERS` entry.
 
 ---
 
-*Last updated: 2026-08-13. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-08-15. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*

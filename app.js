@@ -294,6 +294,7 @@ async function checkHealth() {
     setCloudStatus('b-cohere',     data.providers?.cohere);
     setCloudStatus('b-deepseek',   data.providers?.deepseek);
     setCloudStatus('b-cerebras',   data.providers?.cerebras);
+    setCloudStatus('b-ai21',       data.providers?.ai21);
     document.getElementById('proxy-alert').style.display = 'none';
     if (_proxyWasOffline) {
       toast('Proxy reconnected ✓', 'success');
@@ -418,10 +419,10 @@ async function checkRunningModels() {
   }
 }
 
-const MODEL_ID_PREFIX_RE = /^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|together|fireworks|cohere|deepseek|cerebras|custom_[^/]+)\//;
+const MODEL_ID_PREFIX_RE = /^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|together|fireworks|cohere|deepseek|cerebras|ai21|custom_[^/]+)\//;
 
 function parseModelId(modelId) {
-  const match    = (modelId || '').match(/^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|together|fireworks|cohere|deepseek|cerebras|custom_[^/]+)\//);
+  const match    = (modelId || '').match(/^(ollama|lmstudio|openai|anthropic|groq|openrouter|mistral|together|fireworks|cohere|deepseek|cerebras|ai21|custom_[^/]+)\//);
   const provider = match ? match[1] : (modelId?.split('/')[0] || null);
   const name     = (modelId || '').replace(MODEL_ID_PREFIX_RE, '');
   return { provider, name };
@@ -440,6 +441,7 @@ const PROVIDER_LABELS = {
   cohere:     '🟢 Cohere',
   deepseek:   '🔵 DeepSeek',
   cerebras:   '⚪ Cerebras',
+  ai21:       '🔺 AI21',
 };
 
 function getProviderLabel(provider) {
@@ -631,7 +633,7 @@ function fillModelSelect(sel) {
   for (const m of availableModels) {
     (groups[m.owned_by] = groups[m.owned_by] || []).push(m);
   }
-  const ORDER = ['ollama', 'lmstudio', 'openai', 'anthropic', 'groq', 'openrouter', 'mistral', 'together', 'fireworks', 'cohere', 'deepseek', 'cerebras'];
+  const ORDER = ['ollama', 'lmstudio', 'openai', 'anthropic', 'groq', 'openrouter', 'mistral', 'together', 'fireworks', 'cohere', 'deepseek', 'cerebras', 'ai21'];
   const sorted = ORDER.filter(p => groups[p]).concat(Object.keys(groups).filter(p => !ORDER.includes(p)));
   for (const p of sorted) {
     const og = document.createElement('optgroup');
@@ -3063,7 +3065,7 @@ async function openConfigEditor() {
 function openApiKeySettings() {
   switchSettingsTab('apikeys');
   const keys = getStoredApiKeys();
-  ['openai', 'anthropic', 'groq', 'openrouter', 'mistral', 'together', 'fireworks', 'cohere', 'deepseek', 'cerebras'].forEach(p => {
+  ['openai', 'anthropic', 'groq', 'openrouter', 'mistral', 'together', 'fireworks', 'cohere', 'deepseek', 'cerebras', 'ai21'].forEach(p => {
     const el = document.getElementById(`key-${p}`);
     if (el) el.value = keys[p] || '';
   });
@@ -3408,7 +3410,7 @@ function toggleKeyVisibility(inputId, btn) {
 
 async function saveApiKeys() {
   const keys = {};
-  ['openai', 'anthropic', 'groq', 'openrouter', 'mistral', 'together', 'fireworks', 'cohere', 'deepseek', 'cerebras'].forEach(p => {
+  ['openai', 'anthropic', 'groq', 'openrouter', 'mistral', 'together', 'fireworks', 'cohere', 'deepseek', 'cerebras', 'ai21'].forEach(p => {
     const v = (document.getElementById(`key-${p}`)?.value || '').trim();
     if (v) keys[p] = v;
   });
@@ -3448,7 +3450,7 @@ async function saveApiKeys() {
 function clearAllApiKeys() {
   localStorage.removeItem('llm-api-keys');
   sessionStorage.removeItem('llm-api-keys');
-  ['openai', 'anthropic', 'groq', 'openrouter', 'mistral', 'together', 'fireworks', 'cohere', 'deepseek', 'cerebras'].forEach(p => {
+  ['openai', 'anthropic', 'groq', 'openrouter', 'mistral', 'together', 'fireworks', 'cohere', 'deepseek', 'cerebras', 'ai21'].forEach(p => {
     const el = document.getElementById(`key-${p}`);
     if (el) el.value = '';
     const st = document.getElementById(`test-status-${p}`);
@@ -6115,7 +6117,7 @@ async function _runWizardDetection() {
     groq: '☁️ Groq', cohere: '☁️ Cohere',
     mistral: '☁️ Mistral', together: '☁️ Together AI',
     fireworks: '☁️ Fireworks', openrouter: '☁️ OpenRouter',
-    deepseek: '☁️ DeepSeek', cerebras: '☁️ Cerebras',
+    deepseek: '☁️ DeepSeek', cerebras: '☁️ Cerebras', ai21: '☁️ AI21',
   };
   status.innerHTML = `<p style="color:var(--muted);font-size:13px">Checking providers…</p>`;
   try {
