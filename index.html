@@ -746,6 +746,7 @@
       <button class="settings-tab" id="tab-rag" onclick="switchSettingsTab('rag')">RAG</button>
       <button class="settings-tab" id="tab-logs" onclick="switchSettingsTab('logs')">Logs</button>
       <button class="settings-tab" id="tab-agent-history" onclick="switchSettingsTab('agent-history')">Agent History</button>
+      <button class="settings-tab" id="tab-audit-log" onclick="switchSettingsTab('audit-log')">Audit Log</button>
     </div>
 
     <!-- Tab: General -->
@@ -1340,6 +1341,40 @@
     <div class="modal-footer" id="settings-footer-agent-history" style="display:none">
       <button class="btn" onclick="closeModal('config-modal')">Cancel</button>
       <button class="btn primary" onclick="saveAgentHistorySettings()">Save</button>
+    </div>
+
+    <!-- Tab: Audit Log -->
+    <div class="modal-body" id="settings-panel-audit-log" style="display:none">
+      <p style="color:var(--muted);font-size:12px;margin-bottom:16px">
+        Security-focused record of every tool the agent loop executes — tool name, provider/model, args, result, and
+        a success/failure verdict — hooked at the single point every provider branch routes tool calls through, so
+        it's not limited to chat sessions like Agent History and records every execution unconditionally, including
+        cache hits. Args/results are capped in size; nothing is sent anywhere, it's stored locally on the machine
+        running the proxy.
+      </p>
+
+      <label class="tool-toggle" style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+        <div class="toggle" id="audit-log-enabled-toggle" onclick="this.classList.toggle('on')"></div>
+        <span>
+          <strong>Enable audit log</strong>
+          <span style="color:var(--muted);font-size:11px;display:block">Stored at <code style="font-family:var(--mono)">.llm-hub/logs/audit.jsonl</code> on the machine running the proxy. Opt-in, off by default.</span>
+        </span>
+      </label>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="appearance-section-label" style="margin-bottom:0">Recent Executions</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm" onclick="loadAuditLog()">Refresh</button>
+          <button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" onclick="clearAuditLog()">Clear</button>
+        </div>
+      </div>
+      <div id="audit-log-list" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px"></div>
+      <div id="audit-log-detail" style="margin-top:12px"></div>
+      <div id="audit-log-panel-status" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
+    </div>
+    <div class="modal-footer" id="settings-footer-audit-log" style="display:none">
+      <button class="btn" onclick="closeModal('config-modal')">Cancel</button>
+      <button class="btn primary" onclick="saveAuditLogSettings()">Save</button>
     </div>
 
   </div>

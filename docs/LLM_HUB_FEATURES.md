@@ -274,7 +274,7 @@
 - [x] ⚡ Request / response logging toggle (opt-in, stored locally)
 - [x] Prompt injection warning detection
 - [ ] Conversation data encryption at rest (opt-in, local key)
-- [ ] Audit log of all tool / agent executions
+- [x] Audit log of all tool / agent executions — hooks the single `executeWithCache` choke point every `runAgentLoop` provider branch routes through, so unlike Agent Run History it isn't scoped to `/v1/chat` sessions and records every execution (including cache hits) with a success/failure verdict
 
 ---
 
@@ -328,10 +328,10 @@
 | RAG / Knowledge Base | 14 | 0 |
 | Model Comparison | 8 | 1 |
 | Modern UI | 20 | 4 |
-| Security & Privacy | 8 | 2 |
+| Security & Privacy | 9 | 1 |
 | Deployment | 9 | 5 |
 | Developer / Testing | 8 | 3 |
-| **Total** | **174** | **39** |
+| **Total** | **175** | **38** |
 
 **~82% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, git integration)
