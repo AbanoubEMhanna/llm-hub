@@ -1,0 +1,25 @@
+# Example Caddy reverse proxy config for LLM Hub
+#
+# Caddy handles HTTPS (via automatic Let's Encrypt certs) and disables
+# response buffering by default, so SSE streaming from /v1/chat works
+# out of the box — no extra flush/buffering directives needed.
+#
+# Usage:
+#   1. Replace `llm-hub.example.com` with your domain.
+#   2. Run: caddy run --config Caddyfile
+#      (Caddy will provision the TLS cert automatically on first request.)
+
+llm-hub.example.com {
+	reverse_proxy 127.0.0.1:8765 {
+		# Generous timeouts for long agent/tool-call streams.
+		transport http {
+			read_timeout 300s
+			write_timeout 300s
+		}
+	}
+
+	# Allow larger request bodies for image/PDF/audio attachments.
+	request_body {
+		max_size 25MB
+	}
+}

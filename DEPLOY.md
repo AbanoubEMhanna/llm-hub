@@ -158,11 +158,19 @@ node proxy.js
 
 ---
 
+## Reverse Proxy
+
+Ready-to-adapt nginx, Caddy, and Traefik configs (TLS termination + SSE
+streaming settings for `/v1/chat`) live in
+[`docs/reverse-proxy/`](docs/reverse-proxy/README.md).
+
+---
+
 ## Production Checklist
 
 - [ ] `.env` file created from `.env.example` with real keys
 - [ ] Volume mounts in place for persistent data
-- [ ] Reverse proxy (nginx / Caddy / Traefik) in front for HTTPS
+- [ ] Reverse proxy (nginx / Caddy / Traefik) in front for HTTPS — see [`docs/reverse-proxy/`](docs/reverse-proxy/README.md)
 - [ ] `HOST` is `0.0.0.0` only within the container (not exposed directly to internet)
 - [ ] Firewall rules limit port 8765 to trusted sources
 - [ ] Regular backup of the `llm-hub-data` Docker volume

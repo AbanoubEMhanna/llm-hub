@@ -1,0 +1,40 @@
+# Example Traefik dynamic (file provider) config for LLM Hub.
+#
+# Use this if Traefik is running outside Docker, or you prefer file-based
+# config over Docker labels (see docker-compose.traefik.yml for the label
+# equivalent). Load it via Traefik's static config:
+#
+#   providers:
+#     file:
+#       filename: /path/to/traefik-dynamic.yml
+#
+# LLM Hub streams responses via SSE, and Traefik does not buffer
+# responses by default, so no extra streaming flags are required —
+# only sane timeouts for long-running chat/agent streams.
+
+http:
+  routers:
+    llm-hub:
+      rule: "Host(`llm-hub.example.com`)"
+      entryPoints:
+        - websecure
+      service: llm-hub
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    llm-hub:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:8765"
+        serversTransport: llm-hub-transport
+        # Generous timeouts for long agent/tool-call streams.
+        responseForwarding:
+          flushInterval: "100ms"
+
+  serversTransports:
+    llm-hub-transport:
+      forwardingTimeouts:
+        dialTimeout: "10s"
+        responseHeaderTimeout: "300s"
+        idleConnTimeout: "300s"
