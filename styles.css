@@ -2147,6 +2147,23 @@ del.diff-del {
 .ao-label { font-size: 12px; font-weight: 600; color: var(--text); }
 .ao-desc { font-size: 10px; color: var(--muted); font-family: var(--mono); }
 
+/* Welcome screen customization (Appearance tab) */
+.welcome-prompts-list {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.welcome-prompt-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 1fr 1.4fr auto;
+  gap: 6px; align-items: start;
+  padding: 8px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--s2);
+}
+.welcome-prompt-row .wp-icon { text-align: center; padding-left: 4px; padding-right: 4px; }
+.welcome-prompt-row .wp-prompt { resize: vertical; min-height: 32px; }
+@media (max-width: 640px) {
+  .welcome-prompt-row { grid-template-columns: 1fr; }
+}
+
 /* ── Font-size variants applied to chat messages */
 [data-fontsize="compact"] .bubble { font-size: 12.5px !important; }
 [data-fontsize="normal"]  .bubble { font-size: 13.5px !important; }
