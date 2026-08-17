@@ -289,7 +289,7 @@
 - [x] Env var overrides — PORT, HOST, STORAGE_DIR, OLLAMA_HOST/PORT
 - [x] `GET /health` endpoint with provider status JSON
 - [x] 🔥 ⚡ Published Docker image on Docker Hub / GHCR
-- [ ] ⚡ Reverse proxy config examples (nginx, Caddy, Traefik)
+- [x] ⚡ Reverse proxy config examples (nginx, Caddy, Traefik)
 - [ ] `npx llm-hub` zero-install launcher
 - [ ] 🏗️ Desktop app — Electron or Tauri wrapper
 - [ ] Homebrew / Winget / AUR package formula
@@ -329,7 +329,7 @@
 | Model Comparison | 8 | 1 |
 | Modern UI | 21 | 3 |
 | Security & Privacy | 9 | 1 |
-| Deployment | 9 | 5 |
+| Deployment | 10 | 4 |
 | Developer / Testing | 8 | 3 |
 | **Total** | **176** | **37** |
 

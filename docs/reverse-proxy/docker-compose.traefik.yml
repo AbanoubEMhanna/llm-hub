@@ -1,0 +1,33 @@
+# Example: add Traefik labels to the LLM Hub service so a Traefik
+# instance already running on the `traefik` Docker network can route
+# HTTPS traffic to it. Merge these labels into the `llm-hub` service in
+# the repo's docker-compose.yml (or, from the repo root, use
+# `docker compose -f docker-compose.yml -f
+# docs/reverse-proxy/docker-compose.traefik.yml up -d`).
+#
+# `ports: !reset []` clears the base file's `8765:8765` host port
+# mapping — otherwise the app stays reachable directly, bypassing
+# Traefik (and its TLS termination) entirely. Requires Compose v2.24+;
+# on older Compose, delete the `ports:` entry from the `llm-hub`
+# service in docker-compose.yml directly instead.
+#
+# Assumes Traefik is configured with a `websecure` (443) entrypoint and
+# a `letsencrypt` certResolver — adjust to match your Traefik setup.
+
+services:
+  llm-hub:
+    ports: !reset []
+    networks:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.llm-hub.rule=Host(`llm-hub.example.com`)"
+      - "traefik.http.routers.llm-hub.entrypoints=websecure"
+      - "traefik.http.routers.llm-hub.tls.certresolver=letsencrypt"
+      - "traefik.http.services.llm-hub.loadbalancer.server.port=8765"
+      # Generous timeouts for long agent/tool-call SSE streams.
+      - "traefik.http.services.llm-hub.loadbalancer.responseforwarding.flushinterval=100ms"
+
+networks:
+  traefik:
+    external: true
