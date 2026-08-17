@@ -289,7 +289,7 @@
 - [x] Env var overrides — PORT, HOST, STORAGE_DIR, OLLAMA_HOST/PORT
 - [x] `GET /health` endpoint with provider status JSON
 - [x] 🔥 ⚡ Published Docker image on Docker Hub / GHCR
-- [ ] ⚡ Reverse proxy config examples (nginx, Caddy, Traefik)
+- [x] ⚡ Reverse proxy config examples (nginx, Caddy, Traefik)
 - [ ] `npx llm-hub` zero-install launcher
 - [ ] 🏗️ Desktop app — Electron or Tauri wrapper
 - [ ] Homebrew / Winget / AUR package formula
@@ -329,9 +329,9 @@
 | Model Comparison | 8 | 1 |
 | Modern UI | 20 | 4 |
 | Security & Privacy | 9 | 1 |
-| Deployment | 9 | 5 |
+| Deployment | 10 | 4 |
 | Developer / Testing | 8 | 3 |
-| **Total** | **175** | **38** |
+| **Total** | **176** | **37** |
 
 **~82% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, git integration)
@@ -341,4 +341,4 @@
 
 ---
 
-*Last updated: 2026-08-15. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-08-16. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
