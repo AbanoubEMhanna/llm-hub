@@ -253,7 +253,7 @@
 - [ ] 🔥 🏗️ Fully responsive mobile layout — hamburger nav, touch-friendly
 - [ ] 🔥 🏗️ Multi-tab chat — tab bar, multiple conversations side-by-side
 - [x] Keyboard shortcut remapping
-- [ ] Custom welcome screen configuration
+- [x] Custom welcome screen configuration
 
 ### Notifications & Feedback
 - [x] Toast notifications for all key actions
@@ -327,7 +327,7 @@
 | Attachments & Multimodal | 8 | 2 |
 | RAG / Knowledge Base | 14 | 0 |
 | Model Comparison | 8 | 1 |
-| Modern UI | 20 | 4 |
+| Modern UI | 21 | 3 |
 | Security & Privacy | 9 | 1 |
 | Deployment | 10 | 4 |
 | Developer / Testing | 8 | 3 |
@@ -341,4 +341,4 @@
 
 ---
 
-*Last updated: 2026-08-16. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-08-17. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*

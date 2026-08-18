@@ -1027,9 +1027,21 @@
         </span>
       </label>
 
+      <div class="appearance-section-label" style="margin-top:20px">Welcome Screen</div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:12px">
+        Customize the title, subtitle, and suggested-prompt cards shown on the empty chat screen.
+      </p>
+      <input type="text" id="welcome-title-input" class="input" placeholder="LLM Hub" maxlength="60"
+        oninput="setWelcomeTitle(this.value)" style="width:100%;margin-bottom:8px"/>
+      <textarea id="welcome-sub-input" class="input" rows="2" placeholder="Your local AI workspace — chat privately with models running on your machine. No cloud, no limits."
+        oninput="setWelcomeSubtitle(this.value)" style="width:100%;margin-bottom:12px"></textarea>
+      <div id="welcome-prompts-list" class="welcome-prompts-list"></div>
+      <button class="btn" style="margin-top:8px" onclick="addWelcomePromptRow()">+ Add prompt card</button>
+
     </div>
     <div class="modal-footer" id="settings-footer-appearance" style="display:none">
-      <button class="btn" onclick="resetAppearance()">Reset to defaults</button>
+      <button class="btn" onclick="resetAppearance()">Reset appearance</button>
+      <button class="btn" onclick="resetWelcomeScreen()">Reset welcome screen</button>
       <button class="btn" onclick="closeModal('config-modal')">Close</button>
     </div>
 

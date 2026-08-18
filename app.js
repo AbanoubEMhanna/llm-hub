@@ -2168,48 +2168,10 @@ function renderMessages(msgs) {
   const container = document.getElementById('messages');
   container.innerHTML = '';
   if (!msgs.length) {
-    container.innerHTML = `
-      <div class="welcome" id="empty-state">
-        <div class="welcome-logo">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-        </div>
-        <h2 class="welcome-title">LLM Hub</h2>
-        <p class="welcome-sub">Your local AI workspace — chat privately with models running on your machine. No cloud, no limits.</p>
-        <div class="welcome-grid">
-          <button class="welcome-card" onclick="useWelcomePrompt('Explain how async/await works in JavaScript with a practical example')">
-            <span class="wc-icon">💡</span>
-            <span class="wc-label">Explain a concept</span>
-            <span class="wc-desc">Break down any topic clearly</span>
-          </button>
-          <button class="welcome-card" onclick="useWelcomePrompt('Write a Python script that reads a CSV file and generates a summary report with statistics')">
-            <span class="wc-icon">🔧</span>
-            <span class="wc-label">Write some code</span>
-            <span class="wc-desc">Generate clean, working code</span>
-          </button>
-          <button class="welcome-card" onclick="useWelcomePrompt('Review this code for bugs, security issues, and suggest improvements')">
-            <span class="wc-icon">🔍</span>
-            <span class="wc-label">Review my code</span>
-            <span class="wc-desc">Spot bugs and improvements</span>
-          </button>
-          <button class="welcome-card" onclick="useWelcomePrompt('Help me brainstorm ideas for a weekend side project using local AI models')">
-            <span class="wc-icon">🧠</span>
-            <span class="wc-label">Brainstorm ideas</span>
-            <span class="wc-desc">Explore possibilities together</span>
-          </button>
-          <button class="welcome-card" onclick="useWelcomePrompt('Translate the following text to Arabic, preserving tone and nuance:')">
-            <span class="wc-icon">🌐</span>
-            <span class="wc-label">Translate text</span>
-            <span class="wc-desc">Arabic ↔ English and more</span>
-          </button>
-          <button class="welcome-card" onclick="useWelcomePrompt('Summarize the following into concise bullet points:')">
-            <span class="wc-icon">📝</span>
-            <span class="wc-label">Summarize</span>
-            <span class="wc-desc">Extract key points fast</span>
-          </button>
-        </div>
-      </div>`;
+    container.innerHTML = buildWelcomeHtml();
+    container.querySelectorAll('#empty-state .welcome-card[data-prompt]').forEach(btn => {
+      btn.addEventListener('click', () => useWelcomePrompt(btn.dataset.prompt));
+    });
     return;
   }
   msgs.forEach((m, i) => {
@@ -3084,7 +3046,7 @@ function switchSettingsTab(tab) {
     if (btn) btn.classList.toggle('active', t === tab);
   });
   if (tab === 'backup')     renderBackupSummary();
-  if (tab === 'appearance') _syncAppearanceUI();
+  if (tab === 'appearance') { _syncAppearanceUI(); _syncWelcomeUI(); }
   if (tab === 'shortcuts')  _syncShortcutsUI();
   if (tab === 'apikeys')    renderCustomProvidersList();
   if (tab === 'voice')      initTtsVoiceSelect();
@@ -7412,8 +7374,20 @@ function hideModelLoadingBanner() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § WELCOME PROMPTS
+// § WELCOME PROMPTS — default cards + user-customizable welcome screen
 // ─────────────────────────────────────────────────────────────────────────────
+
+const DEFAULT_WELCOME_TITLE = 'LLM Hub';
+const DEFAULT_WELCOME_SUB   = 'Your local AI workspace — chat privately with models running on your machine. No cloud, no limits.';
+const DEFAULT_WELCOME_PROMPTS = [
+  { icon: '💡', label: 'Explain a concept',  desc: 'Break down any topic clearly',      prompt: 'Explain how async/await works in JavaScript with a practical example' },
+  { icon: '🔧', label: 'Write some code',     desc: 'Generate clean, working code',      prompt: 'Write a Python script that reads a CSV file and generates a summary report with statistics' },
+  { icon: '🔍', label: 'Review my code',      desc: 'Spot bugs and improvements',        prompt: 'Review this code for bugs, security issues, and suggest improvements' },
+  { icon: '🧠', label: 'Brainstorm ideas',    desc: 'Explore possibilities together',    prompt: 'Help me brainstorm ideas for a weekend side project using local AI models' },
+  { icon: '🌐', label: 'Translate text',      desc: 'Arabic ↔ English and more',         prompt: 'Translate the following text to Arabic, preserving tone and nuance:' },
+  { icon: '📝', label: 'Summarize',           desc: 'Extract key points fast',           prompt: 'Summarize the following into concise bullet points:' },
+];
+const MAX_WELCOME_PROMPTS = 6;
 
 function useWelcomePrompt(text) {
   const input = document.getElementById('msg-input');
@@ -7421,6 +7395,117 @@ function useWelcomePrompt(text) {
   autoResize(input);
   input.focus();
   updateInputTokenCount();
+}
+
+function buildWelcomeHtml() {
+  const w = userSettings.welcome || {};
+  const title = (w.title || '').trim() || DEFAULT_WELCOME_TITLE;
+  const sub   = (w.subtitle || '').trim() || DEFAULT_WELCOME_SUB;
+  const prompts = Array.isArray(w.prompts) && w.prompts.length
+    ? w.prompts.slice(0, MAX_WELCOME_PROMPTS)
+    : DEFAULT_WELCOME_PROMPTS;
+
+  const cards = prompts
+    .filter(p => p && (p.prompt || '').trim())
+    .map(p => `
+          <button class="welcome-card" data-prompt="${escHtml(p.prompt)}">
+            <span class="wc-icon">${escHtml(p.icon || '💬')}</span>
+            <span class="wc-label">${escHtml(p.label || 'Prompt')}</span>
+            <span class="wc-desc">${escHtml(p.desc || '')}</span>
+          </button>`)
+    .join('');
+
+  return `
+      <div class="welcome" id="empty-state">
+        <div class="welcome-logo">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <h2 class="welcome-title">${escHtml(title)}</h2>
+        <p class="welcome-sub">${escHtml(sub)}</p>
+        <div class="welcome-grid">${cards}</div>
+      </div>`;
+}
+
+function refreshWelcomeScreen() {
+  if (document.getElementById('empty-state')) renderMessages([]);
+}
+
+function saveWelcomeSettings() {
+  localStorage.setItem('llm-settings', JSON.stringify(userSettings));
+  refreshWelcomeScreen();
+}
+
+function setWelcomeTitle(value) {
+  userSettings.welcome = userSettings.welcome || {};
+  userSettings.welcome.title = value;
+  saveWelcomeSettings();
+}
+
+function setWelcomeSubtitle(value) {
+  userSettings.welcome = userSettings.welcome || {};
+  userSettings.welcome.subtitle = value;
+  saveWelcomeSettings();
+}
+
+function _welcomePrompts() {
+  userSettings.welcome = userSettings.welcome || {};
+  if (!Array.isArray(userSettings.welcome.prompts)) userSettings.welcome.prompts = [];
+  return userSettings.welcome.prompts;
+}
+
+function addWelcomePromptRow() {
+  const prompts = _welcomePrompts();
+  if (prompts.length >= MAX_WELCOME_PROMPTS) { toast(`Up to ${MAX_WELCOME_PROMPTS} prompts`); return; }
+  prompts.push({ icon: '💬', label: '', desc: '', prompt: '' });
+  saveWelcomeSettings();
+  _syncWelcomeUI();
+}
+
+function removeWelcomePromptRow(idx) {
+  const prompts = _welcomePrompts();
+  prompts.splice(idx, 1);
+  saveWelcomeSettings();
+  _syncWelcomeUI();
+}
+
+function updateWelcomePromptField(idx, field, value) {
+  const prompts = _welcomePrompts();
+  if (!prompts[idx]) return;
+  prompts[idx][field] = value;
+  saveWelcomeSettings();
+}
+
+function resetWelcomeScreen() {
+  delete userSettings.welcome;
+  saveWelcomeSettings();
+  _syncWelcomeUI();
+  toast('Welcome screen reset to defaults');
+}
+
+function _syncWelcomeUI() {
+  const w = userSettings.welcome || {};
+  const titleEl = document.getElementById('welcome-title-input');
+  const subEl   = document.getElementById('welcome-sub-input');
+  if (titleEl) titleEl.value = w.title || '';
+  if (subEl)   subEl.value   = w.subtitle || '';
+
+  const listEl = document.getElementById('welcome-prompts-list');
+  if (!listEl) return;
+  const prompts = Array.isArray(w.prompts) ? w.prompts : [];
+  listEl.innerHTML = prompts.length ? prompts.map((p, i) => `
+    <div class="welcome-prompt-row">
+      <input type="text" class="input wp-icon" maxlength="4" value="${escHtml(p.icon || '')}" placeholder="💬"
+        oninput="updateWelcomePromptField(${i}, 'icon', this.value)" title="Emoji icon">
+      <input type="text" class="input wp-label" value="${escHtml(p.label || '')}" placeholder="Card label"
+        oninput="updateWelcomePromptField(${i}, 'label', this.value)">
+      <input type="text" class="input wp-desc" value="${escHtml(p.desc || '')}" placeholder="Short description"
+        oninput="updateWelcomePromptField(${i}, 'desc', this.value)">
+      <textarea class="input wp-prompt" rows="1" placeholder="Prompt text sent when clicked"
+        oninput="updateWelcomePromptField(${i}, 'prompt', this.value)">${escHtml(p.prompt || '')}</textarea>
+      <button class="btn btn-sm" onclick="removeWelcomePromptRow(${i})" title="Remove this prompt card">Remove</button>
+    </div>`).join('') : '<p style="color:var(--muted);font-size:12px">No custom prompts — using the 6 defaults. Add one below to start overriding them.</p>';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
