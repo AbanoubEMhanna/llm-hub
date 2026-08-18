@@ -238,7 +238,7 @@
 - [x] Appearance settings — accent color, font size, chat density
 - [x] Skeleton loading states — shimmer placeholders throughout
 - [x] Animated micro-interactions — message fade-in, hover effects
-- [ ] Theme editor — tweak individual color tokens in-app
+- [x] Theme editor — tweak individual color tokens in-app
 - [x] Custom accent colors beyond preset palette
 - [x] High-contrast accessibility mode
 
@@ -327,13 +327,13 @@
 | Attachments & Multimodal | 8 | 2 |
 | RAG / Knowledge Base | 14 | 0 |
 | Model Comparison | 8 | 1 |
-| Modern UI | 21 | 3 |
+| Modern UI | 22 | 2 |
 | Security & Privacy | 9 | 1 |
 | Deployment | 10 | 4 |
 | Developer / Testing | 8 | 3 |
-| **Total** | **176** | **37** |
+| **Total** | **177** | **36** |
 
-**~82% complete. Top priorities to close the gap:**
+**~83% complete. Top priorities to close the gap:**
 1. 🔥 Code-first workflow (file tree, git integration)
 2. 🔥 Mobile-responsive layout & multi-tab UI
 3. 🔥 Agent tooling (shell command tool — needs a new tool-call confirmation flow: the agent loop that executes tools runs entirely server-side in `runAgentLoop`/`proxy.js`, so a per-execution confirmation means pausing mid-loop for a client round-trip — a bigger lift than the other 🔥 items, hence still open)
@@ -341,4 +341,4 @@
 
 ---
 
-*Last updated: 2026-08-17. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
+*Last updated: 2026-08-18. This is the single canonical feature checklist for the project — previous parallel checklists (`APP_TODO.md`, `APP_ROADMAP.md`, `FEATURES.md`, `MASTER_CHECKLIST.md`, etc.) have been consolidated into this file and removed to avoid drift.*
