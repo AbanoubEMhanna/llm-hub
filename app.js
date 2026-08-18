@@ -3046,7 +3046,7 @@ function switchSettingsTab(tab) {
     if (btn) btn.classList.toggle('active', t === tab);
   });
   if (tab === 'backup')     renderBackupSummary();
-  if (tab === 'appearance') { _syncAppearanceUI(); _syncWelcomeUI(); }
+  if (tab === 'appearance') { _syncAppearanceUI(); _syncWelcomeUI(); _syncThemeEditorUI(); }
   if (tab === 'shortcuts')  _syncShortcutsUI();
   if (tab === 'apikeys')    renderCustomProvidersList();
   if (tab === 'voice')      initTtsVoiceSelect();
@@ -5723,7 +5723,7 @@ function _darkenHex(hex) {
 }
 
 function applyAppearance() {
-  const { accentColor, fontSize = 'normal', density = 'comfortable', highContrast = false } = userSettings;
+  const { accentColor, fontSize = 'normal', density = 'comfortable', highContrast = false, themeTokens } = userSettings;
   const root = document.documentElement;
 
   if (accentColor) {
@@ -5734,6 +5734,13 @@ function applyAppearance() {
     root.style.removeProperty('--accent2');
   }
 
+  const tokens = mergeThemeTokens(themeTokens);
+  Object.keys(EDITABLE_THEME_TOKENS).forEach(key => {
+    const { cssVar } = EDITABLE_THEME_TOKENS[key];
+    if (tokens[key]) root.style.setProperty(cssVar, tokens[key]);
+    else root.style.removeProperty(cssVar);
+  });
+
   root.setAttribute('data-fontsize', fontSize);
   root.setAttribute('data-density',  density);
   if (highContrast) {
@@ -5741,6 +5748,32 @@ function applyAppearance() {
   } else {
     root.removeAttribute('data-highcontrast');
   }
+}
+
+function setThemeToken(key, color) {
+  if (!Object.prototype.hasOwnProperty.call(EDITABLE_THEME_TOKENS, key) || !isValidHexColor(color)) return;
+  userSettings.themeTokens = mergeThemeTokens(userSettings.themeTokens);
+  userSettings.themeTokens[key] = color;
+  localStorage.setItem('llm-settings', JSON.stringify(userSettings));
+  applyAppearance();
+  _syncThemeEditorUI();
+}
+
+function resetThemeTokens() {
+  delete userSettings.themeTokens;
+  localStorage.setItem('llm-settings', JSON.stringify(userSettings));
+  applyAppearance();
+  _syncThemeEditorUI();
+  toast('Theme colors reset to defaults');
+}
+
+function _syncThemeEditorUI() {
+  const tokens = mergeThemeTokens(userSettings.themeTokens);
+  const theme = userSettings.theme === 'light' ? 'light' : 'dark';
+  Object.keys(EDITABLE_THEME_TOKENS).forEach(key => {
+    const input = document.getElementById(`theme-token-${key}`);
+    if (input) input.value = tokens[key] || EDITABLE_THEME_TOKENS[key].defaults[theme];
+  });
 }
 
 function setAccentColor(color) {
@@ -5776,9 +5809,11 @@ function resetAppearance() {
   delete userSettings.fontSize;
   delete userSettings.density;
   delete userSettings.highContrast;
+  delete userSettings.themeTokens;
   localStorage.setItem('llm-settings', JSON.stringify(userSettings));
   applyAppearance();
   _syncAppearanceUI();
+  _syncThemeEditorUI();
   toast('Appearance reset to defaults');
 }
 

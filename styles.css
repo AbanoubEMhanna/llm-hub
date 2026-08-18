@@ -2182,6 +2182,23 @@ del.diff-del {
 }
 .hc-toggle-row:hover { border-color: var(--border2); }
 
+.theme-token-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+}
+.theme-token-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--s2); cursor: pointer; transition: var(--transition);
+  font-size: 12.5px;
+}
+.theme-token-row:hover { border-color: var(--border2); }
+.theme-token-row input[type="color"] {
+  width: 22px; height: 22px; padding: 0; border: none; border-radius: 50%;
+  cursor: pointer; flex-shrink: 0; background: none;
+}
+.theme-token-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.theme-token-row input[type="color"]::-webkit-color-swatch { border: 2px solid transparent; border-radius: 50%; }
+
 /* ── High-contrast accessibility mode ──
    Deepens borders/muted text and gives every focused control a visible ring,
    without touching --bg/--text (already at max contrast in both themes). */

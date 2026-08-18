@@ -1027,6 +1027,29 @@
         </span>
       </label>
 
+      <div class="appearance-section-label" style="margin-top:20px">Theme Editor</div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:12px">
+        Fine-tune the core colors every surface derives from. Leave a swatch alone to keep the active theme's default.
+      </p>
+      <div class="theme-token-grid" id="theme-token-grid">
+        <label class="theme-token-row" for="theme-token-bg">
+          <input type="color" id="theme-token-bg" oninput="setThemeToken('bg', this.value)"/>
+          <span>Background</span>
+        </label>
+        <label class="theme-token-row" for="theme-token-text">
+          <input type="color" id="theme-token-text" oninput="setThemeToken('text', this.value)"/>
+          <span>Text</span>
+        </label>
+        <label class="theme-token-row" for="theme-token-border">
+          <input type="color" id="theme-token-border" oninput="setThemeToken('border', this.value)"/>
+          <span>Border</span>
+        </label>
+        <label class="theme-token-row" for="theme-token-muted">
+          <input type="color" id="theme-token-muted" oninput="setThemeToken('muted', this.value)"/>
+          <span>Muted text</span>
+        </label>
+      </div>
+
       <div class="appearance-section-label" style="margin-top:20px">Welcome Screen</div>
       <p style="color:var(--muted);font-size:12px;margin-bottom:12px">
         Customize the title, subtitle, and suggested-prompt cards shown on the empty chat screen.
@@ -1041,6 +1064,7 @@
     </div>
     <div class="modal-footer" id="settings-footer-appearance" style="display:none">
       <button class="btn" onclick="resetAppearance()">Reset appearance</button>
+      <button class="btn" onclick="resetThemeTokens()">Reset theme colors</button>
       <button class="btn" onclick="resetWelcomeScreen()">Reset welcome screen</button>
       <button class="btn" onclick="closeModal('config-modal')">Close</button>
     </div>
@@ -1841,6 +1865,7 @@
 <script src="lib/benchmark-history.js"></script>
 <script src="lib/date-grouping.js"></script>
 <script src="lib/shortcut-remap.js"></script>
+<script src="lib/theme-tokens.js"></script>
 <script src="app.js"></script>
 <script>
 function applySamplingPreset(name) {
